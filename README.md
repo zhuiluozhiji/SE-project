@@ -304,6 +304,121 @@ database/schema.sql 是否已经导入
 当前大部分接口仍是 mock 数据，所以数据库连接失败不一定会影响接口占位访问，但后续真实业务会依赖 MySQL。
 
 
+# GitHub 提交规范
+
+为了方便 6 人协作开发、代码审查和后期写项目报告，大家提交代码时统一遵守下面的 Git/GitHub 规范。
+
+## 1. 分支命名规范
+
+不要直接在 `main` 分支上开发功能。每个任务新建独立分支：
+
+```text
+main                        # 稳定主分支
+frontend/xxx                # 前端功能
+backend/xxx                 # 后端功能
+crawler/xxx                 # 爬虫功能
+database/xxx                # 数据库相关
+docs/xxx                    # 文档相关
+test/xxx                    # 测试相关
+fix/xxx                     # Bug 修复
+```
+
+示例：
+
+```text
+frontend/activity-list
+frontend/calendar-view
+backend/auth-login
+backend/schedule-conflict
+crawler/cs-zju
+database/init-schema
+docs/test-plan
+fix/activity-filter
+```
+
+## 2. Commit Message 规范
+
+提交信息统一使用：
+
+```text
+类型: 简短描述
+```
+
+常用类型：
+
+| 类型 | 含义 | 示例 |
+| --- | --- | --- |
+| `feat` | 新增功能 | `feat: add activity list page` |
+| `fix` | 修复 Bug | `fix: fix schedule conflict check` |
+| `docs` | 文档修改 | `docs: update environment setup guide` |
+| `style` | 样式调整，不影响逻辑 | `style: polish login page layout` |
+| `refactor` | 重构代码，不新增功能 | `refactor: split activity service` |
+| `test` | 测试相关 | `test: add auth api tests` |
+| `chore` | 配置、依赖、脚手架等杂项 | `chore: update gitignore` |
+| `build` | 构建或打包配置 | `build: add frontend dockerfile` |
+| `ci` | CI/CD 配置 | `ci: add github actions workflow` |
+
+推荐示例：
+
+```bash
+git commit -m "feat: add activity list api"
+git commit -m "fix: handle empty course import file"
+git commit -m "docs: add github commit guide"
+git commit -m "test: add schedule conflict test cases"
+```
+
+不推荐：
+
+```text
+update
+修改了一下
+111
+final version
+```
+
+## 3. 提交流程
+
+每次开始新任务前：
+
+```bash
+git pull
+git checkout -b frontend/activity-list
+```
+
+开发完成后：
+
+```bash
+git status
+git add 修改的文件
+git commit -m "feat: add activity list page"
+git push origin frontend/activity-list
+```
+
+然后在 GitHub 上发起 Pull Request，合并到 `main`。
+
+## 4. 合并前检查
+
+提交 PR 前至少确认：
+
+```bash
+pytest
+cd frontend
+npm run build
+```
+
+如果只改文档，可以不跑前端构建和后端测试，但 PR 描述里要说明“仅文档修改”。
+
+## 5. 协作注意事项
+
+1. 不要提交 `.env`、`.venv/`、`node_modules/`、`frontend/dist/`。
+2. 不要直接修改别人负责模块的大段代码，确实需要时先沟通。
+3. 接口字段变化时，必须同步更新 `docs/api-contract.md`。
+4. 数据库字段变化时，必须同步更新 `database/schema.sql`。
+5. 前端调用接口前，先看 Swagger 和 `docs/api-contract.md`。
+6. PR 标题建议和 commit 类型保持一致，例如 `feat: add course import api`。
+7. 每个 PR 尽量只做一类事情，不要把前端、后端、文档、格式化混在一次提交里。
+
+
 # 项目架构
 ## **仓库目录结构**
 
@@ -416,4 +531,3 @@ registration → 记录用户和活动关系
 爬虫：Python requests + BeautifulSoup
 测试：接口测试 + 文档测试 + 手工验收用例
 接口文档：FastAPI Swagger / docs 接口文档
-
