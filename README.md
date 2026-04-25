@@ -394,11 +394,25 @@ git commit -m "feat: add activity list page"
 git push origin frontend/activity-list
 ```
 
-然后在 GitHub 上发起 Pull Request，合并到 `main`。
+如果团队不使用 Pull Request，可以由组长或模块负责人确认后直接合并到 `main`：
+
+```bash
+git checkout main
+git pull
+git merge frontend/activity-list
+git push origin main
+```
+
+合并完成后可以删除已完成的功能分支：
+
+```bash
+git branch -d frontend/activity-list
+git push origin --delete frontend/activity-list
+```
 
 ## 4. 合并前检查
 
-提交 PR 前至少确认：
+合并到 `main` 前至少确认：
 
 ```bash
 pytest
@@ -406,7 +420,7 @@ cd frontend
 npm run build
 ```
 
-如果只改文档，可以不跑前端构建和后端测试，但 PR 描述里要说明“仅文档修改”。
+如果只改文档，可以不跑前端构建和后端测试，但提交信息或进度记录里要说明“仅文档修改”。
 
 ## 5. 协作注意事项
 
@@ -415,8 +429,8 @@ npm run build
 3. 接口字段变化时，必须同步更新 `docs/api-contract.md`。
 4. 数据库字段变化时，必须同步更新 `database/schema.sql`。
 5. 前端调用接口前，先看 Swagger 和 `docs/api-contract.md`。
-6. PR 标题建议和 commit 类型保持一致，例如 `feat: add course import api`。
-7. 每个 PR 尽量只做一类事情，不要把前端、后端、文档、格式化混在一次提交里。
+6. 分支合并前建议在群里说明本次改动范围，例如 `feat: add course import api`。
+7. 每次合并尽量只做一类事情，不要把前端、后端、文档、格式化混在一次提交里。
 
 
 # 项目架构
