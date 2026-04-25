@@ -1,8 +1,307 @@
 
 # NOTE
-开发项目的时候喂给ai初始化，了解项目任务，可以用`docs/` 下面的各文档，
-大家的进展可以放在
+- `docs/`：开发项目的时候喂给vibe coding初始化，了解项目任务，可以用`docs/` 下面的各文档，
+- `progress/`：大家各自的进展可以放在底下的文件夹下，同时有一份`总进度.md`记录整体项目推进到了哪里，可以由负责测试的同学维护
 
+# 环境配置
+
+本节说明组员第一次拉取项目后，如何把本地环境配置到可以运行前端、后端和基础测试的状态。
+
+当前项目涉及：
+
+```text
+前端：Node.js + npm
+后端：Python + venv + pip
+数据库：MySQL
+协作：Git
+```
+
+推荐版本：
+
+```text
+Node.js >= 18
+npm >= 9
+Python >= 3.10
+MySQL 8.0
+```
+
+可以先检查本机是否已安装：
+
+```bash
+git --version
+node --version
+npm --version
+python --version
+mysql --version
+```
+
+如果某个命令不存在，需要先安装对应软件。
+
+## 1. 拉取项目
+
+第一次拉取：
+
+```bash
+git clone 项目仓库地址
+cd SE-project
+```
+
+如果已经拉取过：
+
+```bash
+git pull
+```
+
+## 2. 配置环境变量
+
+项目提供了环境变量模板：
+
+```bash
+cp .env.example .env
+```
+
+然后根据本机 MySQL 配置修改 `.env`：
+
+```text
+MYSQL_HOST=localhost
+MYSQL_PORT=3306
+MYSQL_DATABASE=se_project
+MYSQL_USER=你的 MySQL 用户名
+MYSQL_PASSWORD=你的 MySQL 密码
+DATABASE_URL=mysql+pymysql://你的 MySQL 用户名:你的 MySQL 密码@localhost:3306/se_project
+```
+
+注意：
+
+```text
+.env.example 可以提交到仓库
+.env 是个人本地配置，不要提交
+```
+
+## 3. 配置后端环境
+
+在项目根目录执行：
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r backend/requirements.txt
+```
+
+Windows PowerShell 可以使用：
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+pip install -r backend/requirements.txt
+```
+
+安装完成后，运行后端测试：
+
+```bash
+pytest
+```
+
+如果测试通过，会看到类似：
+
+```text
+1 passed
+```
+
+## 4. 配置前端环境
+
+进入前端目录：
+
+```bash
+cd frontend
+npm install
+npm run build
+```
+
+如果 `npm run build` 通过，说明前端依赖和构建配置正常。
+
+执行完成后回到项目根目录：
+
+```bash
+cd ..
+```
+
+## 5. 配置数据库
+
+确保本机 MySQL 已启动，然后在项目根目录执行：
+
+```bash
+mysql -u root -p < database/schema.sql
+mysql -u root -p < database/seed.sql
+```
+
+如果你不是用 `root` 用户，请替换成自己的 MySQL 用户名：
+
+```bash
+mysql -u 你的用户名 -p < database/schema.sql
+mysql -u 你的用户名 -p < database/seed.sql
+```
+
+这两份 SQL 的作用：
+
+```text
+database/schema.sql  # 创建数据库和核心表
+database/seed.sql    # 写入测试用户、测试活动、课程和日程样例数据
+```
+
+## 6. 启动后端服务
+
+在项目根目录执行：
+
+```bash
+source .venv/bin/activate
+uvicorn app.main:app --app-dir backend --reload --host 0.0.0.0 --port 8000
+```
+
+启动成功后访问：
+
+```text
+健康检查：http://localhost:8000/health
+接口文档：http://localhost:8000/docs
+活动列表：http://localhost:8000/api/v1/activities
+```
+
+## 7. 启动前端服务
+
+另开一个终端，进入前端目录：
+
+```bash
+cd frontend
+npm run dev -- --host 0.0.0.0
+```
+
+启动成功后访问：
+
+```text
+前端页面：http://localhost:5173/
+```
+
+## 8. 最短跑通流程
+
+如果已经安装好 Git、Node.js、npm、Python、MySQL，可以按下面顺序直接跑：
+
+```bash
+git pull
+cp .env.example .env
+
+python -m venv .venv
+source .venv/bin/activate
+pip install -r backend/requirements.txt
+pytest
+
+mysql -u root -p < database/schema.sql
+mysql -u root -p < database/seed.sql
+
+cd frontend
+npm install
+npm run build
+cd ..
+```
+
+然后分别启动两个服务：
+
+```bash
+# 终端 1：后端
+source .venv/bin/activate
+uvicorn app.main:app --app-dir backend --reload --host 0.0.0.0 --port 8000
+```
+
+```bash
+# 终端 2：前端
+cd frontend
+npm run dev -- --host 0.0.0.0
+```
+
+最后打开：
+
+```text
+http://localhost:5173/
+http://localhost:8000/docs
+```
+
+## 9. 已自动完成和不需要重复做的事情
+
+项目初始化时已经完成：
+
+```text
+前端 Vue 3 + Vite 工程
+后端 FastAPI 工程
+基础 API 路由
+Swagger 接口文档
+数据库 SQL 脚本
+测试目录和测试样例
+爬虫目录骨架
+Docker 配置占位
+```
+
+组员不需要重新创建这些工程，只需要在现有目录上继续开发。
+
+不要提交这些本地生成内容：
+
+```text
+.venv/
+node_modules/
+.env
+frontend/dist/
+__pycache__/
+.pytest_cache/
+```
+
+这些已经写入 `.gitignore`。
+
+## 10. 常见问题
+
+### `uvicorn: command not found`
+
+说明没有激活虚拟环境，或者后端依赖没有安装：
+
+```bash
+source .venv/bin/activate
+pip install -r backend/requirements.txt
+```
+
+### `ModuleNotFoundError: No module named 'app'`
+
+启动后端时需要带上 `--app-dir backend`：
+
+```bash
+uvicorn app.main:app --app-dir backend --reload --host 0.0.0.0 --port 8000
+```
+
+### 前端端口被占用
+
+可以换端口：
+
+```bash
+npm run dev -- --host 0.0.0.0 --port 5174
+```
+
+### 后端端口被占用
+
+可以换端口：
+
+```bash
+uvicorn app.main:app --app-dir backend --reload --host 0.0.0.0 --port 8001
+```
+
+如果后端端口改了，前端接口地址也要同步调整。
+
+### 数据库连接失败
+
+优先检查：
+
+```text
+MySQL 是否启动
+.env 中用户名和密码是否正确
+DATABASE_URL 是否正确
+database/schema.sql 是否已经导入
+```
+
+当前大部分接口仍是 mock 数据，所以数据库连接失败不一定会影响接口占位访问，但后续真实业务会依赖 MySQL。
 
 
 # 项目架构
@@ -117,5 +416,4 @@ registration → 记录用户和活动关系
 爬虫：Python requests + BeautifulSoup
 测试：接口测试 + 文档测试 + 手工验收用例
 接口文档：FastAPI Swagger / docs 接口文档
-
 
