@@ -22,7 +22,7 @@ services:
       context: ./backend
     container_name: se-project-backend
     env_file:
-      - .env.example
+      - .env
     environment:
       DATABASE_URL: mysql+pymysql://se_user:se_password@mysql:3306/se_project
     ports:
@@ -30,6 +30,8 @@ services:
     depends_on:
       - mysql
 
+  # 注意：当前前端容器使用 npm run dev（开发模式），仅用于本地调试。
+  # 生产部署应改为 npm run build + nginx 静态服务。
   frontend:
     build:
       context: ./frontend
