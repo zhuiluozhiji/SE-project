@@ -35,9 +35,16 @@
       <el-header class="app-header">
         <div>
           <h1>{{ routeTitle }}</h1>
-          <p>第一阶段 MVP 骨架，业务接口与页面可并行填充。</p>
+          <p>聚合校园学术活动与个人日程，优先保证主流程清晰可用。</p>
         </div>
-        <el-button type="primary" @click="$router.push('/login')">登录</el-button>
+        <div class="header-actions">
+          <el-input class="header-search" placeholder="搜索活动、讲座或主讲人" />
+          <el-button type="primary" @click="$router.push('/login')">登录</el-button>
+          <div class="user-chip">
+            <span class="dot"></span>
+            学生访客
+          </div>
+        </div>
       </el-header>
 
       <el-main class="app-main">
@@ -55,3 +62,35 @@ const route = useRoute()
 
 const routeTitle = computed(() => route.meta.title || '校园学术活动智能推荐平台')
 </script>
+
+<style scoped>
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.header-search {
+  width: 260px;
+}
+
+.user-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: #fff5e3;
+  border: 1px solid #eadac6;
+  font-size: 12px;
+  color: #6b5b45;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #0f766e;
+  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.2);
+}
+</style>

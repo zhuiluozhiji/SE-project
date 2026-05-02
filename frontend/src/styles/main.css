@@ -1,9 +1,19 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600&family=Noto+Serif+SC:wght@600;700&display=swap');
+
 :root {
-  color: #1f2937;
-  background: #f5f7fb;
-  font-family:
-    Inter, "PingFang SC", "Microsoft YaHei", system-ui, -apple-system,
-    BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: #1d1b16;
+  background: #f6f1e8;
+  font-family: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", system-ui,
+    -apple-system, "Segoe UI", sans-serif;
+  --ink: #1d1b16;
+  --muted: #6f6a5f;
+  --paper: #ffffff;
+  --paper-2: #fff8ee;
+  --line: #e8dfcf;
+  --brand: #0f766e;
+  --brand-2: #e27a38;
+  --accent: #f2c14e;
+  --shadow: 0 16px 40px rgba(45, 36, 18, 0.12);
 }
 
 * {
@@ -14,15 +24,29 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  background: radial-gradient(circle at 20% 0%, #fff8ed 0%, #f6f1e8 48%, #efe6d7 100%);
 }
 
 .app-shell {
   min-height: 100vh;
+  position: relative;
+  background: transparent;
+}
+
+.app-shell::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 85% 15%, rgba(226, 122, 56, 0.12), transparent 45%),
+    radial-gradient(circle at 10% 70%, rgba(15, 118, 110, 0.12), transparent 40%);
+  pointer-events: none;
 }
 
 .app-sidebar {
-  background: #ffffff;
-  border-right: 1px solid #e5e7eb;
+  background: #fff8ee;
+  border-right: 1px solid var(--line);
+  position: relative;
+  z-index: 1;
 }
 
 .brand {
@@ -30,18 +54,19 @@ body {
   gap: 12px;
   align-items: center;
   padding: 20px 18px;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--line);
 }
 
 .brand-mark {
   display: grid;
-  width: 40px;
-  height: 40px;
+  width: 42px;
+  height: 42px;
   place-items: center;
-  color: #ffffff;
+  color: #fff7ec;
   font-weight: 700;
-  background: #2563eb;
-  border-radius: 8px;
+  background: linear-gradient(135deg, #0f766e, #2a9d8f);
+  border-radius: 12px;
+  box-shadow: 0 6px 16px rgba(15, 118, 110, 0.25);
 }
 
 .brand strong,
@@ -49,51 +74,162 @@ body {
   display: block;
 }
 
+.brand strong {
+  font-family: "Noto Serif SC", "Noto Sans SC", serif;
+  letter-spacing: 0.5px;
+}
+
 .brand small {
   margin-top: 3px;
-  color: #6b7280;
+  color: var(--muted);
 }
 
 .nav-menu {
   border-right: none;
+  background: transparent;
+}
+
+.nav-menu .el-menu-item {
+  border-radius: 12px;
+  margin: 6px 12px;
+  color: var(--muted);
+}
+
+.nav-menu .el-menu-item.is-active {
+  background: #f1e4d2;
+  color: var(--ink);
+  font-weight: 600;
 }
 
 .app-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 76px;
-  background: #ffffff;
-  border-bottom: 1px solid #e5e7eb;
+  height: 92px;
+  padding: 0 28px;
+  background: rgba(255, 255, 255, 0.86);
+  border-bottom: 1px solid var(--line);
+  backdrop-filter: blur(8px);
+  position: sticky;
+  top: 0;
+  z-index: 3;
 }
 
 .app-header h1 {
   margin: 0;
-  font-size: 20px;
+  font-size: 22px;
+  font-family: "Noto Serif SC", "Noto Sans SC", serif;
 }
 
 .app-header p {
-  margin: 4px 0 0;
-  color: #6b7280;
+  margin: 6px 0 0;
+  color: var(--muted);
   font-size: 13px;
 }
 
 .app-main {
-  padding: 24px;
+  padding: 28px;
+  position: relative;
+  z-index: 1;
 }
 
 .page-panel {
-  padding: 20px;
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
+  padding: 24px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  box-shadow: var(--shadow);
 }
 
 .page-title {
   margin: 0 0 12px;
-  font-size: 18px;
+  font-size: 20px;
+  font-family: "Noto Serif SC", "Noto Sans SC", serif;
 }
 
 .muted {
-  color: #6b7280;
+  color: var(--muted);
+}
+
+.section-title {
+  margin: 0 0 12px;
+  font-size: 18px;
+  font-family: "Noto Serif SC", "Noto Sans SC", serif;
+}
+
+.card-grid {
+  display: grid;
+  gap: 16px;
+}
+
+.card {
+  padding: 16px;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  box-shadow: 0 12px 26px rgba(44, 34, 16, 0.08);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  color: #1f2a24;
+  background: #e8f3ef;
+  border: 1px solid rgba(15, 118, 110, 0.2);
+}
+
+.chip.warning {
+  color: #6a3a0b;
+  background: #fef1d6;
+  border-color: rgba(226, 122, 56, 0.35);
+}
+
+.chip.danger {
+  color: #5d1c1c;
+  background: #fde3e3;
+  border-color: rgba(187, 46, 46, 0.35);
+}
+
+.hero {
+  padding: 24px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #fff8ee 0%, #f5e6d4 45%, #f3dbc1 100%);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+}
+
+.hero-title {
+  font-size: 26px;
+  margin: 0 0 8px;
+  font-family: "Noto Serif SC", "Noto Sans SC", serif;
+}
+
+.hero-subtitle {
+  margin: 0;
+  color: var(--muted);
+}
+
+.divider {
+  height: 1px;
+  background: var(--line);
+  margin: 16px 0;
+}
+
+.fade-in {
+  animation: fadeIn 0.6s ease forwards;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
