@@ -449,16 +449,20 @@ npm run build
 
 ```text
 SE-project/
-├── frontend/                 # 前端项目，负责页面和交互
-├── backend/                  # 后端项目，负责 API 和业务逻辑
-├── crawler/                  # 爬虫脚本，负责采集学院活动数据
-├── database/                 # 数据库建表、种子数据、ER 图
-├── docs/                     # 项目文档、需求文档、接口规范、测试文档
-├── tests/                    # 自动化测试、接口测试、测试数据
-├── prompts/                  # 给 AI/成员使用的提示词和开发上下文
-│   └── hh/                   # 当前测试/文书同学可使用的 prompt 区域
-├── README.md                 # 项目总说明
-└── docker-compose.yml        # 后期可选，一键启动服务
+├── frontend/                 # 前端 Vue 3 + Vite 项目
+│   └── src/                  # 页面、接口封装、路由、状态管理、样式
+├── backend/                  # 后端 FastAPI 项目
+│   └── app/                  # 入口、路由、服务层、模型、Schema、数据库
+├── crawler/                  # 爬虫脚本与数据清洗/存储工具
+├── database/                 # 建库建表、测试数据、迁移预留、ER 图预留
+├── docs/                     # 需求、设计、计划、测试、接口等文档
+├── progress/                 # 项目进度记录
+├── tests/                    # 接口测试、测试数据、端到端测试预留
+├── README.md                 # 项目总说明与环境配置
+├── AGENTS.md                 # 协作与开发规范
+├── .env.example              # 环境变量模板
+├── pytest.ini                # pytest 配置
+└── docker-compose.yml        # Docker 启动配置
 ```
 
 ## **前端架构**

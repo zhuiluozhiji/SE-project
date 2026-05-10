@@ -1,0 +1,1369 @@
+% !TeX program = XeLaTeX
+\documentclass[UTF8,a4paper,12pt,fontset=none]{ctexrep}
+\usepackage[a4paper,margin=2.5cm]{geometry}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{array}
+\usepackage{longtable}
+\usepackage{booktabs}
+\usepackage{colortbl}
+\usepackage{caption}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{grffile}
+\usepackage{titlesec}
+\usepackage{setspace}
+\usepackage{xcolor}
+\usepackage{fancyhdr}
+\usepackage{lastpage}
+\usepackage{etoolbox}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=black,
+  urlcolor=black,
+  citecolor=black,
+  pdftitle={校园学术活动智能推荐平台需求分析文档}
+}
+
+\setmainfont{TeX Gyre Termes}
+\setsansfont{TeX Gyre Heros}
+\setmonofont{Latin Modern Mono}
+\setCJKmainfont{Noto Serif CJK SC}
+\setCJKsansfont{Noto Sans CJK SC}
+\setCJKmonofont{Noto Sans Mono CJK SC}
+\newcommand{\songti}{\rmfamily}
+\newcommand{\heiti}{\sffamily}
+
+\definecolor{ZJUBlue}{RGB}{0, 63, 136}
+\setcounter{secnumdepth}{3}
+\setcounter{tocdepth}{3}
+\setlength{\parindent}{2em}
+\setlength{\parskip}{0.35em}
+\setlength{\headheight}{15pt}
+\setlength{\LTpre}{0.85\baselineskip}
+\setlength{\LTpost}{0.75\baselineskip}
+\setlength{\intextsep}{0.8\baselineskip}
+\setlength{\textfloatsep}{0.9\baselineskip}
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1.3}
+\onehalfspacing
+\arrayrulecolor{black}
+\captionsetup{
+  font=small,
+  labelfont=bf,
+  labelsep=quad
+}
+\captionsetup[figure]{
+  justification=centering
+}
+\AtBeginEnvironment{longtable}{
+  \arrayrulecolor{black}
+}
+
+\ctexset{
+  chapter = {
+    name = {第,章},
+    number = \arabic{chapter},
+    format = \centering\heiti\zihao{3},
+    beforeskip = 18pt,
+    afterskip = 24pt
+  },
+  section = {
+    format = \bfseries\zihao{4}\color{ZJUBlue},
+    beforeskip = 10pt,
+    afterskip = 8pt
+  },
+  subsection = {
+    format = \bfseries\zihao{-4},
+    beforeskip = 8pt,
+    afterskip = 6pt
+  },
+  subsubsection = {
+    format = \bfseries\zihao{5},
+    beforeskip = 6pt,
+    afterskip = 4pt
+  }
+}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{软件需求规格说明书}
+\fancyhead[R]{\nouppercase{\leftmark}}
+\fancyfoot[C]{第 \thepage 页\ /\ 共 \pageref*{LastPage} 页}
+\renewcommand{\headrulewidth}{0.6pt}
+\renewcommand{\footrulewidth}{0.4pt}
+\fancypagestyle{plain}{
+  \fancyhf{}
+  \fancyhead[L]{软件需求规格说明书}
+  \fancyhead[R]{\nouppercase{\leftmark}}
+  \fancyfoot[C]{第 \thepage 页\ /\ 共 \pageref*{LastPage} 页}
+  \renewcommand{\headrulewidth}{0.6pt}
+  \renewcommand{\footrulewidth}{0.4pt}
+}
+
+\newcommand{\reportuniversity}{浙江大学}
+\newcommand{\reportcourse}{软件工程}
+\newcommand{\reportdoctype}{课程设计报告}
+\newcommand{\reportcovername}{软件需求规格说明书}
+\newcommand{\reporttitlemain}{校园学术活动智能推荐平台}
+\newcommand{\reporttitlesub}{需求分析文档}
+\newcommand{\reportadvisor}{邓水光}
+\newcommand{\reportteamlineone}{黄晗\quad 宫上珺\quad 孟祥烨}
+\newcommand{\reportteamlinetwo}{李妍雅\quad 庞星磊\quad 朱致远}
+\newcommand{\reportdate}{\number\year\quad 年\quad \number\month\quad 月\quad \number\day\quad 日}
+\newcommand{\coverfill}[2]{\underline{\makebox[#1][l]{#2}}}
+
+\newcommand{\makecoursecover}{
+  \begin{titlepage}
+    \thispagestyle{empty}
+    \centering
+    \vspace*{1.0cm}
+    \includegraphics[width=0.42\textwidth]{assets/zju_title.png}\par
+    \vspace{1.4cm}
+    {\songti\zihao{2} \reportcovername \par}
+    \vspace{1.6cm}
+    \includegraphics[width=0.30\textwidth]{assets/zju_logo.png}\par
+    \vspace{1.5cm}
+    \begin{minipage}{0.78\textwidth}
+      \raggedright
+      \renewcommand{\arraystretch}{1.85}
+      {\songti\zihao{-3}
+      \begin{tabular}{@{}p{2.5cm}p{9.4cm}@{}}
+        项目主题： & \coverfill{8.6cm}{校园学术活动智能推荐平台} \\
+        任课老师： & \coverfill{4.8cm}{\reportadvisor} \\
+        项目组员： &
+        \begin{tabular}[t]{@{}l@{}}
+          \coverfill{8.6cm}{\reportteamlineone} \\
+          \coverfill{8.6cm}{\reportteamlinetwo}
+        \end{tabular} \\
+      \end{tabular}\par}
+    \end{minipage}
+    \vfill
+    {\songti\zihao{4} \reportdate \par}
+  \end{titlepage}
+}
+
+\begin{document}
+\pagenumbering{gobble}
+\makecoursecover
+\clearpage
+\pagenumbering{Roman}
+\tableofcontents
+\clearpage
+\pagenumbering{arabic}
+\setcounter{page}{1}
+
+\chapter{引言}
+
+\section{编写目的}
+
+本文档旨在详细描述“校园学术活动智能推荐平台”的需求边界、核心功能与质量标准，为后续系统设计、开发实现、测试验收与课程答辩提供统一依据。具体目标如下：
+
+\begin{enumerate}[leftmargin=2.5em]
+\item 统一项目干系人（学生、教师、管理员、开发成员）对系统目标与范围的理解。
+\item 将用户需求转换为可落地、可验证的功能与非功能需求。
+\item 为后续概要设计、数据库设计、接口设计提供输入。
+\item 为测试用例编写与阶段验收提供可量化标准。
+\end{enumerate}
+
+\section{项目背景}
+
+浙江大学学术讲座、论坛、Workshop、学术沙龙等活动资源丰富，信息来源覆盖浙江大学官网、求是新闻网、研究生院/本科生院通知、各学院与研究机构官网，以及“浙江大学”等官方微信公众号和学院官号。以计算机科学与技术学院为例，活动通知往往分别发布在各自网站或公众号中，发布时间、字段格式和报名入口并不完全统一。
+
+这种多来源发布方式保证了学院和部门的自主性，但对普通学生和教师来说，也带来了“渠道多、更新快、组织散”的典型问题。用户如果想持续关注人工智能、数字人文、生命科学、创新创业等不同方向的活动，通常需要反复浏览多个官网栏目、公众号推文和校内通知群，信息检索成本较高。师生在获取信息时常面临如下痛点：
+
+\begin{enumerate}[leftmargin=2.5em]
+\item 信息接收滞后：活动可能先发布在学院官网或公众号中，用户未及时关注时容易错过报名窗口或关键讲座。
+\item 个人相关性低：浙江大学学科门类多、活动数量大，用户需要从大量通知中筛选与个人专业、研究方向或兴趣匹配的内容。
+\item 时间安排困难：讲座、课程、实验、组会和考试安排可能发生冲突，用户需要手动判断是否适合参加。
+\item 跨校区成本高：紫金港、玉泉、西溪、华家池等校区之间存在通勤成本，用户缺少活动地点与出发时间的综合提醒。
+\end{enumerate}
+
+本项目旨在面向浙江大学师生建设一个集“信息采集、智能推荐、日程协同、社交互动”于一体的平台，对接和整理浙江大学官网、求是新闻网、学院官网、官方微信公众号等公开活动信息，通过算法与业务规则结合，帮助用户高效发现并参与高价值学术活动。
+
+\section{名词定义}
+
+\begingroup
+\small
+\begin{longtable}{|>{\raggedright\arraybackslash}p{0.220\textwidth}|>{\raggedright\arraybackslash}p{0.680\textwidth}|}
+\hline
+\textbf{名词} & \textbf{定义} \\
+\hline
+学术活动 & 包括讲座、论坛、研讨会、Workshop、学术沙龙等活动 \\
+\hline
+活动聚合 & 从多来源抓取并合并同一活动的过程 \\
+\hline
+NLP 打标 & 使用自然语言处理为活动文本自动添加主题标签 \\
+\hline
+兴趣画像 & 根据用户标签、浏览、收藏、报名行为形成的偏好模型 \\
+\hline
+冲突检测 & 检查活动时间与课程/已有日程冲突的机制 \\
+\hline
+通勤余量 & 依据校区间交通估算出的出发提前时间 \\
+\hline
+ICS 导出 & 将活动导出为标准日历文件（.ics）用于第三方导入 \\
+\hline
+候补机制 & 活动满额后进入等待队列并按规则补录 \\
+\hline
+HTML & HyperText Markup Language，用于构建 Web 页面结构与内容 \\
+\hline
+CSS & Cascading Style Sheets，用于控制 Web 页面的布局、颜色、字体和响应式样式 \\
+\hline
+JavaScript & 浏览器端脚本语言，用于实现页面交互、数据筛选、弹窗和日历导出等动态功能 \\
+\hline
+H5 & 基于 HTML5、CSS 和 JavaScript 的移动端 Web 页面形态，可在手机浏览器或 WebView 中运行 \\
+\hline
+响应式布局 & 页面根据不同屏幕宽度自动调整布局，保证 PC 端与移动端均可正常使用 \\
+\hline
+静态前端原型 & 不依赖后端服务，通过 HTML、CSS 和 JavaScript 模拟主要页面与交互流程的原型 \\
+\hline
+\end{longtable}
+\endgroup
+
+\chapter{总体描述}
+
+\section{产品前景}
+
+该平台定位为浙江大学学术活动的“统一入口 + 智能日程助手”，以提升活动触达效率与参与质量为核心价值。平台前期重点聚合浙江大学官网、求是新闻网、研究生院/本科生院通知、各学院官网和官方微信公众号中的公开活动信息，统一抽取活动标题、时间、地点、主讲人、报名方式、所属学院和主题标签等字段，形成面向师生的集中式活动信息流。
+
+在使用场景上，平台不仅解决“在哪里看到活动”的问题，还进一步解决“是否值得参加、是否和课表冲突、跨校区是否来得及”的问题。例如，用户可以在同一界面查看紫金港校区的人工智能讲座、玉泉校区的工程技术论坛、西溪校区的人文社科沙龙和华家池校区的生命科学活动，并根据个人兴趣标签、课程表和通勤时间获得推荐与提醒。
+
+在课程项目阶段，平台优先实现可展示、可交互、可验收的核心闭环，包括活动聚合展示、标签筛选、个性化推荐模拟、加入日程、冲突提示和 ICS 导出。在后续迭代中，再逐步接入真实数据源、统一身份认证、学院活动发布后台和更完整的多校区通勤服务。
+
+阶段性愿景如下：
+
+\begin{enumerate}[leftmargin=2.5em]
+\item 第一阶段：基于浙江大学公开活动信息样例，实现活动聚合、检索、推荐、加入日程与日历同步闭环。
+\item 第二阶段：接入学院或社团活动发布入口，加强学术组队、笔记、评价与运营后台能力。
+\item 第三阶段：接入统一身份认证、课表数据和地图/路径规划服务，支持更精准的个性化推荐、冲突检测和跨校区通勤提醒。
+\end{enumerate}
+
+\section{用户类及其特征}
+
+\begingroup
+\small
+\begin{longtable}{|>{\raggedright\arraybackslash}p{0.180\textwidth}|>{\raggedright\arraybackslash}p{0.240\textwidth}|>{\raggedright\arraybackslash}p{0.480\textwidth}|}
+\hline
+\textbf{用户类型} & \textbf{典型特征} & \textbf{主要诉求} \\
+\hline
+学生用户 & 时间碎片化、关注课程冲突、偏好移动端 & 快速找到感兴趣活动并完成报名与排程 \\
+\hline
+教师用户 & 关注主题质量与时间确定性 & 高效筛选高质量讲座并管理学术日程 \\
+\hline
+组织者（学院/社团） & 需要提升活动曝光和到场率 & 发布活动、管理报名名单、查看参与数据 \\
+\hline
+系统管理员 & 关注平台稳定性与合规性 & 监控爬虫、审核内容、维护标签与配置 \\
+\hline
+\end{longtable}
+\endgroup
+
+\section{产品功能}
+
+产品功能由四类核心能力组成，具体如下表所示：
+
+\begingroup
+\small
+\begin{longtable}{|>{\raggedright\arraybackslash}p{0.120\textwidth}|>{\raggedright\arraybackslash}p{0.180\textwidth}|>{\raggedright\arraybackslash}p{0.500\textwidth}|>{\raggedright\arraybackslash}p{0.100\textwidth}|}
+\hline
+\textbf{功能模块} & \textbf{主要内容} & \textbf{作用说明} & \textbf{实现阶段} \\
+\hline
+数据采集与处理 & 多渠道抓取、数据清洗、去重合并、结构化存储 & 将分散在学院网站、公众号、通知群等渠道的活动信息统一整理，形成可检索、可推荐的数据基础 & 第一阶段 \\
+\hline
+智能推荐与检索 & 关键词检索、标签过滤、个性化推荐、热门活动提醒 & 根据用户专业背景、兴趣标签、浏览和收藏行为生成活动推荐，降低信息筛选成本 & 第一阶段 \\
+\hline
+日程协同 & 课表导入、冲突预警、跨校区通勤测算、ICS/API 同步 & 帮助用户判断活动与课程或已有日程是否冲突，并支持一键加入日历 & 第一阶段 \\
+\hline
+社交与沉淀 & 学术组队、笔记共享、活动评价、学术轨迹统计 & 支持用户在活动前后进行协作与知识沉淀，提升活动参与质量 & 第二阶段 \\
+\hline
+\end{longtable}
+\endgroup
+
+以上功能与后续第3章系统功能清单保持一致，并由第7章验收准则进行量化验证。
+
+\section{运行环境}
+
+\subsection{客户端环境}
+
+\begin{enumerate}[leftmargin=2.5em]
+\item Web 端：Chrome、Edge、Safari 主流版本。
+\item 移动端：微信小程序或 H5（兼容 Android/iOS 主流机型）。
+\end{enumerate}
+
+\subsection{服务端环境}
+
+\begin{enumerate}[leftmargin=2.5em]
+\item 操作系统：Linux（Ubuntu/CentOS）或 Windows Server（开发测试阶段可选）。
+\item 运行框架：Python/Java 等主流后端框架之一（按团队技术栈落地）。
+\item 数据存储：MySQL/PostgreSQL + Redis。
+\item 异步任务：Celery 或同类队列框架。
+\end{enumerate}
+
+\subsection{外部依赖}
+
+\begin{enumerate}[leftmargin=2.5em]
+\item 学校统一身份认证（SSO/CAS）。
+\item 地图/路径规划 API（用于跨校区通勤估算）。
+\item 第三方日历 API（Google/Outlook 等，可选）。
+\end{enumerate}
+
+\section{设计和实现上的约束}
+
+\begin{enumerate}[leftmargin=2.5em]
+\item 合规约束：仅抓取公开信息，遵守目标网站 robots 与学校数据管理规范。
+\item 安全约束：必须接入统一认证并实施接口限流、防刷与审计日志。
+\item 性能约束：推荐接口与关键页面响应需满足第5章性能目标。
+\item 资源约束：课程项目周期有限，优先实现核心闭环功能。
+\item 可维护约束：爬虫、推荐、业务流程应模块化解耦，便于独立迭代。
+\end{enumerate}
+
+\section{假设和依赖}
+
+\subsection{用户方面}
+
+\begin{enumerate}[leftmargin=2.5em]
+\item 用户具备基础网络与移动端操作能力。
+\item 用户愿意授权必要的个人偏好信息用于推荐优化。
+\item 用户提供的课表文件或截图具备可解析质量。
+\end{enumerate}
+
+\subsection{服务器方面}
+
+\begin{enumerate}[leftmargin=2.5em]
+\item 部署环境可提供稳定 CPU/内存/存储资源。
+\item 数据库支持主从或等价高可用方案。
+\item 运维侧可提供基础监控、日志与备份能力。
+\end{enumerate}
+
+\subsection{网络方面}
+
+\begin{enumerate}[leftmargin=2.5em]
+\item 校园网与公网均可稳定访问核心服务。
+\item 外部 API 在大多数时段可用，偶发失败可通过降级机制兜底。
+\item 高峰期网络抖动不应导致核心链路长期不可用。
+\end{enumerate}
+
+\section{用户文档}
+
+系统交付时应提供以下文档：
+
+\begin{enumerate}[leftmargin=2.5em]
+\item 用户使用手册：注册登录、活动检索、报名、日程同步、冲突处理。
+\item 管理员操作手册：活动审核、标签管理、日志查看、告警处理。
+\item 常见问题文档（FAQ）：登录失败、课表导入失败、同步异常等。
+\item 版本更新说明：新增功能、兼容性影响、已知问题。
+\end{enumerate}
+
+\section{术语表}
+
+\begingroup
+\small
+\begin{longtable}{|>{\raggedright\arraybackslash}p{0.180\textwidth}|>{\raggedright\arraybackslash}p{0.240\textwidth}|>{\raggedright\arraybackslash}p{0.480\textwidth}|}
+\hline
+\textbf{术语} & \textbf{英文} & \textbf{说明} \\
+\hline
+推荐系统 & Recommender System & 根据用户偏好预测可能感兴趣项目的系统 \\
+\hline
+协同过滤 & Collaborative Filtering & 利用用户-物品行为相似性进行推荐 \\
+\hline
+内容推荐 & Content-based Recommendation & 根据内容特征与用户画像匹配推荐 \\
+\hline
+结构化数据 & Structured Data & 可按固定字段存储和查询的数据 \\
+\hline
+限流 & Rate Limiting & 控制单位时间请求量的保护机制 \\
+\hline
+降级 & Fallback/Degradation & 外部依赖故障时维持基础能力的策略 \\
+\hline
+可观测性 & Observability & 通过日志、指标、追踪定位系统状态的能力 \\
+\hline
+\end{longtable}
+\endgroup
+
+\chapter{系统功能}
+
+\section{用户需求}
+
+当前校园师生在获取学术活动信息时面临渠道分散、信息过载的问题，且难以将其与个人繁杂的课表和日程有效结合。用户迫切需要一个统一的信息聚合平台，能够根据自身的学科背景和兴趣自动推荐高质量讲座，并提供一键排程、冲突预警及跨校区通勤规划等智能化服务，从而降低时间管理成本，提升学术交流效率。基于对平台使用对象（学生、教师、组织者、系统管理员）的特征分析，具体用户需求如下：
+
+\subsection{学生用户需求}
+
+\begingroup
+\small
+\begin{longtable}{|>{\raggedright\arraybackslash}p{0.120\textwidth}|>{\raggedright\arraybackslash}p{0.180\textwidth}|>{\raggedright\arraybackslash}p{0.500\textwidth}|>{\raggedright\arraybackslash}p{0.100\textwidth}|}
+\hline
+\textbf{需求编号} & \textbf{需求名称} & \textbf{需求内容描述} & \textbf{优先级} \\
+\hline
+SR-01 & 活动浏览与检索 & 能够通过关键词、标签、时间、校区等条件检索并浏览校内外所有公开学术活动。 & 高 \\
+\hline
+SR-02 & 个性化智能推荐 & 系统基于用户设定的学科专业、兴趣标签及历史浏览报名行为自动推送相关讲座。 & 高 \\
+\hline
+SR-03 & 课表导入与冲突检测 & 能够导入学期课表，在报名或添加讲座到日程时，系统自动检测时间冲突并标红预警。 & 高 \\
+\hline
+SR-04 & 一键加入日程与导出 & 支持将讲座一键加入系统日程，并能导出标准日历文件（.ics）或同步至第三方日历。 & 高 \\
+\hline
+SR-05 & 跨校区通勤测算 & 当活动地点非本校区时，能基于地图接口自动测算跨校区通勤时长，并在日程中前置保留时间余量。 & 中 \\
+\hline
+SR-06 & 活动报名与候补机制 & 提供讲座一键在线报名，满额时可排队进入候补动态队列，并支持在活动现场进行位置签到。 & 中 \\
+\hline
+SR-07 & 学术组队发布与参与 & 针对跨校区或大型学术会议，能够发起拼车同行或结伴听讲座的组队请求。 & 低 \\
+\hline
+SR-08 & 笔记共享与活动互评 & 活动结束后，支持上传并共享课堂笔记/思维导图，并能对讲座质量与笔记进行相互打分评价。 & 低 \\
+\hline
+\end{longtable}
+\endgroup
+
+\subsection{教师用户需求}
+
+\begingroup
+\small
+\begin{longtable}{|>{\raggedright\arraybackslash}p{0.120\textwidth}|>{\raggedright\arraybackslash}p{0.180\textwidth}|>{\raggedright\arraybackslash}p{0.500\textwidth}|>{\raggedright\arraybackslash}p{0.100\textwidth}|}
+\hline
+\textbf{需求编号} & \textbf{需求名称} & \textbf{需求内容描述} & \textbf{优先级} \\
+\hline
+TR-01 & 高质量活动筛选 & 能够直接且精准地检索对口学科的高质量学术讲座（如名师论坛），快速过滤掉无效信息。 & 高 \\
+\hline
+TR-02 & 学术日程协同管理 & 能够将所关注的各类学术沙龙、Workshop 方便地加入个人学术日历，提供确定性的时间管理服务。 & 高 \\
+\hline
+TR-03 & 讲座评价与笔记交流 & 能对本人参与的学术活动进行更专业维度的点评，与其他师生进行学术层面的笔记探讨。 & 中 \\
+\hline
+\end{longtable}
+\endgroup
+
+\subsection{组织者（学院/社团）需求}
+
+\begingroup
+\small
+\begin{longtable}{|>{\raggedright\arraybackslash}p{0.120\textwidth}|>{\raggedright\arraybackslash}p{0.180\textwidth}|>{\raggedright\arraybackslash}p{0.500\textwidth}|>{\raggedright\arraybackslash}p{0.100\textwidth}|}
+\hline
+\textbf{需求编号} & \textbf{需求名称} & \textbf{需求内容描述} & \textbf{优先级} \\
+\hline
+OR-01 & 讲座活动发布管理 & 提供专用后端或入口，允许发布、编辑或取消线上/线下的学术活动信息及其海报物料。 & 高 \\
+\hline
+OR-02 & 报名名单与现场管理 & 能够查看、审核用户的报名状态，管理现场签到，且通过候补机制最大化活动的到场率。 & 高 \\
+\hline
+OR-03 & 参与数据与热度报表 & 活动彻底结束后，可导出参与人员与签到凭证数据，并查看活动的曝光率、热度等可视化统计报表。 & 中 \\
+\hline
+\end{longtable}
+\endgroup
+
+\subsection{系统管理员需求}
+
+\begingroup
+\small
+\begin{longtable}{|>{\raggedright\arraybackslash}p{0.120\textwidth}|>{\raggedright\arraybackslash}p{0.180\textwidth}|>{\raggedright\arraybackslash}p{0.500\textwidth}|>{\raggedright\arraybackslash}p{0.100\textwidth}|}
+\hline
+\textbf{需求编号} & \textbf{需求名称} & \textbf{需求内容描述} & \textbf{优先级} \\
+\hline
+AR-01 & 爬虫运行监控 & 能够实时监控分布式数据抓取爬虫（采集院系官网等公开信息）的状态、断点重连情况及采集覆盖率。 & 高 \\
+\hline
+AR-02 & 内容审核与紧急下架 & 对存在敏感信息或违规内容的活动予以人工即时下架及强制阻断、审核处理功能。 & 高 \\
+\hline
+AR-03 & 全局配置与标签维护 & 管理系统 NLP 识别规则词库、学院清单、字典表以及更新全站学科兴趣标签分类库体系。 & 中 \\
+\hline
+AR-04 & 运维看板与日志追踪 & 提供可视化的运维平台，查看系统负载、接口访问频次、用户行为数据看板及相关告警追踪。 & 高 \\
+\hline
+\end{longtable}
+\endgroup
+
+\section{用例图}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.92\textwidth]{./assets/UML用例.png}
+\caption{UML 用例}
+\end{figure}
+
+\section{功能列表}
+
+\subsection{基础与个人中心}
+
+\subsubsection{登录系统}
+
+由于多个核心功能（如一键加入日程、发布笔记等）都通过 \texttt{\textless{}\textless{}include\textgreater{}\textgreater{}} 包含了登录系统，这是系统的前置基础操作。
+
+\textbf{时序图：}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.92\textwidth]{./assets/3.3.1登录.png}
+\caption{登录时序图}
+\end{figure}
+
+\textbf{用例文档：}
+
+\begingroup
+\small
+\begin{longtable}{|>{\raggedright\arraybackslash}p{0.220\textwidth}|>{\raggedright\arraybackslash}p{0.680\textwidth}|}
+\hline
+\textbf{用例名称} & \textbf{登录系统} \\
+\hline
+\textbf{用例编号} & USE-CASE-1 \\
+\hline
+\textbf{行为角色} & 师生用户、系统管理员 \\
+\hline
+\textbf{简要说明} & 用户通过统一身份认证或账号密码登录推荐系统以使用个性化功能 \\
+\hline
+\textbf{前置条件} & 用户拥有学校的有效账号或已注册系统账号 \\
+\hline
+\textbf{后置条件} & 用户状态变为已登录，获取访问权限 Token \\
+\hline
+\textbf{流程} & 1. 用户打开系统登录页面\newline 2. 选择登录方式并输入账号密码\newline 3. 点击“登录”按钮\newline 4. 前端向后端发送认证请求\newline 5. 后端校验信息并生成会话 Token\newline 6. 提示登录成功并跳转至个性化首页 \\
+\hline
+\textbf{异常处理} & 当账号密码错误时，清空密码框并弹出错误提示：“账号或密码错误，请重试” \\
+\hline
+\textbf{备注} & 多数核心操作包含此用例作为前置依赖 \\
+\hline
+\end{longtable}
+\endgroup
+
+\subsection{核心日历与调度}
+
+\subsubsection{一键加入日程}
+
+\textbf{时序图：}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.92\textwidth]{./assets/3.3.2加入日程.png}
+\caption{加入日程时序图}
+\end{figure}
+
+\textbf{用例文档：}
+
+\begingroup
+\small
+\begin{longtable}{|>{\raggedright\arraybackslash}p{0.220\textwidth}|>{\raggedright\arraybackslash}p{0.680\textwidth}|}
+\hline
+\textbf{用例名称} & \textbf{一键加入日程} \\
+\hline
+\textbf{用例编号} & USE-CASE-2 \\
+\hline
+\textbf{行为角色} & 师生用户 \\
+\hline
+\textbf{简要说明} & 用户将感兴趣的学术活动添加到个人日历中，系统自动进行冲突检查和通勤测算 \\
+\hline
+\textbf{前置条件} & 用户已登录系统，且处于活动详情页面 \\
+\hline
+\textbf{后置条件} & 该活动出现在用户的个人日历/日程表中 \\
+\hline
+\textbf{流程} & 1. 点击“一键加入日程”按钮\newline 2. 后端拉取用户现有日程数据进行比对\newline 3. 若触发 \textbf{[冲突预警]}，提示用户确认\newline 4. 若触发 \textbf{[跨校区测算]}，展示通勤耗时及建议\newline 5. 用户确认加入\newline 6. 向数据库写入日程\newline 7. 提示加入成功 \\
+\hline
+\textbf{异常处理} & 当网络中断或服务器无响应时，提示“添加失败，请检查网络后重试” \\
+\hline
+\textbf{备注} & 强依赖系统的课表数据准确性，触发的两个扩展用例为可选流程 \\
+\hline
+\end{longtable}
+\endgroup
+
+\subsubsection{导入学期课表}
+
+\textbf{时序图：}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.92\textwidth]{./assets/3.3.3导入课表.png}
+\caption{导入课表时序图}
+\end{figure}
+
+\textbf{用例文档：}
+
+\begingroup
+\small
+\begin{longtable}{|>{\raggedright\arraybackslash}p{0.220\textwidth}|>{\raggedright\arraybackslash}p{0.680\textwidth}|}
+\hline
+\textbf{用例名称} & \textbf{导入学期课表} \\
+\hline
+\textbf{用例编号} & USE-CASE-3 \\
+\hline
+\textbf{行为角色} & 师生用户，外部系统(教务系统API) \\
+\hline
+\textbf{简要说明} & 用户一键同步教务系统中的本学期课表数据到推荐系统日程中 \\
+\hline
+\textbf{前置条件} & 用户已登录，且系统已配置教务系统API的访问权限 \\
+\hline
+\textbf{后置条件} & 用户的日程表被填入对应学期的课程数据 \\
+\hline
+\textbf{流程} & 1. 用户进入日历模块，点击“导入课表”\newline 2. 系统向教务系统发起请求\newline 3. 教务系统鉴权并返回数据\newline 4. 后端解析数据并落库\newline 5. 前端刷新日历视图，展示课程信息 \\
+\hline
+\textbf{异常处理} & 若教务系统维护或接口变动导致解析失败，提示“数据同步异常，请联系管理员” \\
+\hline
+\textbf{备注} & 需注意用户隐私保护及接口调用的频率限制 \\
+\hline
+\end{longtable}
+\endgroup
+
+\subsection{推荐与社交互动}
+
+\subsubsection{浏览个性化活动推荐}
+
+\textbf{时序图：}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.92\textwidth]{./assets/3.3.4个性化推荐.png}
+\caption{个性化推荐时序图}
+\end{figure}
+
+\textbf{用例文档：}
+
+\begingroup
+\small
+\begin{longtable}{|>{\raggedright\arraybackslash}p{0.220\textwidth}|>{\raggedright\arraybackslash}p{0.680\textwidth}|}
+\hline
+\textbf{用例名称} & \textbf{浏览个性化活动推荐} \\
+\hline
+\textbf{用例编号} & USE-CASE-4 \\
+\hline
+\textbf{行为角色} & 师生用户 \\
+\hline
+\textbf{简要说明} & 系统根据用户的专业背景、浏览记录推荐相关的学术讲座、会议等活动 \\
+\hline
+\textbf{前置条件} & 用户已登录系统（未登录状态下退化为热门推荐） \\
+\hline
+\textbf{后置条件} & 无特定后置状态，用户可进行点击、收藏等后续操作 \\
+\hline
+\textbf{流程} & 1. 用户打开系统主页\newline 2. 前端向推荐引擎发起数据请求\newline 3. 推荐引擎计算并返回个性化列表\newline 4. 前端渲染活动列表卡片，供用户浏览 \\
+\hline
+\textbf{异常处理} & 若算法服务超时，系统降级并返回预设的“全校热门活动”兜底数据 \\
+\hline
+\textbf{备注} & 核心推荐逻辑所在，对响应时间（通常需 \textless{}500ms）有较高要求 \\
+\hline
+\end{longtable}
+\endgroup
+
+\subsubsection{发布学术笔记与评价}
+
+\textbf{时序图：}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.92\textwidth]{./assets/3.3.5笔记评价.png}
+\caption{笔记评价时序图}
+\end{figure}
+
+\textbf{用例文档：}
+
+\begingroup
+\small
+\begin{longtable}{|>{\raggedright\arraybackslash}p{0.220\textwidth}|>{\raggedright\arraybackslash}p{0.680\textwidth}|}
+\hline
+\textbf{用例名称} & \textbf{发布学术笔记与评价} \\
+\hline
+\textbf{用例编号} & USE-CASE-5 \\
+\hline
+\textbf{行为角色} & 师生用户 \\
+\hline
+\textbf{简要说明} & 用户参加学术活动后，在平台上发布心得笔记或对活动进行打分评价 \\
+\hline
+\textbf{前置条件} & 用户已登录系统 \\
+\hline
+\textbf{后置条件} & 平台增加一条公开/私密的评价记录，相应活动评分产生波动 \\
+\hline
+\textbf{流程} & 1. 用户在活动页面点击“发布评价”\newline 2. 填写星级评分和文字内容\newline 3. 点击提交按钮\newline 4. 后端进行敏感词过滤与审核\newline 5. 写入数据库并重新计算活动均分\newline 6. 提示发布成功 \\
+\hline
+\textbf{异常处理} & 包含违禁词时，阻止发布并弹出提示：“您的内容包含敏感词汇，请修改后提交” \\
+\hline
+\textbf{备注} & 系统需具备一定的风控能力，防止恶意刷评分 \\
+\hline
+\end{longtable}
+\endgroup
+
+\subsubsection{发起活动组队}
+
+\textbf{时序图：}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.92\textwidth]{./assets/3.3.6组队.png}
+\caption{活动组队时序图}
+\end{figure}
+
+\textbf{用例文档：}
+
+\begingroup
+\small
+\begin{longtable}{|>{\raggedright\arraybackslash}p{0.220\textwidth}|>{\raggedright\arraybackslash}p{0.680\textwidth}|}
+\hline
+\textbf{用例名称} & \textbf{发起活动组队} \\
+\hline
+\textbf{用例编号} & USE-CASE-7 \\
+\hline
+\textbf{行为角色} & 师生用户 \\
+\hline
+\textbf{简要说明} & 针对想要参加的大型专业会议或跨校区讲座，用户可发起同行拼车或结伴讨论的组队邀请 \\
+\hline
+\textbf{前置条件} & 用户已登录系统，且所操作的学术活动未过期/未结束 \\
+\hline
+\textbf{后置条件} & 平台相应模块新增一条公开的组队记录，其他人可见并可报名响应 \\
+\hline
+\textbf{流程} & 1. 用户在活动页面点击“发起组队”\newline 2. 填写组队目的（如跨校区拼车）、期望人数和时间节点\newline 3. 点击提交\newline 4. 后端写入组队记录并绑定相关的活动实体\newline 5. 提示成功并刷新展示列表 \\
+\hline
+\textbf{异常处理} & 若该活动已处于“已结束”状态，拒绝提交并提示“无法为已结束的活动发起组队” \\
+\hline
+\textbf{备注} & 是提升社交互动率、解决跨校区参会障碍的重要延展功能 \\
+\hline
+\end{longtable}
+\endgroup
+
+\subsubsection{查看个人学术轨迹}
+
+\textbf{时序图：}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.92\textwidth]{./assets/3.3.7学术轨迹.png}
+\caption{查看学术轨迹时序图}
+\end{figure}
+
+\textbf{用例文档：}
+
+\begingroup
+\small
+\begin{longtable}{|>{\raggedright\arraybackslash}p{0.220\textwidth}|>{\raggedright\arraybackslash}p{0.680\textwidth}|}
+\hline
+\textbf{用例名称} & \textbf{查看个人学术轨迹} \\
+\hline
+\textbf{用例编号} & USE-CASE-8 \\
+\hline
+\textbf{行为角色} & 师生用户 \\
+\hline
+\textbf{简要说明} & 生成用户历史在平台参与所有活动的画像报表，展示核心关注领域和成就 \\
+\hline
+\textbf{前置条件} & 用户已登录系统 \\
+\hline
+\textbf{后置条件} & 汇总展示个人参加活动频次、学科结构、足迹时间线 \\
+\hline
+\textbf{流程} & 1. 用户进入“个人中心”后点击“我的学术轨迹”\newline 2. 前端请求轨迹分析接口\newline 3. 后端收集该用户的报名、签到、高频NLP标签等底层数据\newline 4. 进行轻量计算，生成如能力雷达图、关键词词云\newline 5. 渲染对应的可视化前端组件，供用户保存或分享 \\
+\hline
+\textbf{异常处理} & 如果这是新用户且没有数据，展示默认新手引导卡片 \\
+\hline
+\textbf{备注} & 具有激励和留存用户的作用，也可用作部分学院的第二课堂盖章凭证的数据基座 \\
+\hline
+\end{longtable}
+\endgroup
+
+\subsection{后台数据管控}
+
+\subsubsection{人工审核/下架违规活动}
+
+\textbf{时序图：}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.92\textwidth]{./assets/3.3.8拦截下架.png}
+\caption{拦截下架时序图}
+\end{figure}
+
+\textbf{用例文档：}
+
+\begingroup
+\small
+\begin{longtable}{|>{\raggedright\arraybackslash}p{0.220\textwidth}|>{\raggedright\arraybackslash}p{0.680\textwidth}|}
+\hline
+\textbf{用例名称} & \textbf{人工审核/下架违规活动} \\
+\hline
+\textbf{用例编号} & USE-CASE-6 \\
+\hline
+\textbf{行为角色} & 系统管理员 \\
+\hline
+\textbf{简要说明} & 管理员对被举报或系统风控标识的异常学术活动进行强制下架处理 \\
+\hline
+\textbf{前置条件} & 管理员已登录后台管理系统，并拥有高级管控权限 \\
+\hline
+\textbf{后置条件} & 目标活动在前台隐藏，相关用户收到系统通知 \\
+\hline
+\textbf{流程} & 1. 管理员在后台活动列表中定位目标活动\newline 2. 点击“下架”操作\newline 3. 填写下架原因并二次确认\newline 4. 后端修改数据库中活动的可见状态\newline 5. 触发异步任务，通知相关受影响的用户\newline 6. 后台列表刷新，提示处理完成 \\
+\hline
+\textbf{异常处理} & 若活动当前已被其他管理员处理，提示“状态已变更，请刷新页面” \\
+\hline
+\textbf{备注} & 该操作不可逆转地影响用户体验，需要留存操作审计日志(Log) \\
+\hline
+\end{longtable}
+\endgroup
+
+\subsubsection{监控运行状态与看板}
+
+\textbf{时序图：}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.92\textwidth]{./assets/3.3.9监控看板.png}
+\caption{监控看板时序图}
+\end{figure}
+
+\textbf{用例文档：}
+
+\begingroup
+\small
+\begin{longtable}{|>{\raggedright\arraybackslash}p{0.220\textwidth}|>{\raggedright\arraybackslash}p{0.680\textwidth}|}
+\hline
+\textbf{用例名称} & \textbf{监控运行状态与看板} \\
+\hline
+\textbf{用例编号} & USE-CASE-9 \\
+\hline
+\textbf{行为角色} & 系统管理员 \\
+\hline
+\textbf{简要说明} & 用于掌握全站系统的稳定度，尤其是分布式爬虫节点的健康情况和接口访问频率大盘 \\
+\hline
+\textbf{前置条件} & 管理员账号已登录，且拥有运维观测模块的访问权限 \\
+\hline
+\textbf{后置条件} & 大屏幕或管理后台呈现可视化的实时系统运转状况 \\
+\hline
+\textbf{流程} & 1. 管理员登录后切换至“运营看板”菜单\newline 2. 前端向监控网关请求实时快照\newline 3. 后端拉取爬虫健康度、前台流量大盘、异常报错日志等\newline 4. 前台通过 Echarts 等工具绘制可视化图形\newline 5. 启动自动轮询刷新机制 \\
+\hline
+\textbf{异常处理} & 当发现错误日志陡增或个别爬虫节点心跳断连时，以红色醒目高亮展示，考虑触发紧急提醒弹窗 \\
+\hline
+\textbf{备注} & 可在第二阶段由简单的日志查询升级为引入 Prometheus/Grafana 等标准监控组件 \\
+\hline
+\end{longtable}
+\endgroup
+
+\chapter{类图与 CRC 模型}
+
+\section{类图}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.92\textwidth]{./assets/4-类图.png}
+\caption{数据获取与预处理系统}
+\end{figure}
+
+\section{CRC 模型}
+
+\subsection{User}
+
+\begingroup
+\small
+\begin{longtable}{|>{\raggedright\arraybackslash}p{0.220\textwidth}|>{\raggedright\arraybackslash}p{0.680\textwidth}|}
+\hline
+\textbf{类名} & \textbf{User (抽象类)} \\
+\hline
+\textbf{编号} & CLASS\_0 \\
+\hline
+\textbf{描述} & 系统中所有用户的抽象基类，定义了最基础的账户属性和所有角色通用的基础操作。 \\
+\hline
+\textbf{功能} & \textbf{合作类} \\
+\hline
+登录系统 & 无 \\
+\hline
+登出系统 & 无 \\
+\hline
+更新个人基础资料 & 无 \\
+\hline
+\end{longtable}
+\endgroup
+
+\subsection{Student}
+
+\begingroup
+\small
+\begin{longtable}{|>{\raggedright\arraybackslash}p{0.220\textwidth}|>{\raggedright\arraybackslash}p{0.680\textwidth}|}
+\hline
+\textbf{类名} & \textbf{Student} \\
+\hline
+\textbf{编号} & CLASS\_1 \\
+\hline
+\textbf{描述} & 系统平台的主要使用者，负责浏览讲座、报名、签到、评价以及同步日历。 \\
+\hline
+\textbf{功能} & \textbf{合作类} \\
+\hline
+浏览并检索学术活动 & Activity, RecommendationEngine \\
+\hline
+报名参加活动及现场签到 & Activity, Registration \\
+\hline
+将活动同步至个人日程并进行冲突检测 & CalendarManager \\
+\hline
+为已参加的活动留下评价与笔记 & Activity \\
+\hline
+\end{longtable}
+\endgroup
+
+\subsection{Organizer}
+
+\begingroup
+\small
+\begin{longtable}{|>{\raggedright\arraybackslash}p{0.220\textwidth}|>{\raggedright\arraybackslash}p{0.680\textwidth}|}
+\hline
+\textbf{类名} & \textbf{Organizer} \\
+\hline
+\textbf{编号} & CLASS\_2 \\
+\hline
+\textbf{描述} & 各学院、组织或社团的管理员，负责活动的发布与现场秩序管理。 \\
+\hline
+\textbf{功能} & \textbf{合作类} \\
+\hline
+发布新的学术讲座或活动 & Activity \\
+\hline
+管理报名名单与审核签到情况 & Activity, Registration \\
+\hline
+导出活动参与数据与热度分析报告 & Activity \\
+\hline
+\end{longtable}
+\endgroup
+
+\subsection{Activity}
+
+\begingroup
+\small
+\begin{longtable}{|>{\raggedright\arraybackslash}p{0.220\textwidth}|>{\raggedright\arraybackslash}p{0.680\textwidth}|}
+\hline
+\textbf{类名} & \textbf{Activity} \\
+\hline
+\textbf{编号} & CLASS\_3 \\
+\hline
+\textbf{描述} & 记录讲座和学术活动的具体信息实体类，包含时间、地点、容量、NLP标签等。 \\
+\hline
+\textbf{功能} & \textbf{合作类} \\
+\hline
+提供活动基础数据（时间、地点、主题） & Student, Organizer \\
+\hline
+记录并更新当前报名人数与状态 & Registration \\
+\hline
+计算并更新活动实时热度分数 & RecommendationEngine \\
+\hline
+\end{longtable}
+\endgroup
+
+\subsection{RecommendationEngine}
+
+\begingroup
+\small
+\begin{longtable}{|>{\raggedright\arraybackslash}p{0.220\textwidth}|>{\raggedright\arraybackslash}p{0.680\textwidth}|}
+\hline
+\textbf{类名} & \textbf{RecommendationEngine} \\
+\hline
+\textbf{编号} & CLASS\_4 \\
+\hline
+\textbf{描述} & 系统的核心智能模块，负责处理 NLP 分类标签及计算协同过滤推荐。 \\
+\hline
+\textbf{功能} & \textbf{合作类} \\
+\hline
+对新爬取或发布的讲座文本进行 NLP 自动打标 & Activity \\
+\hline
+根据学生历史行为和专业标签生成推荐列表 & Student, Activity \\
+\hline
+动态更新用户的兴趣画像 & Student \\
+\hline
+\end{longtable}
+\endgroup
+
+\subsection{CalendarManager}
+
+\begingroup
+\small
+\begin{longtable}{|>{\raggedright\arraybackslash}p{0.220\textwidth}|>{\raggedright\arraybackslash}p{0.680\textwidth}|}
+\hline
+\textbf{类名} & \textbf{CalendarManager} \\
+\hline
+\textbf{编号} & CLASS\_5 \\
+\hline
+\textbf{描述} & 处理日程排期、时间冲突检测及跨校区通勤时间计算的工具类。 \\
+\hline
+\textbf{功能} & \textbf{合作类} \\
+\hline
+检查所选活动与学生现有课表/日程的冲突 & Student, Activity \\
+\hline
+基于地图 API 计算跨校区交通时间 & Student, Activity \\
+\hline
+提供活动 ICS 文件导出或 Google/Outlook API 同步 & Student \\
+\hline
+\end{longtable}
+\endgroup
+
+\subsection{DataCrawler}
+
+\begingroup
+\small
+\begin{longtable}{|>{\raggedright\arraybackslash}p{0.220\textwidth}|>{\raggedright\arraybackslash}p{0.680\textwidth}|}
+\hline
+\textbf{类名} & \textbf{DataCrawler} \\
+\hline
+\textbf{编号} & CLASS\_6 \\
+\hline
+\textbf{描述} & 分布式爬虫管理类，负责从各学院官网自动抓取讲座信息并处理数据。 \\
+\hline
+\textbf{功能} & \textbf{合作类} \\
+\hline
+访问目标学院网站并抓取非结构化讲座数据 & None \\
+\hline
+进行数据清洗、去重并将补全后的信息持久化 & Activity \\
+\hline
+\end{longtable}
+\endgroup
+
+\subsection{Registration}
+
+\begingroup
+\small
+\begin{longtable}{|>{\raggedright\arraybackslash}p{0.220\textwidth}|>{\raggedright\arraybackslash}p{0.680\textwidth}|}
+\hline
+\textbf{类名} & \textbf{Registration} \\
+\hline
+\textbf{编号} & CLASS\_7 \\
+\hline
+\textbf{描述} & 报名记录关联类，连接学生与活动，负责管理报名状态和签到时间戳。 \\
+\hline
+\textbf{功能} & \textbf{合作类} \\
+\hline
+记录报名时间与当前排队状态 & Student, Activity \\
+\hline
+验证现场签到（例如通过 GPS 或 二维码） & Student, Activity \\
+\hline
+\end{longtable}
+\endgroup
+
+\chapter{非功能性需求}
+
+系统不仅需要满足业务上的各项具体功能，其内部的运行质量、系统健壮性以及用户交互体验也至关重要。
+
+\section{性能需求}
+
+系统的性能表现直接影响师生的使用体验。
+
+为了保证流畅的交互，
+
+\begin{itemize}[leftmargin=2.5em]
+\item 前端页面（含 Web 端和微信小程序）的首屏加载时间应当被严格控制在 2 秒以内。
+\item 在操作日历视图时，涉及大量数据的渲染与月份切换，其响应延迟需要保持在 1 秒以内。
+\item 个性化推荐接口的响应时间不得超过 500 毫秒。
+\end{itemize}
+
+在并发处理方面，考虑到开学季或者有重要知名学者开展讲座等访问量激增的场景，
+
+\begin{itemize}[leftmargin=2.5em]
+\item 后端服务架构必须具备足够的健壮性，能够稳定承载至少 500 QPS 的并发访问，以确保系统在流量高峰期不会出现宕机或拒绝服务的情况。
+\end{itemize}
+
+\section{输入要求}
+
+在数据源及用户上传的文件兼容性层面，由于需要从多个院系官网或外部渠道获取活动信息，
+
+\begin{itemize}[leftmargin=2.5em]
+\item 系统必须具备良好的文本容错与解析能力，能够自适应并解析多种非标准格式的外部网页源码及复杂的 JSON 数据流。
+\end{itemize}
+
+为了方便学生导入各自的学期课程表，
+
+\begin{itemize}[leftmargin=2.5em]
+\item 系统既需要支持提取主流图片格式的课表进行 OCR 智能识别输入，也应该允许用户通过 Excel 或 CSV 等结构化格式直接提取、转化、汇入。
+\end{itemize}
+
+\section{数据传输及并发要求}
+
+针对后台可能出现的高压工作流和实时通信场景，系统在数据传输与并发机制上做了特定要求。
+
+对于底层的数据爬取、大量的批量告警或邮件发送模块，以及计算资源消耗密集的推荐算法任务，
+
+\begin{itemize}[leftmargin=2.5em]
+\item 应当采取异步削峰的策略，统一交由如 Celery 这样的异步任务队列引擎调度执行，以此避免耗时操作阻塞系统的主服务响应线程。
+\end{itemize}
+
+同时，在学术活动组队、用户点对点社交互动等实时场景中，
+
+\begin{itemize}[leftmargin=2.5em]
+\item 后端系统还要提供 WebSocket 协议下的长稳定连接支持，以满足消息即时双向推送和渲染更新的需要。
+\end{itemize}
+
+\section{数据管理需求}
+
+面对高频产出的全校学术数据与师生画像档案，系统的数据管理必须兼顾安全与长期检索效率。
+
+为了实现平台的高可用性，
+
+\begin{itemize}[leftmargin=2.5em]
+\item 核心关键数据库需配置主备从同步策略，并严格落实每日冷备份机制，将整体的数据层可用性提升并稳定在 99.9\%，杜绝单点物理故障带来的数据丢失或损坏风险。
+\end{itemize}
+
+在此基础上，由于讲座及活动数据具有明显的时效性，
+
+\begin{itemize}[leftmargin=2.5em]
+\item 系统还需引入数据归档机制，每隔一个学年定期将系统中超过一年的历史讲座数据进行分表甚至异地长效归档存储，从而剥离无效数据并大幅度减轻主数据表线上查询压力。
+\end{itemize}
+
+\section{权限与安全需求}
+
+平台的数据安全与越权风险拦截是保障良好学术环境的关键。
+
+作为一款主要面向校内用户的产品，
+
+\begin{itemize}[leftmargin=2.5em]
+\item 系统要求与浙江大学校内现有的统一身份认证平台（SSO/CAS 等）进行深度集成，依靠校方级安全认证鉴权，确保校内讲座信息与社交活动等核心资源仅限本校师生登录访问。
+\end{itemize}
+
+在防止恶意爬取方面，
+
+\begin{itemize}[leftmargin=2.5em]
+\item 任何暴露给前段的 API 接口均需要配置严格的速率限制与反爬防火墙，借以防止恶意脚本或爬虫批量抓取整合后的高价值结构化数据池，有效抵挡由于频繁请求而造成的 DDoS 渗透攻击或服务瘫痪。
+\end{itemize}
+
+\section{软件质量属性}
+
+在追求功能完善的同时，平台系统架构设计同样应着眼于长远的迭代成本。
+
+\begin{itemize}[leftmargin=2.5em]
+\item 后端的代码架构应深入贯彻高内聚、低耦合的设计哲学，刻意将最容易变动和受阻的分布式爬虫组件模块、计算属性导向的推荐引擎模型，同平台基础的用户和核心业务流做到服务解耦式拆分，如此可以保障各大系统的后续代码扩展具有极为优异的可维护特质。
+\end{itemize}
+
+\begin{itemize}[leftmargin=2.5em]
+\item 与此同时，所有服务端组件、脚本服务与依赖环境都应要求支持基于 Docker 等容器技术的标准化打包，便利后续工程平台横向平推与云服务器集群上的多实例无缝扩缩容调配。
+\end{itemize}
+
+\section{可视化需求}
+
+平台不仅需要健壮的底层，也应提供优质、友善且富有包容性的操作界面。
+
+\begin{itemize}[leftmargin=2.5em]
+\item 前端页面的视觉交互需建立在完善的响应式适配方案之上，保证兼顾移动端用户高频操作习惯与手势滑动的同时，在平板、PC 宽屏环境下的多活动视窗下体验也不打折扣。
+\item 平台标志性的核心日历控件必须直观清晰，应针对活动不同的时间冲突态、路程通勤态及完全可行态规划截然不同的状态色块与直观 ICON。
+\item 另外，无障碍设计的考量应当被放在界面的初始设计阶段——控件面板交互组件都应当契合人体工程学尺寸，并且界面的高明度设计保障用户哪怕身处学生户外强光环境依然能够顺畅读取系统关键提示与文本内容。
+\end{itemize}
+
+\section{防护性需求}
+
+平台高度依赖外部数据整合及展示服务，故建立起自有的容错、降级及自动侦测恢复屏障更是重中之重。
+
+系统需要考虑到对地图评估 API 服务器或校内教务系统课表接口等外联调用时可能产生的超时、假死甚至全线宕机情况，当外界因素波动干扰不可逆转时，平台要具备无缝切换的柔性兜底预案（如暂时切换至配置好的全校默认地理时间差常量等），坚决确保本系统内核心日历基础运转不受拖累连带影响。而针对极不稳定且环境抗变弱的源站信息爬虫提取端，采集网络更是要加入智能自动化自检恢复逻辑。当感知到目标院系网页 HTML 标签存在小幅调整甚至是检测到自身节点短频访问触发 IP 封锁控制时，系统能在最快时间内完成自动化内部预警追踪、挂起重试乃至自动更换轮替高匿代理池执行断点恢复。
+
+\chapter{数据流图}
+
+结合校园学术活动智能推荐平台的特性，我们采用自顶向下的方法，将系统逐层分解。
+
+\section{顶层数据流图}
+
+主要界定系统的边界，展示平台与外部实体的最高层级数据交互过程。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.92\textwidth]{./assets/6.1.png}
+\caption{顶层数据流图}
+\end{figure}
+
+\section{一层数据流图}
+
+对顶层数据图的功能再细分化，将平台拆解为数据预处理、智能推荐、日程业务及社交分析四大核心子系统，展示主干业务的数据流转。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.92\textwidth]{./assets/6.2.png}
+\caption{一层数据流图}
+\end{figure}
+
+\section{两层数据流图}
+
+主要对一层图中的各个子系统进行更细致的数据流图绘制。
+
+\subsection{数据获取与预处理系统}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.92\textwidth]{./assets/6.3.1预处理.png}
+\caption{数据获取与预处理系统}
+\end{figure}
+
+\subsection{智能推荐引擎}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.92\textwidth]{./assets/6.3.2智能推荐.png}
+\caption{智能推荐引擎}
+\end{figure}
+
+\subsection{日程与业务系统}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.92\textwidth]{./assets/6.3.3日程.png}
+\caption{日程与业务系统}
+\end{figure}
+
+\subsection{社交与数据分析系统}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.92\textwidth]{./assets/6.3.4社交.png}
+\caption{社交与数据分析系统}
+\end{figure}
+
+\section{三层数据流图}
+
+主要对上层的核心系统与关键算法进行最细粒度的数据流图绘制。
+
+\subsection{NLP自动分类与去重模块}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.92\textwidth]{./assets/6.4.1NLP.png}
+\caption{NLP自动分类与去重模块}
+\end{figure}
+
+\subsection{动态兴趣画像演进模块}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.92\textwidth]{./assets/6.4.2动态兴趣画像.png}
+\caption{动态兴趣画像演进模块}
+\end{figure}
+
+\subsection{学术组队与社交闭环}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.92\textwidth]{./assets/6.4.3学术组队.png}
+\caption{学术组队与社交闭环}
+\end{figure}
+
+\subsection{名额动态队列管理}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.92\textwidth]{./assets/6.4.4名额管理.png}
+\caption{名额动态队列管理}
+\end{figure}
+
+\chapter{验收准则}
+
+本章用于定义系统课程阶段与后续上线前的验收标准，采用“验收项 + 验收方法 + 通过标准”的方式，确保功能、性能、数据与可维护性均可量化评估。课程阶段优先验证核心闭环，部分高并发与高可用指标作为后续上线目标保留。
+
+\section{功能要求}
+
+\begingroup
+\small
+\begin{longtable}{|>{\raggedright\arraybackslash}p{0.180\textwidth}|>{\raggedright\arraybackslash}p{0.240\textwidth}|>{\raggedright\arraybackslash}p{0.480\textwidth}|}
+\hline
+\textbf{验收项} & \textbf{验收方法} & \textbf{通过标准} \\
+\hline
+讲座信息聚合 & 抽取浙江大学校内至少 5 个公开数据源进行对比抽查 & 活动基础字段（标题、时间、地点、主讲人）完整率 $\geq$ 95\%，重复活动合并准确率 $\geq$ 90\% \\
+\hline
+智能推荐 & 构造 3 类用户画像（理工、人文、跨学科），使用不少于 30 条样本活动进行人工相关性评估 & 推荐列表前 20 条中，用户判定“相关”比例 $\geq$ 70\% \\
+\hline
+一键加入日程 & 用户从活动详情页执行“加入日程” & 成功写入系统内日历，且可导出 ICS；失败率 $\leq$ 1\% \\
+\hline
+课表冲突预警 & 导入课表后添加冲突活动 & 在保存前给出显性预警（红色提示+冲突时段），漏报率 $\leq$ 2\% \\
+\hline
+跨校区通勤测算 & 选取紫金港、玉泉、西溪、华家池等校区之间至少 10 组场景，与地图 API 或人工记录结果对照 & 返回通勤时长与建议出发时间，误差控制在 $\pm$20\% 以内 \\
+\hline
+组队与笔记 & 创建组队帖、上传笔记并互评 & 能完成发布、回复、点赞/评分闭环，课程阶段关键操作成功率 $\geq$ 95\%，上线目标 $\geq$ 99\% \\
+\hline
+管理后台审核 & 管理员执行下架、标签维护、日志检索 & 30 秒内可完成违规活动下架并在前台生效 \\
+\hline
+\end{longtable}
+\endgroup
+
+\section{性能要求}
+
+\subsection{响应时间}
+
+\begingroup
+\small
+\begin{longtable}{|>{\raggedright\arraybackslash}p{0.180\textwidth}|>{\raggedright\arraybackslash}p{0.240\textwidth}|>{\raggedright\arraybackslash}p{0.480\textwidth}|}
+\hline
+\textbf{场景} & \textbf{指标阈值} & \textbf{验收方法} \\
+\hline
+首屏加载（Web/小程序） & $\leq$ 2 s & 弱网与校园网各执行 20 次采样，取 P95 \\
+\hline
+日历切月与渲染 & $\leq$ 1 s & 连续切换 12 个月视图，统计平均值与 P95 \\
+\hline
+推荐接口 & $\leq$ 500 ms & 课程阶段模拟 100 并发请求，统计 P95；上线目标为 500 QPS 下统计 P95 与 P99 \\
+\hline
+搜索接口 & $\leq$ 800 ms & 关键词、标签、组合检索各 100 次 \\
+\hline
+\end{longtable}
+\endgroup
+
+通过标准：课程阶段核心接口在模拟并发下满足阈值，且错误率 $\leq$ 1\%；正式上线阶段错误率目标 $\leq$ 0.5\%。
+
+\subsection{更新处理时间}
+
+\begingroup
+\small
+\begin{longtable}{|>{\raggedright\arraybackslash}p{0.180\textwidth}|>{\raggedright\arraybackslash}p{0.240\textwidth}|>{\raggedright\arraybackslash}p{0.480\textwidth}|}
+\hline
+\textbf{处理项} & \textbf{指标阈值} & \textbf{验收方法} \\
+\hline
+定时爬虫增量同步 & 单轮 $\leq$ 10 min & 课程阶段连续运行 1 天，上线前连续运行 3 天，记录任务耗时 \\
+\hline
+热门活动状态更新（余票/满额） & $\leq$ 60 s & 人工触发报名波动并追踪前台刷新时间 \\
+\hline
+推荐模型轻量更新 & $\leq$ 15 min & 注入行为日志后观察画像与推荐变化 \\
+\hline
+\end{longtable}
+\endgroup
+
+通过标准：任务执行期间不阻塞前台核心业务，失败任务自动重试后成功率课程阶段 $\geq$ 95\%，上线目标 $\geq$ 98\%。
+
+\subsection{数据转换和处理时间}
+
+\begingroup
+\small
+\begin{longtable}{|>{\raggedright\arraybackslash}p{0.180\textwidth}|>{\raggedright\arraybackslash}p{0.240\textwidth}|>{\raggedright\arraybackslash}p{0.480\textwidth}|}
+\hline
+\textbf{处理阶段} & \textbf{指标阈值} & \textbf{验收方法} \\
+\hline
+原始数据清洗与结构化 & 每 1000 条 $\leq$ 90 s & 导入样本集并记录 ETL 时长 \\
+\hline
+去重与实体对齐 & 每 1000 条 $\leq$ 60 s & 构造高重复样本集验证处理时长 \\
+\hline
+NLP 自动打标 & 单条 $\leq$ 120 ms & 课程阶段离线批处理 1000 条并统计平均耗时，上线前扩展到 1 万条样本 \\
+\hline
+\end{longtable}
+\endgroup
+
+通过标准：处理后脏数据比例 $\leq$ 3\%，关键字段缺失率 $\leq$ 5\%。
+
+\section{存储要求}
+
+\begingroup
+\small
+\begin{longtable}{|>{\raggedright\arraybackslash}p{0.180\textwidth}|>{\raggedright\arraybackslash}p{0.240\textwidth}|>{\raggedright\arraybackslash}p{0.480\textwidth}|}
+\hline
+\textbf{验收项} & \textbf{验收方法} & \textbf{通过标准} \\
+\hline
+数据可用性 & 主从切换或模拟故障演练 & 课程阶段能说明恢复流程并完成模拟验证；上线目标为单点故障后 5 分钟内恢复读服务 \\
+\hline
+备份恢复 & 进行全量备份与抽样恢复 & 课程阶段完成一次备份恢复演示；上线目标为每日冷备可用，恢复后数据一致性 $\geq$ 99.9\% \\
+\hline
+历史归档 & 将一年以上数据执行归档 & 主库查询平均耗时下降 $\geq$ 20\% \\
+\hline
+文件存储安全 & 检查笔记附件与导出文件权限 & 未授权用户不可访问，下载链接支持过期策略 \\
+\hline
+\end{longtable}
+\endgroup
+
+\section{维护要求}
+
+\begingroup
+\small
+\begin{longtable}{|>{\raggedright\arraybackslash}p{0.180\textwidth}|>{\raggedright\arraybackslash}p{0.240\textwidth}|>{\raggedright\arraybackslash}p{0.480\textwidth}|}
+\hline
+\textbf{验收项} & \textbf{验收方法} & \textbf{通过标准} \\
+\hline
+日志与监控 & 检查 API、任务、数据库监控面板或模拟看板 & 关键指标齐全（QPS、错误率、任务积压、慢查询） \\
+\hline
+告警机制 & 模拟接口异常、爬虫失败、队列堆积 & 1 分钟内触发告警并可定位责任模块 \\
+\hline
+配置可维护性 & 审查配置中心与环境变量管理 & 支持灰度配置，不需改代码即可调整阈值 \\
+\hline
+容器化部署 & 课程阶段完成容器化启动验证，上线前进行预发环境滚动发布演练 & 发布过程不中断核心服务，支持快速回滚 \\
+\hline
+\end{longtable}
+\endgroup
+
+\chapter{UI 原型}
+
+\section{登录/注册界面}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.92\textwidth]{./assets/UI登录界面.png}
+\caption{登录/注册界面}
+\end{figure}
+
+\section{用户主界面}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.92\textwidth]{./assets/UI用户主界面.png}
+\caption{用户主界面}
+\end{figure}
+
+\end{document}
