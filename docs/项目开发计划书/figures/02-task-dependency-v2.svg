@@ -1,0 +1,97 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="760" viewBox="0 0 1400 760">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#fbfdff"/>
+      <stop offset="100%" stop-color="#eef6ff"/>
+    </linearGradient>
+    <linearGradient id="hub" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1f3b57"/>
+      <stop offset="100%" stop-color="#2e5d88"/>
+    </linearGradient>
+    <linearGradient id="frontend" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#eaf2ff"/>
+      <stop offset="100%" stop-color="#dfeaff"/>
+    </linearGradient>
+    <linearGradient id="backend" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#e9fbf2"/>
+      <stop offset="100%" stop-color="#daf6e9"/>
+    </linearGradient>
+    <linearGradient id="crawler" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#fff4e5"/>
+      <stop offset="100%" stop-color="#ffe8c8"/>
+    </linearGradient>
+    <linearGradient id="test" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f5f0ff"/>
+      <stop offset="100%" stop-color="#ebe4ff"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#22384f" flood-opacity="0.12"/>
+    </filter>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M0,0 L12,6 L0,12 z" fill="#567089"/>
+    </marker>
+    <style>
+      .title { font: 700 30px 'Microsoft YaHei', 'PingFang SC', sans-serif; fill: #1d334b; }
+      .subtitle { font: 400 15px 'Microsoft YaHei', 'PingFang SC', sans-serif; fill: #5d7084; }
+      .node-title { font: 700 18px 'Microsoft YaHei', 'PingFang SC', sans-serif; fill: #18324b; }
+      .node-text { font: 400 13px 'Microsoft YaHei', 'PingFang SC', sans-serif; fill: #4d6073; }
+      .hub-title { font: 700 30px 'Microsoft YaHei', 'PingFang SC', sans-serif; fill: white; }
+      .hub-text { font: 400 15px 'Microsoft YaHei', 'PingFang SC', sans-serif; fill: #d9e8f6; }
+      .tag { font: 600 13px 'Microsoft YaHei', 'PingFang SC', sans-serif; fill: #4f6173; }
+      .note { font: 400 13px 'Microsoft YaHei', 'PingFang SC', sans-serif; fill: #637788; }
+      .arrow-label { font: 600 12px 'Microsoft YaHei', 'PingFang SC', sans-serif; fill: #516478; }
+    </style>
+  </defs>
+
+  <rect width="1400" height="760" fill="url(#bg)"/>
+  <text x="60" y="62" class="title">任务分解与依赖关系示意图</text>
+  <text x="60" y="92" class="subtitle">接口初步确定后，前端、后端、爬虫三条线并行推进，测试与文档贯穿全程</text>
+
+  <rect x="548" y="140" width="304" height="126" rx="24" ry="24" fill="url(#hub)" filter="url(#shadow)"/>
+  <text x="700" y="192" text-anchor="middle" class="hub-title">接口基线</text>
+  <text x="700" y="222" text-anchor="middle" class="hub-text">核心字段 · 请求响应 · 错误码 · 联调边界</text>
+
+  <rect x="78" y="332" width="306" height="176" rx="22" ry="22" fill="url(#frontend)" stroke="#bfd0ea" stroke-width="2" filter="url(#shadow)"/>
+  <text x="231" y="370" text-anchor="middle" class="node-title">前端：Mock 先行</text>
+  <text x="231" y="402" text-anchor="middle" class="node-text">基于预设计 mock 数据先实现页面</text>
+  <text x="231" y="426" text-anchor="middle" class="node-text">完成布局、交互、状态展示</text>
+  <text x="231" y="450" text-anchor="middle" class="node-text">后续再切换真实接口</text>
+  <text x="231" y="484" text-anchor="middle" class="tag">依赖：接口字段定义</text>
+
+  <rect x="410" y="332" width="348" height="176" rx="22" ry="22" fill="url(#backend)" stroke="#bfe4cc" stroke-width="2" filter="url(#shadow)"/>
+  <text x="584" y="370" text-anchor="middle" class="node-title">后端：核心业务实现</text>
+  <text x="584" y="402" text-anchor="middle" class="node-text">登录鉴权 · 活动查询 · 推荐规则</text>
+  <text x="584" y="426" text-anchor="middle" class="node-text">课表导入 · 冲突检测 · 日程管理</text>
+  <text x="584" y="450" text-anchor="middle" class="node-text">后台管理 · 业务闭环</text>
+  <text x="584" y="484" text-anchor="middle" class="tag">依赖：统一接口基线</text>
+
+  <rect x="784" y="332" width="306" height="176" rx="22" ry="22" fill="url(#crawler)" stroke="#f0d2a1" stroke-width="2" filter="url(#shadow)"/>
+  <text x="937" y="370" text-anchor="middle" class="node-title">爬虫：低耦合推进</text>
+  <text x="937" y="402" text-anchor="middle" class="node-text">独立优化抓取、清洗、去重逻辑</text>
+  <text x="937" y="426" text-anchor="middle" class="node-text">持续补充活动样例与入库数据</text>
+  <text x="937" y="450" text-anchor="middle" class="node-text">为联调与展示提供真实数据源</text>
+  <text x="937" y="484" text-anchor="middle" class="tag">依赖：数据结构约定</text>
+
+  <rect x="1118" y="332" width="206" height="176" rx="22" ry="22" fill="url(#test)" stroke="#d8cbff" stroke-width="2" filter="url(#shadow)"/>
+  <text x="1221" y="370" text-anchor="middle" class="node-title">测试 / 文档</text>
+  <text x="1221" y="402" text-anchor="middle" class="node-text">从接口确认开始介入</text>
+  <text x="1221" y="426" text-anchor="middle" class="node-text">记录变更、追踪问题</text>
+  <text x="1221" y="450" text-anchor="middle" class="node-text">支撑联调与验收</text>
+
+  <path d="M700 266 L231 332" fill="none" stroke="#567089" stroke-width="4" marker-end="url(#arrow)"/>
+  <path d="M700 266 L584 332" fill="none" stroke="#567089" stroke-width="4" marker-end="url(#arrow)"/>
+  <path d="M700 266 L937 332" fill="none" stroke="#567089" stroke-width="4" marker-end="url(#arrow)"/>
+  <path d="M700 266 L1221 332" fill="none" stroke="#567089" stroke-width="4" marker-end="url(#arrow)"/>
+
+  <path d="M366 420 C392 420, 398 420, 410 420" fill="none" stroke="#7d92a8" stroke-width="3" stroke-dasharray="8 7" marker-end="url(#arrow)"/>
+  <text x="380" y="404" class="arrow-label">联调</text>
+
+  <path d="M758 420 C774 420, 778 420, 784 420" fill="none" stroke="#7d92a8" stroke-width="3" stroke-dasharray="8 7" marker-end="url(#arrow)"/>
+  <text x="770" y="404" class="arrow-label">数据接入</text>
+
+  <path d="M700 266 C700 292, 700 298, 700 332" fill="none" stroke="#567089" stroke-width="3.5" marker-end="url(#arrow)"/>
+
+  <rect x="78" y="566" width="1246" height="90" rx="18" ry="18" fill="#17324d" filter="url(#shadow)"/>
+  <text x="701" y="604" text-anchor="middle" style="font:700 20px 'Microsoft YaHei','PingFang SC',sans-serif; fill:white;">核心含义：接口统一约束，前端与爬虫并行推进，后端实现真实业务，测试与文档全程参与</text>
+  <text x="701" y="632" text-anchor="middle" style="font:400 14px 'Microsoft YaHei','PingFang SC',sans-serif; fill:#d7e6f5;">这样既能保证并行开发效率，也能减少因接口未定造成的返工。</text>
+</svg>
