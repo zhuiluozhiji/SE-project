@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="560" viewBox="0 0 1200 560">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f8fbff"/>
+      <stop offset="100%" stop-color="#eef8ff"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#25415f" flood-opacity="0.12"/>
+    </filter>
+    <style>
+      .title { font: 700 28px 'Microsoft YaHei', 'PingFang SC', sans-serif; fill: #1f3349; }
+      .subtitle { font: 400 15px 'Microsoft YaHei', 'PingFang SC', sans-serif; fill: #5e7184; }
+      .box-title { font: 700 18px 'Microsoft YaHei', 'PingFang SC', sans-serif; fill: white; }
+      .box-text { font: 400 13px 'Microsoft YaHei', 'PingFang SC', sans-serif; fill: rgba(255,255,255,.92); }
+    </style>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M0,0 L12,6 L0,12 z" fill="#5d7288"/>
+    </marker>
+  </defs>
+  <rect width="1200" height="560" fill="url(#bg)"/>
+  <text x="56" y="56" class="title">Git 协作流程示意图</text>
+  <text x="56" y="86" class="subtitle">适用于项目开发前的协作约定：先分支开发，再合并回主干，最后统一回归验证</text>
+
+  <rect x="50" y="186" rx="18" ry="18" width="150" height="86" fill="#17324d" filter="url(#shadow)"/>
+  <text x="125" y="220" text-anchor="middle" class="box-title">main</text>
+  <text x="125" y="246" text-anchor="middle" class="box-text">稳定主分支</text>
+
+  <rect x="246" y="146" rx="18" ry="18" width="168" height="86" fill="#377dff" filter="url(#shadow)"/>
+  <text x="330" y="180" text-anchor="middle" class="box-title">feature / backend</text>
+  <text x="330" y="206" text-anchor="middle" class="box-text">后端功能分支</text>
+
+  <rect x="246" y="286" rx="18" ry="18" width="168" height="86" fill="#2ab67d" filter="url(#shadow)"/>
+  <text x="330" y="320" text-anchor="middle" class="box-title">feature / frontend</text>
+  <text x="330" y="346" text-anchor="middle" class="box-text">前端功能分支</text>
+
+  <rect x="478" y="116" rx="18" ry="18" width="188" height="86" fill="#ffb347" filter="url(#shadow)"/>
+  <text x="572" y="150" text-anchor="middle" class="box-title">本地开发与自测</text>
+  <text x="572" y="176" text-anchor="middle" class="box-text">完成单元验证</text>
+
+  <rect x="478" y="256" rx="18" ry="18" width="188" height="86" fill="#7c5cff" filter="url(#shadow)"/>
+  <text x="572" y="290" text-anchor="middle" class="box-title">接口联调</text>
+  <text x="572" y="316" text-anchor="middle" class="box-text">前后端字段对齐</text>
+
+  <rect x="724" y="186" rx="18" ry="18" width="180" height="86" fill="#38b26f" filter="url(#shadow)"/>
+  <text x="814" y="220" text-anchor="middle" class="box-title">代码评审</text>
+  <text x="814" y="246" text-anchor="middle" class="box-text">问题确认与修正</text>
+
+  <rect x="962" y="186" rx="18" ry="18" width="170" height="86" fill="#17324d" filter="url(#shadow)"/>
+  <text x="1047" y="220" text-anchor="middle" class="box-title">合并回主干</text>
+  <text x="1047" y="246" text-anchor="middle" class="box-text">统一回归测试</text>
+
+  <path d="M200 229 L246 189" stroke="#5d7288" stroke-width="4" marker-end="url(#arrow)"/>
+  <path d="M200 229 L246 329" stroke="#5d7288" stroke-width="4" marker-end="url(#arrow)"/>
+  <path d="M414 189 L478 159" stroke="#5d7288" stroke-width="4" marker-end="url(#arrow)"/>
+  <path d="M414 329 L478 299" stroke="#5d7288" stroke-width="4" marker-end="url(#arrow)"/>
+  <path d="M666 159 L724 229" stroke="#5d7288" stroke-width="4" marker-end="url(#arrow)"/>
+  <path d="M666 299 L724 229" stroke="#5d7288" stroke-width="4" marker-end="url(#arrow)"/>
+  <path d="M904 229 L962 229" stroke="#5d7288" stroke-width="4" marker-end="url(#arrow)"/>
+
+  <rect x="50" y="398" rx="16" ry="16" width="1082" height="82" fill="#ffffff" stroke="#d2dfec" stroke-width="2" filter="url(#shadow)"/>
+  <text x="92" y="430" style="font:700 18px 'Microsoft YaHei','PingFang SC',sans-serif; fill:#1f3349;">协作约定</text>
+  <text x="92" y="458" style="font:400 15px 'Microsoft YaHei','PingFang SC',sans-serif; fill:#526578;">功能分支只改自己的模块；接口变更先通知相关成员；合并前必须完成自测和基础构建验证。</text>
+  <text x="92" y="482" style="font:400 15px 'Microsoft YaHei','PingFang SC',sans-serif; fill:#526578;">目标是减少冲突、减少返工，并在每次合并后都保留可回归的稳定版本。</text>
+</svg>

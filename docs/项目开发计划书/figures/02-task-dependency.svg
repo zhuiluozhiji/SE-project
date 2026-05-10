@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="600" viewBox="0 0 1200 600">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#fffdf8"/>
+      <stop offset="100%" stop-color="#f7fbff"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#2f4662" flood-opacity="0.12"/>
+    </filter>
+    <style>
+      .title { font: 700 28px 'Microsoft YaHei', 'PingFang SC', sans-serif; fill: #20354d; }
+      .subtitle { font: 400 15px 'Microsoft YaHei', 'PingFang SC', sans-serif; fill: #5c6f83; }
+      .box-title { font: 700 18px 'Microsoft YaHei', 'PingFang SC', sans-serif; fill: #18324b; }
+      .box-text { font: 400 14px 'Microsoft YaHei', 'PingFang SC', sans-serif; fill: #46586b; }
+      .small { font: 400 13px 'Microsoft YaHei', 'PingFang SC', sans-serif; fill: #627488; }
+    </style>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M0,0 L12,6 L0,12 z" fill="#5d7288"/>
+    </marker>
+  </defs>
+  <rect width="1200" height="600" fill="url(#bg)"/>
+  <text x="56" y="58" class="title">任务分解与依赖关系示意图</text>
+  <text x="56" y="88" class="subtitle">将开发拆成数据底座、接口底座、业务闭环、前端联调、测试归档五层推进</text>
+
+  <rect x="54" y="170" rx="18" ry="18" width="170" height="220" fill="#eaf3ff" filter="url(#shadow)"/>
+  <text x="139" y="210" text-anchor="middle" class="box-title">数据底座</text>
+  <text x="139" y="240" text-anchor="middle" class="box-text">数据库字段冻结</text>
+  <text x="139" y="264" text-anchor="middle" class="box-text">种子数据准备</text>
+  <text x="139" y="288" text-anchor="middle" class="box-text">爬虫样例采集</text>
+  <text x="139" y="312" text-anchor="middle" class="box-text">数据清洗与去重</text>
+  <text x="139" y="336" text-anchor="middle" class="box-text">入库与日志</text>
+
+  <rect x="256" y="170" rx="18" ry="18" width="170" height="220" fill="#fff5e6" filter="url(#shadow)"/>
+  <text x="341" y="210" text-anchor="middle" class="box-title">接口底座</text>
+  <text x="341" y="240" text-anchor="middle" class="box-text">登录注册</text>
+  <text x="341" y="264" text-anchor="middle" class="box-text">用户信息</text>
+  <text x="341" y="288" text-anchor="middle" class="box-text">活动列表 / 详情</text>
+  <text x="341" y="312" text-anchor="middle" class="box-text">基础响应与鉴权</text>
+  <text x="341" y="336" text-anchor="middle" class="box-text">后台活动管理</text>
+
+  <rect x="458" y="170" rx="18" ry="18" width="196" height="220" fill="#eafaf2" filter="url(#shadow)"/>
+  <text x="556" y="210" text-anchor="middle" class="box-title">业务闭环</text>
+  <text x="556" y="240" text-anchor="middle" class="box-text">推荐规则</text>
+  <text x="556" y="264" text-anchor="middle" class="box-text">课表导入</text>
+  <text x="556" y="288" text-anchor="middle" class="box-text">冲突检测</text>
+  <text x="556" y="312" text-anchor="middle" class="box-text">加入日程</text>
+  <text x="556" y="336" text-anchor="middle" class="box-text">ICS 导出</text>
+
+  <rect x="686" y="170" rx="18" ry="18" width="180" height="220" fill="#f6efff" filter="url(#shadow)"/>
+  <text x="776" y="210" text-anchor="middle" class="box-title">前端联调</text>
+  <text x="776" y="240" text-anchor="middle" class="box-text">首页推荐</text>
+  <text x="776" y="264" text-anchor="middle" class="box-text">活动列表 / 详情</text>
+  <text x="776" y="288" text-anchor="middle" class="box-text">日历 / 课表导入</text>
+  <text x="776" y="312" text-anchor="middle" class="box-text">后台管理页</text>
+  <text x="776" y="336" text-anchor="middle" class="box-text">状态与空态处理</text>
+
+  <rect x="898" y="170" rx="18" ry="18" width="248" height="220" fill="#eff5fb" filter="url(#shadow)"/>
+  <text x="1022" y="210" text-anchor="middle" class="box-title">测试归档</text>
+  <text x="1022" y="240" text-anchor="middle" class="box-text">接口测试</text>
+  <text x="1022" y="264" text-anchor="middle" class="box-text">联调测试</text>
+  <text x="1022" y="288" text-anchor="middle" class="box-text">Bug 记录与回归</text>
+  <text x="1022" y="312" text-anchor="middle" class="box-text">用户手册</text>
+  <text x="1022" y="336" text-anchor="middle" class="box-text">报告与答辩材料</text>
+
+  <path d="M224 280 L256 280" stroke="#5d7288" stroke-width="4" marker-end="url(#arrow)"/>
+  <path d="M426 280 L458 280" stroke="#5d7288" stroke-width="4" marker-end="url(#arrow)"/>
+  <path d="M654 280 L686 280" stroke="#5d7288" stroke-width="4" marker-end="url(#arrow)"/>
+  <path d="M866 280 L898 280" stroke="#5d7288" stroke-width="4" marker-end="url(#arrow)"/>
+
+  <rect x="54" y="448" rx="16" ry="16" width="1092" height="88" fill="#17324d" opacity="0.96"/>
+  <text x="600" y="486" text-anchor="middle" style="font:700 19px 'Microsoft YaHei','PingFang SC',sans-serif; fill:white;">推进原则：先冻结数据，再确定接口，再做业务闭环，最后做前端联调和测试收敛</text>
+  <text x="600" y="514" text-anchor="middle" class="small" style="fill:#d7e6f5;">这样可以尽量减少字段变更和重复返工，保证计划执行的可控性。</text>
+</svg>

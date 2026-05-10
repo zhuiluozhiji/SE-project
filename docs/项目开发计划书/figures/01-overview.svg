@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="680" viewBox="0 0 1200 680">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f7fbff"/>
+      <stop offset="100%" stop-color="#eef5ff"/>
+    </linearGradient>
+    <linearGradient id="blue" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#4f8cff"/>
+      <stop offset="100%" stop-color="#2f6fe4"/>
+    </linearGradient>
+    <linearGradient id="green" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#39c38a"/>
+      <stop offset="100%" stop-color="#1fa56d"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#1d4e89" flood-opacity="0.12"/>
+    </filter>
+    <style>
+      .title { font: 700 30px 'Microsoft YaHei', 'PingFang SC', sans-serif; fill: #17324d; }
+      .subtitle { font: 400 16px 'Microsoft YaHei', 'PingFang SC', sans-serif; fill: #52657a; }
+      .node-title { font: 700 22px 'Microsoft YaHei', 'PingFang SC', sans-serif; fill: #17324d; }
+      .node-text { font: 400 16px 'Microsoft YaHei', 'PingFang SC', sans-serif; fill: #4d5d70; }
+      .caption { font: 400 14px 'Microsoft YaHei', 'PingFang SC', sans-serif; fill: #6b7b8d; }
+      .label { font: 600 15px 'Microsoft YaHei', 'PingFang SC', sans-serif; fill: white; }
+    </style>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M0,0 L12,6 L0,12 z" fill="#5d7288"/>
+    </marker>
+  </defs>
+  <rect width="1200" height="680" fill="url(#bg)"/>
+  <circle cx="1060" cy="90" r="96" fill="#dfeeff" opacity="0.7"/>
+  <circle cx="136" cy="560" r="120" fill="#e4f8ef" opacity="0.55"/>
+
+  <text x="60" y="64" class="title">校园学术活动智能推荐平台</text>
+  <text x="60" y="94" class="subtitle">开发前总体架构示意图  ·  以需求与总体设计为依据  ·  仅用于项目计划书说明</text>
+
+  <rect x="455" y="128" rx="22" ry="22" width="290" height="92" fill="url(#blue)" filter="url(#shadow)"/>
+  <text x="600" y="166" text-anchor="middle" class="label" style="font-size:24px;">前端页面</text>
+  <text x="600" y="191" text-anchor="middle" class="label" style="font-size:15px; opacity:.92;">活动浏览 · 推荐 · 日历 · 后台</text>
+
+  <rect x="455" y="278" rx="22" ry="22" width="290" height="110" fill="#ffffff" stroke="#c8d7ea" stroke-width="2" filter="url(#shadow)"/>
+  <text x="600" y="318" text-anchor="middle" class="node-title">后端服务</text>
+  <text x="600" y="344" text-anchor="middle" class="node-text">登录鉴权 · 活动查询 · 推荐计算</text>
+  <text x="600" y="368" text-anchor="middle" class="node-text">日程管理 · 冲突检测 · ICS 导出</text>
+
+  <rect x="145" y="286" rx="22" ry="22" width="236" height="102" fill="url(#green)" filter="url(#shadow)"/>
+  <text x="263" y="324" text-anchor="middle" class="label" style="font-size:22px;">用户 / 师生</text>
+  <text x="263" y="351" text-anchor="middle" class="label" style="font-size:14px; opacity:.95;">浏览、筛选、加入日程</text>
+
+  <rect x="815" y="286" rx="22" ry="22" width="236" height="102" fill="#ffffff" stroke="#c8d7ea" stroke-width="2" filter="url(#shadow)"/>
+  <text x="933" y="324" text-anchor="middle" class="node-title">MySQL 数据库</text>
+  <text x="933" y="351" text-anchor="middle" class="node-text">用户 · 活动 · 日程 · 课程</text>
+
+  <rect x="144" y="484" rx="22" ry="22" width="268" height="96" fill="#fff7e8" stroke="#f0d7a7" stroke-width="2" filter="url(#shadow)"/>
+  <text x="278" y="520" text-anchor="middle" class="node-title">爬虫与手动录入</text>
+  <text x="278" y="545" text-anchor="middle" class="node-text">采集活动来源并写入数据库</text>
+
+  <rect x="792" y="478" rx="22" ry="22" width="288" height="108" fill="#f7f1ff" stroke="#d8c6f6" stroke-width="2" filter="url(#shadow)"/>
+  <text x="936" y="516" text-anchor="middle" class="node-title">测试与文档</text>
+  <text x="936" y="542" text-anchor="middle" class="node-text">接口测试 · 功能测试 · 联调记录</text>
+  <text x="936" y="566" text-anchor="middle" class="node-text">用户手册 · 报告 · 交付材料</text>
+
+  <path d="M381 337 C415 337, 428 337, 455 337" fill="none" stroke="#5d7288" stroke-width="4" marker-end="url(#arrow)"/>
+  <path d="M745 337 C778 337, 795 337, 815 337" fill="none" stroke="#5d7288" stroke-width="4" marker-end="url(#arrow)"/>
+  <path d="M263 388 C263 438, 263 452, 263 484" fill="none" stroke="#5d7288" stroke-width="4" marker-end="url(#arrow)"/>
+  <path d="M936 388 C936 432, 936 446, 936 478" fill="none" stroke="#5d7288" stroke-width="4" marker-end="url(#arrow)"/>
+  <path d="M412 535 C466 535, 503 470, 526 388" fill="none" stroke="#5d7288" stroke-width="3" stroke-dasharray="8 7" marker-end="url(#arrow)"/>
+  <path d="M815 380 C780 430, 717 466, 670 388" fill="none" stroke="#5d7288" stroke-width="3" stroke-dasharray="8 7" marker-end="url(#arrow)"/>
+
+  <rect x="372" y="430" rx="16" ry="16" width="460" height="58" fill="#17324d" opacity="0.95"/>
+  <text x="602" y="467" text-anchor="middle" class="label">第一阶段目标：打通活动浏览、推荐、课表、冲突、日程、导出的完整闭环</text>
+
+  <text x="60" y="640" class="caption">注：该图为计划阶段示意图，不代表系统当前实现状态。</text>
+</svg>
