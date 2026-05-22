@@ -204,21 +204,49 @@
 \section{前端交互}
 \begin{frame}{UI 设计：按学生的实际使用顺序组织页面}
     \centering
-    \includegraphics[width=0.96\linewidth,height=0.36\textheight,keepaspectratio]{3.4-0-ui-flow-overview.png}
-    \vspace{0.5em}
+    \makebox[\linewidth][c]{%
+        \includegraphics[
+            width=1.05\linewidth,
+            height=0.66\textheight,
+            keepaspectratio
+        ]{3.4-0-ui-flow-overview.png}%
+    }
+
+    \vspace{0.6em}
 
     \begin{columns}[T,onlytextwidth]
-        \begin{column}{0.46\textwidth}
+        \begin{column}{0.48\textwidth}
+            \small
             \begin{itemize}
-                \item 首页和活动列表负责进入详情页
-                \item 详情页展示时间、地点、标签和加入日程入口
-                \item 日历页展示课程、活动和冲突提示
-                \item 后台页维护活动数据和爬虫记录
+                \item 首页、活动列表和详情页构成主要浏览路径
             \end{itemize}
         \end{column}
-        \begin{column}{0.50\textwidth}
+        \begin{column}{0.48\textwidth}
+            \small
+            \begin{itemize}
+                \item 详情页、日历页和后台页分别承接安排与维护操作
+            \end{itemize}
+        \end{column}
+    \end{columns}
+\end{frame}
+
+\begin{frame}{UI 设计：日历页承接课程与活动安排}
+    \begin{columns}[T,onlytextwidth]
+        \begin{column}{0.64\textwidth}
             \centering
-            \includegraphics[width=\linewidth,height=0.28\textheight,keepaspectratio]{3.2-5-calendar.png}
+            \includegraphics[
+                width=\linewidth,
+                height=0.68\textheight,
+                keepaspectratio
+            ]{3.2-5-calendar.png}
+        \end{column}
+        \begin{column}{0.32\textwidth}
+            \small
+            \begin{itemize}
+                \item 课程和活动在同一日历视图中展示
+                \item 冲突状态以标签或弹窗给出解释
+                \item 已加入活动可以从日历返回详情页查看
+            \end{itemize}
         \end{column}
     \end{columns}
 \end{frame}
