@@ -23,6 +23,23 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
+# LaTeX intermediate files
+*.aux
+*.bbl
+*.bcf
+*.blg
+*.fdb_latexmk
+*.fls
+*.lof
+*.lot
+*.nav
+*.out
+*.run.xml
+*.snm
+*.synctex.gz
+*.toc
+*.xdv
+
 # IDE / OS
 .DS_Store
 .idea/
