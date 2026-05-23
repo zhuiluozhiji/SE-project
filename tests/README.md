@@ -11,5 +11,5 @@
 ## Suggested order
 
 1. 先用 Swagger 或 `.http` 文件验证接口返回格式。
-2. 再补充 pytest/httpx 自动化测试。
+2. 再补充 pytest/httpx 自动化测试，统一通过 `docker compose exec backend pytest` 执行。
 3. 最后按 `docs/test-cases.md` 做完整手工验收。

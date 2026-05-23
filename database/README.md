@@ -9,9 +9,15 @@
 - `migrations/`: 后续数据库变更脚本。
 - `er/`: ER 图和数据库说明。
 
-## Local MySQL
+## Start
 
 ```bash
-mysql -u root -p < database/schema.sql
-mysql -u root -p < database/seed.sql
+cp .env.example .env
+docker compose up --build -d mysql
 ```
+
+说明：
+
+- MySQL 由 Docker Compose 统一管理。
+- 第一次启动时会自动执行 `database/schema.sql` 和 `database/seed.sql`。
+- 如果需要重置数据库，执行 `docker compose down -v` 后再重新启动。

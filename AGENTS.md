@@ -28,7 +28,7 @@
 数据库：MySQL 8.0，字符集 utf8mb4
 爬虫：Python requests + BeautifulSoup4
 测试：pytest + httpx（后端），npm run build 验证（前端）
-部署：Docker Compose（预留）
+部署与开发环境：Docker Compose
 接口文档：FastAPI 内置 Swagger UI（/docs）
 ```
 
@@ -183,11 +183,14 @@ settings.api_v1_prefix     # "/api/v1"
 
 ```bash
 # 从项目根目录
-source .venv/bin/activate
-uvicorn app.main:app --app-dir backend --reload --host 0.0.0.0 --port 8000
+docker compose up --build backend
 ```
 
-注意 `--app-dir backend` 是必须的，否则会报 `ModuleNotFoundError`。
+如果需要进入容器执行命令：
+
+```bash
+docker compose exec backend sh
+```
 
 ---
 
@@ -265,13 +268,13 @@ src/api/admin.js           → /api/v1/admin/*
 
 ### 6.2 开发代理
 
-Vite 开发服务器已配置反向代理，将 `/api` 请求转发到 `http://localhost:8000`：
+Vite 开发服务器已配置反向代理。团队统一使用 Docker Compose 时，`/api` 请求在前端容器内转发到 `http://backend:8000`；脱离容器单独运行时，可退回 `http://localhost:8000`：
 
 ```javascript
 // vite.config.js
 proxy: {
   '/api': {
-    target: 'http://localhost:8000',
+    target: process.env.VITE_DEV_PROXY_TARGET,
     changeOrigin: true
   }
 }
@@ -280,9 +283,7 @@ proxy: {
 ### 6.3 前端启动命令
 
 ```bash
-cd frontend
-npm install    # 首次或依赖更新后
-npm run dev    # 开发模式，http://localhost:5173
+docker compose up --build frontend
 ```
 
 ---
@@ -413,11 +414,10 @@ chore: update gitignore
 
 ```bash
 # 从项目根目录
-source .venv/bin/activate
-pytest
+docker compose exec backend pytest
 ```
 
-`pytest.ini` 已配置 `pythonpath = backend`，`testpaths = tests`。
+`pytest.ini` 仍用于后端测试收集配置，但统一在 backend 容器内执行。
 
 ### 11.2 测试文件位置
 
@@ -503,6 +503,8 @@ MYSQL_PORT=3306
 MYSQL_DATABASE=se_project
 MYSQL_USER=se_user
 MYSQL_PASSWORD=se_password
-DATABASE_URL=mysql+pymysql://se_user:se_password@localhost:3306/se_project
-VITE_API_BASE_URL=http://localhost:8000/api/v1
+MYSQL_ROOT_PASSWORD=root_password
+DATABASE_URL=mysql+pymysql://se_user:se_password@mysql:3306/se_project
+VITE_API_BASE_URL=/api/v1
+VITE_DEV_PROXY_TARGET=http://backend:8000
 ```

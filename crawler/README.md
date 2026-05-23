@@ -11,6 +11,8 @@ Crawler skeleton for collecting public academic activity pages.
 ## Start
 
 ```bash
-pip install -r requirements.txt
-python -m spiders.cs_zju
+docker compose up --build -d
+docker compose exec backend python -m crawler.spiders.cs_zju
 ```
+
+爬虫依赖由 `backend/requirements.txt` 在 backend 镜像构建时统一安装，不再要求组员本地单独维护 Python 虚拟环境。
