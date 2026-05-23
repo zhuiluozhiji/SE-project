@@ -1,0 +1,14 @@
+@startuml
+!include common-theme.puml
+title 状态模式：课表导入任务在多个状态间有序流转
+
+[*] --> Idle
+Idle --> FileSelected : 选择文件
+FileSelected --> Parsing : 开始解析
+Parsing --> Failed : 文件损坏 / OCR 失败
+Parsing --> Validated : 字段解析完成
+Validated --> Imported : 写入 course_schedule
+Validated --> Failed : 字段缺失 / 时间非法
+Failed --> FileSelected : 修正后重新上传
+Imported --> Idle : 返回页面 / 准备下次导入
+@enduml

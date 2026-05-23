@@ -1,0 +1,37 @@
+@startuml
+!include common-theme.puml
+title 适配器模式：多源课表导入适配为统一课程结构
+
+interface CourseImportTarget {
+  +parse(file): list<CourseDTO>
+}
+
+class CsvCourseAdapter
+class ExcelCourseAdapter
+class OcrCourseAdapter
+class CourseImportService
+
+class CourseDTO {
+  +course_name
+  +weekday
+  +start_section
+  +end_section
+  +weeks
+  +location
+  +teacher
+}
+
+CourseImportTarget <|.. CsvCourseAdapter
+CourseImportTarget <|.. ExcelCourseAdapter
+CourseImportTarget <|.. OcrCourseAdapter
+
+CourseImportService --> CourseImportTarget : 根据文件类型 / OCR 模式选择适配器
+CsvCourseAdapter ..> CourseDTO
+ExcelCourseAdapter ..> CourseDTO
+OcrCourseAdapter ..> CourseDTO
+
+note right of CourseImportService
+不同输入格式在适配后都输出统一 DTO，
+供后续校验、写库和冲突检测复用。
+end note
+@enduml

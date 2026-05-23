@@ -1,0 +1,45 @@
+@startuml
+!include common-theme.puml
+title 单件模式：全局共享配置与客户端实例
+
+class Settings <<Singleton>> {
+  +project_name
+  +api_v1_prefix
+  +database_url
+  +secret_key
+}
+
+class SessionFactory <<Singleton>> {
+  +engine
+  +SessionLocal
+}
+
+class HttpClient <<Singleton>> {
+  +baseURL
+  +requestInterceptor()
+  +responseInterceptor()
+}
+
+class AuthStore <<Singleton>> {
+  +token
+  +user
+  +setSession()
+  +clearSession()
+}
+
+class FastAPIApp
+class FrontendViews
+
+FastAPIApp --> Settings
+FastAPIApp --> SessionFactory
+FrontendViews --> HttpClient
+FrontendViews --> AuthStore
+
+note bottom of Settings
+后端实际以模块级 `settings` 暴露唯一配置对象。
+end note
+
+note bottom of HttpClient
+前端实际通过 `axios.create()` 导出唯一 http 实例。
+end note
+@enduml

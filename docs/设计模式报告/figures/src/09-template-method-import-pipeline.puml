@@ -1,0 +1,31 @@
+@startuml
+!include common-theme.puml
+title 模板方法模式：导入与采集流程复用统一处理骨架
+
+abstract class AbstractImportPipeline {
+  +run(source)
+  #load(source)
+  #validate(raw)
+  #parse(raw)
+  #normalize(parsed)
+  #persist(data)
+  #report(result)
+}
+
+class CourseFileImportPipeline
+class OcrCourseImportPipeline
+class CrawlerImportPipeline
+
+AbstractImportPipeline <|-- CourseFileImportPipeline
+AbstractImportPipeline <|-- OcrCourseImportPipeline
+AbstractImportPipeline <|-- CrawlerImportPipeline
+
+note right of AbstractImportPipeline
+固定步骤顺序：
+load -> validate -> parse -> normalize -> persist -> report
+end note
+
+CourseFileImportPipeline ..> "course_schedule"
+OcrCourseImportPipeline ..> "course_schedule"
+CrawlerImportPipeline ..> "activity"
+@enduml

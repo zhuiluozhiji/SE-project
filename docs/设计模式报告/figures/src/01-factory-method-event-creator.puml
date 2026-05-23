@@ -1,0 +1,44 @@
+@startuml
+!include common-theme.puml
+title 工厂方法模式：统一创建不同来源的日程事件
+
+package "调用端" {
+  class ScheduleService
+}
+
+package "工厂层" {
+  abstract class ScheduleEventCreator {
+    +create(payload): ScheduleEvent
+    #fill_common_fields(payload)
+  }
+
+  class CourseEventCreator
+  class ActivityEventCreator
+  class PersonalEventCreator
+}
+
+package "产物" {
+  class ScheduleEvent {
+    +title
+    +type
+    +start_time
+    +end_time
+    +location
+    +color_type
+  }
+}
+
+ScheduleEventCreator <|-- CourseEventCreator
+ScheduleEventCreator <|-- ActivityEventCreator
+ScheduleEventCreator <|-- PersonalEventCreator
+
+ScheduleService --> ScheduleEventCreator : 按 type 选择具体创建器
+CourseEventCreator ..> ScheduleEvent : create()
+ActivityEventCreator ..> ScheduleEvent : create()
+PersonalEventCreator ..> ScheduleEvent : create()
+
+note right of ScheduleService
+课表导入、活动加入日程、手工新增日程
+都复用统一的创建入口。
+end note
+@enduml
