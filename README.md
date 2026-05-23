@@ -128,7 +128,7 @@ MYSQL_DATABASE=se_project
 MYSQL_USER=se_user
 MYSQL_PASSWORD=se_password
 MYSQL_ROOT_PASSWORD=root_password
-DATABASE_URL=mysql+pymysql://se_user:se_password@mysql:3306/se_project
+DATABASE_URL=mysql+pymysql://se_user:se_password@mysql:3306/se_project?charset=utf8mb4
 VITE_API_BASE_URL=/api/v1
 VITE_DEV_PROXY_TARGET=http://backend:8000
 ```

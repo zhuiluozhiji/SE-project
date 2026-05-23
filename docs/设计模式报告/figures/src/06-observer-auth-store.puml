@@ -1,0 +1,43 @@
+@startuml
+!include common-theme.puml
+title 观察者模式：登录态变更驱动多个界面同步更新
+
+abstract class Subject <<Subject>> {
+  +attach(observer)
+  +detach(observer)
+  +notify()
+}
+
+interface Observer <<Observer>> {
+  +update()
+}
+
+class AuthStore {
+  +token
+  +user
+  +setSession()
+  +clearSession()
+}
+
+class NavBar
+class ProfileView
+class RouteGuard
+class LoginView
+
+Subject <|-- AuthStore
+Observer <|.. NavBar
+Observer <|.. ProfileView
+Observer <|.. RouteGuard
+Observer <|.. LoginView
+
+AuthStore --> Observer : notify()
+NavBar --> AuthStore : 读取登录态
+ProfileView --> AuthStore : 读取用户信息
+RouteGuard --> AuthStore : 判断访问权限
+LoginView --> AuthStore : 触发登录/退出
+
+note bottom of AuthStore
+Pinia store 更新后，依赖它的页面与组件
+应同步重渲染或重新判断权限。
+end note
+@enduml

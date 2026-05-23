@@ -9,7 +9,7 @@ class Settings:
     api_v1_prefix: str = os.getenv("API_V1_PREFIX", "/api/v1")
     database_url: str = os.getenv(
         "DATABASE_URL",
-        "mysql+pymysql://se_user:se_password@localhost:3306/se_project",
+        "mysql+pymysql://se_user:se_password@localhost:3306/se_project?charset=utf8mb4",
     )
     secret_key: str = os.getenv("SECRET_KEY", "change-me")
     access_token_expire_minutes: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "1440"))

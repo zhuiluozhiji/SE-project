@@ -1,0 +1,33 @@
+@startuml
+!include common-theme.puml
+title 代理模式：管理员操作先经鉴权代理再进入真实业务
+
+actor 管理员
+participant AdminView
+participant AuthProxy
+participant HttpClient
+participant "FastAPI /admin" as AdminApi
+participant AdminService
+database MySQL
+
+管理员 -> AdminView : 新增 / 编辑 / 下架活动
+AdminView -> AuthProxy : submit(action, payload)
+AuthProxy -> HttpClient : 检查 token / role
+
+alt token 缺失或 role != admin
+  AuthProxy --> AdminView : 拒绝访问并提示登录/无权限
+else 鉴权通过
+  AuthProxy -> AdminApi : 发送带 Bearer Token 的请求
+  AdminApi -> AdminService : 执行业务逻辑
+  AdminService -> MySQL : 更新 activity / admin_log
+  MySQL --> AdminService : success
+  AdminService --> AdminApi : 统一响应
+  AdminApi --> AuthProxy : {code, message, data}
+  AuthProxy --> AdminView : 刷新列表
+end
+
+note right of AuthProxy
+代理对象把横切的权限校验
+与真正的后台操作分离。
+end note
+@enduml

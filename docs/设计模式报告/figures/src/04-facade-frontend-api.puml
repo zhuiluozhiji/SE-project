@@ -1,0 +1,35 @@
+@startuml
+!include common-theme.puml
+title 外观模式：前端 API 封装对页面提供统一访问入口
+
+package "页面层" {
+  class HomeView
+  class ActivityListView
+  class CalendarView
+}
+
+package "业务 API 外观" {
+  class RecommendationsApiFacade
+  class ActivitiesApiFacade
+  class SchedulesApiFacade
+}
+
+class HttpClient
+class BackendApi {
+  /api/v1/*
+}
+
+HomeView --> RecommendationsApiFacade
+ActivityListView --> ActivitiesApiFacade
+CalendarView --> SchedulesApiFacade
+
+RecommendationsApiFacade --> HttpClient
+ActivitiesApiFacade --> HttpClient
+SchedulesApiFacade --> HttpClient
+HttpClient --> BackendApi
+
+note bottom of HttpClient
+统一设置 baseURL、注入 Bearer Token、
+并解包 response.data。
+end note
+@enduml
