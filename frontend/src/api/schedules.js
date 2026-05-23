@@ -11,3 +11,11 @@ export function checkConflict(data) {
 export function addActivityToSchedule(data) {
   return http.post('/schedules/add-activity', data)
 }
+
+export function exportSchedulesIcs() {
+  return http.get('/schedules/export-ics')
+}
+
+export function downloadSchedulesIcsFile() {
+  return http.get('/schedules/export-ics/file', { responseType: 'blob' })
+}
