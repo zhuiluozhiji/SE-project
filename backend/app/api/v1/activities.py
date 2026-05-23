@@ -1,7 +1,10 @@
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
+from sqlalchemy.orm import Session
 
-from app.core.response import success
-from app.services.activity_service import get_activity_mock, list_activities_mock
+from app.core.response import fail, success
+from app.db.session import get_db
+from app.services.activity_service import get_activity as get_activity_by_id
+from app.services.activity_service import list_activities as list_activities_from_db
 
 router = APIRouter(prefix="/activities", tags=["activities"])
 
@@ -16,26 +19,26 @@ def list_activities(
     sort_by: str = Query("time", pattern="^(time|hot|recommend)$"),
     page: int = Query(1, ge=1),
     page_size: int = Query(10, ge=1, le=100),
+    db: Session = Depends(get_db),
 ):
-    items = list_activities_mock()
     return success(
-        {
-            "items": items,
-            "total": len(items),
-            "page": page,
-            "page_size": page_size,
-            "filters": {
-                "keyword": keyword,
-                "category": category,
-                "campus": campus,
-                "college": college,
-                "tag": tag,
-                "sort_by": sort_by,
-            },
-        }
+        list_activities_from_db(
+            db=db,
+            keyword=keyword,
+            category=category,
+            campus=campus,
+            college=college,
+            tag=tag,
+            sort_by=sort_by,
+            page=page,
+            page_size=page_size,
+        )
     )
 
 
 @router.get("/{activity_id}")
-def get_activity(activity_id: int):
-    return success(get_activity_mock(activity_id))
+def get_activity(activity_id: int, db: Session = Depends(get_db)):
+    activity = get_activity_by_id(db, activity_id)
+    if activity is None:
+        return fail(code=1003, message="活动不存在")
+    return success(activity)
