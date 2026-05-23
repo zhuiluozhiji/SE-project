@@ -3,6 +3,7 @@ import io
 from datetime import datetime, timedelta
 
 from fastapi.testclient import TestClient
+from openpyxl import Workbook
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
@@ -416,3 +417,62 @@ def test_import_zju_export_xlsx_style_csv_rows():
     assert courses[1]["weekday"] == 3
     assert courses[1]["location"] == "玉泉曹光彪西-503"
     assert courses[2]["weeks"] == "春夏 单周"
+
+
+def test_import_zju_export_xlsx_file():
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.append(["2025-2026学年春夏学期李妍雅的课表"])
+    sheet.append(["课程代码", "课程名称", "教师姓名", "学期", "上课时间", "上课地点", "选课时间", "选课志愿"])
+    sheet.append(
+        [
+            "CS3100M",
+            "编译原理",
+            "刘忠鑫",
+            "春夏",
+            "周一第3,4,5节;周三第1,2节",
+            "玉泉教4-310;玉泉曹光彪西-503",
+            "2025-12-19 11:59:10",
+            "1.0",
+        ]
+    )
+    sheet.append(
+        [
+            "CS3221M",
+            "自然语言处理导论",
+            "汤斯亮",
+            "春夏",
+            "周二第3,4节{单周};周二第3,4,5节{双周};周四第1,2节",
+            "玉泉教1-234;玉泉教1-234;玉泉曹光彪西-503",
+            "2026-03-04 22:26:30",
+            "1.0",
+        ]
+    )
+    buffer = io.BytesIO()
+    workbook.save(buffer)
+
+    response = client.post(
+        "/api/v1/courses/import",
+        files={
+            "file": (
+                "课表_3230106240.xlsx",
+                buffer.getvalue(),
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+        },
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["code"] == 0
+    assert data["data"]["imported_count"] == 5
+    courses = data["data"]["courses"]
+    assert courses[0]["course_name"] == "编译原理"
+    assert courses[0]["weekday"] == 1
+    assert courses[0]["start_section"] == 3
+    assert courses[0]["end_section"] == 5
+    assert courses[1]["weekday"] == 3
+    assert courses[1]["location"] == "玉泉曹光彪西-503"
+    assert courses[2]["weeks"] == "春夏 单周"
+    assert courses[3]["weeks"] == "春夏 双周"
+    assert courses[4]["weekday"] == 4

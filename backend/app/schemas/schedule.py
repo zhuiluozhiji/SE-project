@@ -17,6 +17,8 @@ class ScheduleEventPublic(BaseModel):
     title: str
     type: str
     course_id: int | None = None
+    teacher: str | None = None
+    weeks: str | None = None
     activity_id: int | None = None
     start_time: datetime
     end_time: datetime

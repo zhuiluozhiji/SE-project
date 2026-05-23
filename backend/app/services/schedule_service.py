@@ -32,11 +32,11 @@ def list_schedule_events(
 
     stmt = stmt.order_by(ScheduleEvent.start_time.asc(), ScheduleEvent.id.asc())
     events = db.scalars(stmt).all()
-    course_id_map = build_course_id_map(db, user_id)
+    course_lookup = build_course_lookup(db, user_id)
     return [
         serialize_event(
             event,
-            course_id=course_id_map.get(course_event_key(event)),
+            course=course_lookup.get(course_event_key(event)),
             title=display_event_title(event),
         )
         for event in events
@@ -186,14 +186,16 @@ def find_conflicting_events(
 def serialize_event(
     event: ScheduleEvent,
     status: str | None = None,
-    course_id: int | None = None,
+    course: dict | None = None,
     title: str | None = None,
 ) -> dict:
     return {
         "id": event.id,
         "title": title or event.title,
         "type": event.type,
-        "course_id": course_id if event.type == "course" else None,
+        "course_id": course["id"] if event.type == "course" and course else None,
+        "teacher": course["teacher"] if event.type == "course" and course else None,
+        "weeks": course["weeks"] if event.type == "course" and course else None,
         "activity_id": event.activity_id,
         "start_time": event.start_time,
         "end_time": event.end_time,
@@ -203,7 +205,7 @@ def serialize_event(
     }
 
 
-def build_course_id_map(db: Session, user_id: int) -> dict[tuple, int]:
+def build_course_lookup(db: Session, user_id: int) -> dict[tuple, dict]:
     courses = db.scalars(select(CourseSchedule).where(CourseSchedule.user_id == user_id)).all()
     result = {}
     for course in courses:
@@ -212,8 +214,13 @@ def build_course_id_map(db: Session, user_id: int) -> dict[tuple, int]:
             course.start_section,
             course.end_section,
         )
+        metadata = {
+            "id": course.id,
+            "teacher": course.teacher,
+            "weeks": course.weeks,
+        }
         for title in course_event_title_candidates(course.course_name):
-            result[(title, start_time, end_time, course.location)] = course.id
+            result[(title, start_time, end_time, course.location)] = metadata
     return result
 
 

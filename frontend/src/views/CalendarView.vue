@@ -74,6 +74,11 @@
                   left: event._left + '%',
                   width: event._width + '%'
                 }"
+                role="button"
+                tabindex="0"
+                @click="openEventDialog(event)"
+                @keydown.enter.prevent="openEventDialog(event)"
+                @keydown.space.prevent="openEventDialog(event)"
               >
                 <div class="ev-name">{{ event.title }}</div>
                 <div class="ev-time">{{ event.startTime }}-{{ event.endTime }}</div>
@@ -103,6 +108,7 @@
             <div class="side-item-right">
               <span class="faint">{{ c.dayLabel }} {{ c.timeLabel }}</span>
               <span class="chip" v-if="c.weekType">{{ c.weekType }}</span>
+              <el-button size="small" text @click="openEventDialog(c)">编辑</el-button>
             </div>
           </div>
         </div>
@@ -162,20 +168,72 @@
       </div>
     </div>
   </el-dialog>
+
+  <el-dialog v-model="eventDialogVisible" class="course-dialog" width="min(520px, 92vw)" append-to-body align-center>
+    <template #header>
+      <div class="dialog-title">
+        <span class="chip" :class="{ danger: selectedEvent?.conflict }">
+          {{ selectedEvent ? typeLabel(selectedEvent) : '日程' }}
+        </span>
+        <strong>{{ selectedEvent?.title || '日程详情' }}</strong>
+      </div>
+    </template>
+
+    <div v-if="selectedEvent" class="event-detail">
+      <el-descriptions :column="1" border>
+        <el-descriptions-item label="时间">
+          {{ formatDate(selectedEvent.start_time) }} - {{ selectedEvent.endTime }}
+        </el-descriptions-item>
+        <el-descriptions-item label="地点">
+          {{ selectedEvent.location || '地点待定' }}
+        </el-descriptions-item>
+        <el-descriptions-item label="类型">
+          {{ typeLabel(selectedEvent) }}
+        </el-descriptions-item>
+      </el-descriptions>
+
+      <div v-if="selectedEvent.rawType === 'course'" class="course-delete-panel">
+        <h4>删除范围</h4>
+        <el-radio-group v-model="deleteScope" class="delete-scope-group">
+          <el-radio-button value="one">仅本次</el-radio-button>
+          <el-radio-button value="day">删除当天</el-radio-button>
+          <el-radio-button value="all">全部这门课</el-radio-button>
+        </el-radio-group>
+        <p class="muted">{{ deleteScopeHint }}</p>
+      </div>
+    </div>
+
+    <template #footer>
+      <el-button @click="eventDialogVisible = false">关闭</el-button>
+      <el-button
+        v-if="selectedEvent?.rawType === 'course'"
+        type="danger"
+        :loading="deletingCourse"
+        @click="removeSelectedCourse"
+      >
+        删除课程
+      </el-button>
+    </template>
+  </el-dialog>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { getSchedules } from '../api/schedules'
+import { deleteCourse } from '../api/courses'
 
 const loading = ref(false)
 const error = ref('')
 const exporting = ref(false)
 const conflictVisible = ref(false)
+const eventDialogVisible = ref(false)
 const allEvents = ref([])
 const weekOffset = ref(0)
 const showOdd = ref(true)
+const selectedEvent = ref(null)
+const deleteScope = ref('one')
+const deletingCourse = ref(false)
 
 const PX_PER_HOUR = 80
 const START_HOUR = 8
@@ -230,41 +288,15 @@ const layoutEvents = (events) => {
 
 const getTimelineEvents = (dayIndex) => {
   const wd = dayIndex + 1
-  const baseMinutes = START_HOUR * 60
-  const raw = defaultCourses
+  const raw = allEvents.value
     .filter((c) => {
       if (c.weekday !== wd) return false
       if (!showOdd.value && c.weekType === '单周') return false
       if (showOdd.value && c.weekType === '双周') return false
       return true
     })
-    .map((c) => {
-      const startMin = parseTime(c.startTime) || (c.startPeriod ? (START_HOUR * 60 + (c.startPeriod - 1) * 45) : 0)
-      const endMin = parseTime(c.endTime) || (c.endPeriod ? (START_HOUR * 60 + c.endPeriod * 45) : startMin + 45)
-      return {
-        ...c,
-        _startMin: startMin,
-        _endMin: endMin,
-        _top: Math.max(0, (startMin - baseMinutes) / 60 * PX_PER_HOUR),
-        _height: Math.max(10, (endMin - startMin) / 60 * PX_PER_HOUR)
-      }
-    })
   return layoutEvents(raw)
 }
-
-const defaultCourses = [
-  { id: 'c1',  title: '机器学习',     teacher: '李明远', location: '紫金港东1A-203',   weekday: 1, startPeriod: 1, endPeriod: 2, type: 'course', weekType: '每周', startTime: '08:00', endTime: '09:35' },
-  { id: 'c2',  title: '机器学习',     teacher: '李明远', location: '紫金港东1A-203',   weekday: 4, startPeriod: 3, endPeriod: 4, type: 'course', weekType: '每周', startTime: '10:00', endTime: '11:35' },
-  { id: 'c3',  title: '高等数学',     teacher: '张晓峰', location: '紫金港西2-315',    weekday: 2, startPeriod: 1, endPeriod: 3, type: 'course', weekType: '每周', startTime: '08:00', endTime: '10:45' },
-  { id: 'c4',  title: '数据库系统',   teacher: '王海燕', location: '玉泉教3-208',     weekday: 1, startPeriod: 6, endPeriod: 7, type: 'course', weekType: '单周', startTime: '13:25', endTime: '15:00' },
-  { id: 'c5',  title: '数据库系统',   teacher: '王海燕', location: '玉泉教3-208',     weekday: 5, startPeriod: 1, endPeriod: 2, type: 'course', weekType: '单周', startTime: '08:00', endTime: '09:35' },
-  { id: 'c6',  title: '数据结构',     teacher: '陈志强', location: '紫金港东1B-501',   weekday: 2, startPeriod: 6, endPeriod: 8, type: 'course', weekType: '每周', startTime: '13:25', endTime: '15:50' },
-  { id: 'c7',  title: '计算机网络',   teacher: '赵丽娜', location: '玉泉曹光彪东-102', weekday: 4, startPeriod: 6, endPeriod: 7, type: 'course', weekType: '每周', startTime: '13:25', endTime: '15:00' },
-  { id: 'c8',  title: '英语写作',     teacher: '刘文博', location: '紫金港外语楼-310', weekday: 5, startPeriod: 3, endPeriod: 4, type: 'course', weekType: '每周', startTime: '10:00', endTime: '11:35' },
-  { id: 'c9',  title: '操作系统',     teacher: '孙浩然', location: '玉泉教4-106',     weekday: 3, startPeriod: 3, endPeriod: 5, type: 'course', weekType: '双周', startTime: '10:00', endTime: '12:25' },
-  { id: 'c10', title: '学术前沿讲座', teacher: '轮值',   location: '紫金港学术报告厅', weekday: 3, startPeriod: 9, endPeriod: 10, type: 'recommended', weekType: '单周', startTime: '16:15', endTime: '17:50' },
-  { id: 'e1',  title: '生成式AI与科研写作', teacher: '特邀嘉宾', location: '紫金港学术报告厅', weekday: 5, startPeriod: 6, endPeriod: 9, type: 'activity', weekType: '每周', startTime: '14:00', endTime: '16:00' },
-]
 
 const getMonday = (offset = 0) => {
   const d = new Date()
@@ -324,8 +356,63 @@ const typeLabel = (event) => {
   return map[event.color_type || event.type] || '活动'
 }
 
+const openEventDialog = (event) => {
+  selectedEvent.value = event
+  deleteScope.value = 'one'
+  eventDialogVisible.value = true
+}
+
+const deleteScopeHint = computed(() => {
+  if (deleteScope.value === 'day') return '删除当前星期中这门课的所有时段。'
+  if (deleteScope.value === 'all') return '删除课表中同名同教师课程的全部时段。'
+  return '只删除当前点击的这一条课程时段。'
+})
+
+const deleteScopeConfirmText = computed(() => {
+  if (deleteScope.value === 'day') return '删除当天的'
+  if (deleteScope.value === 'all') return '删除全部'
+  return '删除本次'
+})
+
+const removeSelectedCourse = async () => {
+  const event = selectedEvent.value
+  if (!event?.course_id) {
+    ElMessage.error('未找到对应课程记录，请刷新日历后重试。')
+    return
+  }
+
+  try {
+    await ElMessageBox.confirm(
+      `确定${deleteScopeConfirmText.value}“${event.title}”吗？对应课程日程会同步移除。`,
+      '删除课程',
+      {
+        type: 'warning',
+        confirmButtonText: '删除',
+        cancelButtonText: '取消'
+      }
+    )
+  } catch {
+    return
+  }
+
+  deletingCourse.value = true
+  try {
+    const res = await deleteCourse(event.course_id, deleteScope.value)
+    const deletedCourses = res.data?.deleted_courses || 0
+    const deletedEvents = res.data?.deleted_events || 0
+    ElMessage.success(`已删除 ${deletedCourses} 条课程记录，移除 ${deletedEvents} 条日程。`)
+    eventDialogVisible.value = false
+    await fetchSchedules()
+  } catch (err) {
+    ElMessage.error(err?.message || '删除课程失败，请稍后重试。')
+  } finally {
+    deletingCourse.value = false
+  }
+}
+
 const weekCourses = computed(() => {
-  return defaultCourses.filter((c) => {
+  return allEvents.value.filter((c) => {
+    if (c.rawType !== 'course') return false
     if (!showOdd.value && c.weekType === '单周') return false
     if (showOdd.value && c.weekType === '双周') return false
     return true
@@ -348,10 +435,9 @@ const conflictEvents = computed(() => {
 })
 
 const exams = computed(() => {
-  const seen = new Set()
-  return defaultCourses
-    .filter((c) => c.examDate && !seen.has(c.title + c.examDate) && seen.add(c.title + c.examDate))
-    .map((c) => ({ title: c.title, examDate: c.examDate, location: c.location }))
+  return allEvents.value
+    .filter((c) => c.type === 'exam')
+    .map((c) => ({ title: c.title, examDate: formatDate(c.start_time), location: c.location }))
 })
 
 const fetchSchedules = async () => {
@@ -364,10 +450,82 @@ const fetchSchedules = async () => {
     sunday.setDate(sunday.getDate() + 6)
     const fmt = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
     const res = await getSchedules({ start_date: fmt(monday), end_date: fmt(sunday) })
-    allEvents.value = res.data?.events || res.data?.items || res.data || []
-  } catch { /* 后端不可用时静默使用内置数据 */ } finally {
+    if (res.code !== 0) throw new Error(res.message || '日程加载失败')
+    allEvents.value = normalizeScheduleItems(res.data?.items || [])
+  } catch (err) {
+    allEvents.value = []
+    error.value = err?.message || '日程加载失败，请确认后端服务正在运行后重试。'
+    ElMessage.error(error.value)
+  } finally {
     loading.value = false
   }
+}
+
+const normalizeScheduleItems = (items) => {
+  return items.map((item) => {
+    const start = new Date(item.start_time)
+    const end = new Date(item.end_time)
+    const startMin = start.getHours() * 60 + start.getMinutes()
+    const endMin = end.getHours() * 60 + end.getMinutes()
+    const normalizedType = normalizeEventType(item)
+    return {
+      ...item,
+      rawType: item.type,
+      type: normalizedType,
+      conflict: item.color_type === 'conflict',
+      weekday: start.getDay() || 7,
+      startTime: timeText(start),
+      endTime: timeText(end),
+      startPeriod: sectionFromTime(timeText(start), 'start'),
+      endPeriod: sectionFromTime(timeText(end), 'end'),
+      teacher: item.teacher || '',
+      weekType: parseWeekType(item.weeks),
+      _startMin: startMin,
+      _endMin: endMin,
+      _top: Math.max(0, (startMin - START_HOUR * 60) / 60 * PX_PER_HOUR),
+      _height: Math.max(10, (endMin - startMin) / 60 * PX_PER_HOUR)
+    }
+  })
+}
+
+const normalizeEventType = (item) => {
+  if (item.color_type === 'conflict') return 'conflict'
+  if (item.color_type === 'recommended') return 'recommended'
+  if (item.type === 'activity') return 'activity'
+  if (item.type === 'exam') return 'exam'
+  return 'course'
+}
+
+const parseWeekType = (weeks) => {
+  if (!weeks) return ''
+  if (String(weeks).includes('单周')) return '单周'
+  if (String(weeks).includes('双周')) return '双周'
+  return ''
+}
+
+const timeText = (date) => {
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
+
+const sectionFromTime = (value, boundary) => {
+  const sectionTimes = [
+    ['08:00', '08:45'],
+    ['08:50', '09:35'],
+    ['10:00', '10:45'],
+    ['10:50', '11:35'],
+    ['11:40', '12:25'],
+    ['13:25', '14:10'],
+    ['14:15', '15:00'],
+    ['15:05', '15:50'],
+    ['16:15', '17:00'],
+    ['17:05', '17:50'],
+    ['18:50', '19:35'],
+    ['19:40', '20:25'],
+    ['20:30', '21:15']
+  ]
+  const index = sectionTimes.findIndex((item) => item[boundary === 'start' ? 0 : 1] === value)
+  return index >= 0 ? index + 1 : ''
 }
 
 const exportIcs = async () => {
@@ -375,12 +533,7 @@ const exportIcs = async () => {
   try {
     const baseUrl = import.meta.env.VITE_API_BASE_URL || '/api/v1'
     const token = localStorage.getItem('token')
-    const monday = getMonday(weekOffset.value)
-    const sunday = new Date(monday)
-    sunday.setDate(sunday.getDate() + 6)
-    const pad = (n) => String(n).padStart(2, '0')
-    const fmt = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
-    const response = await fetch(`${baseUrl}/schedules/export-ics?start_date=${fmt(monday)}&end_date=${fmt(sunday)}`, {
+    const response = await fetch(`${baseUrl}/schedules/export-ics/file`, {
       headers: token ? { Authorization: `Bearer ${token}` } : {}
     })
     if (!response.ok) throw new Error('导出失败')
@@ -388,7 +541,7 @@ const exportIcs = async () => {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `schedule_${fmt(monday)}_${fmt(sunday)}.ics`
+    a.download = 'schedule.ics'
     a.click()
     URL.revokeObjectURL(url)
     ElMessage.success('导出成功')
@@ -546,6 +699,12 @@ onMounted(fetchSchedules)
   flex-direction: column;
   min-height: 16px;
   border-left: 3px solid transparent;
+  cursor: pointer;
+}
+
+.timeline-event:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .timeline-event.course {
@@ -702,6 +861,37 @@ onMounted(fetchSchedules)
 }
 
 .dialog-item p { margin: 4px 0 0; font-size: 12px; }
+
+.dialog-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.dialog-title strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.event-detail {
+  display: grid;
+  gap: 16px;
+}
+
+.course-delete-panel {
+  display: grid;
+  gap: 10px;
+}
+
+.course-delete-panel h4 {
+  margin: 0;
+}
+
+.delete-scope-group {
+  display: flex;
+  flex-wrap: wrap;
+}
 
 [data-theme="dark"] .course-dot   { background: #7a9ed3; }
 [data-theme="dark"] .activity-dot { background: #8bc4a0; }

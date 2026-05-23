@@ -304,7 +304,14 @@ Authorization: Bearer <token>
 
 ### `GET /api/v1/courses/template`
 
-返回课表导入模板，供前端展示和下载。
+返回课表导入模板，供前端展示和下载。响应包含：
+
+| 字段 | 说明 |
+| --- | --- |
+| `headers` / `rows` / `csv` | 普通 CSV 模板 |
+| `zju_title` / `zju_headers` / `zju_rows` / `zju_csv` | 教务导出示例，结构与 `课表_3230106240.xlsx` 类似 |
+| `supported_extensions` | 支持的文件后缀：`.csv`、`.xlsx`、`.xlsm` |
+| `notes` | 导入注意事项 |
 
 ### `POST /api/v1/courses/ocr`
 

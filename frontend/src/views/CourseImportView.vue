@@ -10,25 +10,33 @@
           <el-upload
             ref="uploadRef"
             drag
+            action="#"
             :auto-upload="false"
             :limit="1"
-            accept=".csv,.xlsx,.xls"
+            accept=".csv,.xlsx,.xlsm"
             :on-change="handleFileChange"
             :on-remove="handleFileRemove"
+            :on-exceed="handleExceed"
           >
             <el-icon class="upload-icon"><UploadFilled /></el-icon>
             <p>拖拽 CSV / Excel 文件到这里</p>
-            <small class="faint">支持 .csv / .xlsx / .xls 格式</small>
+            <small class="faint">支持 .csv / .xlsx / .xlsm，教务导出的课表可直接上传</small>
           </el-upload>
           <div class="upload-actions">
             <el-button type="primary" :loading="uploading" @click="submitFile" :disabled="!fileReady">
-              上传并解析
+              上传并导入
             </el-button>
-            <el-button @click="showTemplate">查看示例模板</el-button>
           </div>
 
-          <div v-if="parseResult" class="parse-result">
-            <h4>解析结果</h4>
+          <div v-if="importSummary" class="import-summary">
+            <strong>导入完成</strong>
+            <p class="faint">
+              成功 {{ importSummary.imported_count }} 条，跳过 {{ importSummary.skipped_count }} 条。
+            </p>
+          </div>
+
+          <div v-if="parseResult.length" class="parse-result">
+            <h4>已导入课程</h4>
             <el-table :data="parseResult" size="small" max-height="300">
               <el-table-column prop="course_name" label="课程名" />
               <el-table-column prop="teacher" label="教师" width="100" />
@@ -40,17 +48,21 @@
               </el-table-column>
               <el-table-column prop="location" label="教室" width="100" />
             </el-table>
-            <div class="parse-actions">
-              <el-button type="primary" size="small" :loading="saving" @click="saveCourses">
-                确认导入
-              </el-button>
-              <el-button size="small" @click="parseResult = null">清除重选</el-button>
-            </div>
+          </div>
+
+          <div v-if="importErrors.length" class="parse-warning">
+            <strong>跳过说明</strong>
+            <ul>
+              <li v-for="item in importErrors" :key="item">{{ item }}</li>
+            </ul>
           </div>
 
           <div v-if="parseError" class="parse-error">
-            <p>{{ parseError }}</p>
-            <el-button size="small" @click="parseError = ''">重试</el-button>
+            <div>
+              <strong>导入失败</strong>
+              <p>{{ parseError }}</p>
+            </div>
+            <el-button size="small" @click="parseError = ''">关闭</el-button>
           </div>
         </div>
 
@@ -78,9 +90,9 @@
               </el-col>
             </el-row>
             <el-form-item label="节次">
-              <el-input-number v-model="manualForm.start_section" :min="1" :max="12" size="small" />
+              <el-input-number v-model="manualForm.start_section" :min="1" :max="13" size="small" />
               <span class="range-sep">&ndash;</span>
-              <el-input-number v-model="manualForm.end_section" :min="1" :max="12" size="small" />
+              <el-input-number v-model="manualForm.end_section" :min="1" :max="13" size="small" />
             </el-form-item>
             <el-form-item>
               <el-button type="primary" size="small" :loading="manualSaving" @click="addManualCourse">
@@ -88,12 +100,6 @@
               </el-button>
             </el-form-item>
           </el-form>
-
-          <div class="divider"></div>
-          <div class="format-hint">
-            <strong>文件格式说明</strong>
-            <p class="faint">支持 CSV / Excel，包含列：课程名、星期(1-7)、节次(如 1-2)、起止时间、教室、授课教师。</p>
-          </div>
         </div>
       </div>
     </div>
@@ -107,12 +113,14 @@ import { UploadFilled } from '@element-plus/icons-vue'
 import { importCourses, createCourse } from '../api/courses'
 
 const uploadRef = ref(null)
+const selectedFile = ref(null)
 const fileReady = ref(false)
 const uploading = ref(false)
-const saving = ref(false)
 const manualSaving = ref(false)
-const parseResult = ref(null)
+const parseResult = ref([])
 const parseError = ref('')
+const importErrors = ref([])
+const importSummary = ref(null)
 
 const manualForm = reactive({
   course_name: '',
@@ -123,54 +131,75 @@ const manualForm = reactive({
   location: ''
 })
 
-const handleFileChange = () => {
-  parseResult.value = null
+const isAllowedFile = (file) => {
+  const name = file?.name?.toLowerCase() || ''
+  return name.endsWith('.csv') || name.endsWith('.xlsx') || name.endsWith('.xlsm')
+}
+
+const handleFileChange = (file) => {
+  const rawFile = file?.raw
+  parseResult.value = []
   parseError.value = ''
+  importErrors.value = []
+  importSummary.value = null
+  if (!rawFile || !isAllowedFile(rawFile)) {
+    selectedFile.value = null
+    fileReady.value = false
+    uploadRef.value?.clearFiles()
+    parseError.value = '文件格式不支持。请上传 .csv、.xlsx 或 .xlsm 文件；旧版 .xls 请另存为 .xlsx 后再导入。'
+    return
+  }
+  selectedFile.value = rawFile
   fileReady.value = true
 }
 
 const handleFileRemove = () => {
+  selectedFile.value = null
   fileReady.value = false
-  parseResult.value = null
+  parseResult.value = []
   parseError.value = ''
+  importErrors.value = []
+  importSummary.value = null
+}
+
+const handleExceed = (files) => {
+  const file = files?.[0]
+  uploadRef.value?.clearFiles()
+  if (file) {
+    uploadRef.value?.handleStart(file)
+    handleFileChange({ raw: file })
+  }
 }
 
 const submitFile = async () => {
-  if (!uploadRef.value) return
-  const files = uploadRef.value.uploadFiles
-  if (!files.length) {
-    ElMessage.warning('请先选择文件')
+  if (!selectedFile.value) {
+    ElMessage.warning('请先选择一个 .csv、.xlsx 或 .xlsm 课表文件。')
     return
   }
   uploading.value = true
   parseError.value = ''
+  importErrors.value = []
+  importSummary.value = null
   try {
     const formData = new FormData()
-    formData.append('file', files[0].raw)
+    formData.append('file', selectedFile.value)
     const res = await importCourses(formData)
-    parseResult.value = res.data?.courses || res.data?.items || res.data || []
-    ElMessage.success(`解析成功，共 ${parseResult.value.length} 门课程`)
-  } catch {
-    parseError.value = '文件上传或解析失败，请检查文件格式'
+    const data = res.data || {}
+    parseResult.value = data.courses || []
+    importErrors.value = data.errors || []
+    importSummary.value = data
+    if (data.imported_count > 0) {
+      ElMessage.success(`已导入 ${data.imported_count} 条课程日程`)
+    } else {
+      ElMessage.warning('没有导入新课程，请查看跳过说明或检查文件内容。')
+    }
+    uploadRef.value?.clearFiles()
+    selectedFile.value = null
+    fileReady.value = false
+  } catch (err) {
+    parseError.value = err?.message || '文件上传或解析失败，请检查文件格式。'
   } finally {
     uploading.value = false
-  }
-}
-
-const saveCourses = async () => {
-  saving.value = true
-  try {
-    for (const course of parseResult.value) {
-      await createCourse(course)
-    }
-    ElMessage.success(`成功导入 ${parseResult.value.length} 门课程`)
-    parseResult.value = null
-    uploadRef.value?.clearFiles()
-    fileReady.value = false
-  } catch {
-    ElMessage.error('保存课程失败')
-  } finally {
-    saving.value = false
   }
 }
 
@@ -189,10 +218,6 @@ const addManualCourse = async () => {
   } catch { /* 拦截器已处理 */ } finally {
     manualSaving.value = false
   }
-}
-
-const showTemplate = () => {
-  ElMessage.info('示例格式：课程名,星期,开始节次,结束节次,教师,教室')
 }
 </script>
 
@@ -224,8 +249,16 @@ const showTemplate = () => {
   gap: 12px;
 }
 
+.import-summary,
 .parse-result {
   margin-top: 8px;
+}
+
+.import-summary {
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  background: var(--success-light);
+  border: 1px solid #b8d8c3;
 }
 
 .parse-result h4 {
@@ -233,12 +266,7 @@ const showTemplate = () => {
   font-size: 14px;
 }
 
-.parse-actions {
-  margin-top: 10px;
-  display: flex;
-  gap: 8px;
-}
-
+.parse-warning,
 .parse-error {
   margin-top: 10px;
   padding: 12px;
@@ -253,6 +281,18 @@ const showTemplate = () => {
   gap: 10px;
 }
 
+.parse-warning {
+  display: block;
+  color: var(--warning);
+  background: var(--warning-light);
+  border-color: #ebd5b0;
+}
+
+.parse-warning ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+}
+
 .parse-error p { margin: 0; }
 
 .manual-card {
@@ -265,27 +305,8 @@ const showTemplate = () => {
   color: var(--text-tertiary);
 }
 
-.format-hint {
-  padding: 12px;
-  border-radius: var(--radius-sm);
-  background: var(--warning-light);
-  border: 1px solid #ebd5b0;
-}
-
-.format-hint strong {
-  display: block;
-  font-size: 13px;
-  margin-bottom: 4px;
-}
-
-.format-hint p { font-size: 12px; }
-
 [data-theme="dark"] .parse-error {
   border-color: #5a3a38;
-}
-
-[data-theme="dark"] .format-hint {
-  border-color: #5a4a2a;
 }
 
 @media (max-width: 960px) {

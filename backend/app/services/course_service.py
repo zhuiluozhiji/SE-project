@@ -54,10 +54,29 @@ COURSE_TEMPLATE_ROWS = [
     ["软件工程", "周二", "3-4", "玉泉曹楼", "李老师", "1-16"],
     ["数据库系统", "周三", "6-7", "紫金港东2", "王老师", "1-16"],
 ]
-ZJU_TEMPLATE_COLUMNS = ["课程代码", "课程名称", "教师姓名", "学期", "上课时间", "上课地点"]
+ZJU_TEMPLATE_TITLE = "2025-2026学年春夏学期某某的课表"
+ZJU_TEMPLATE_COLUMNS = ["课程代码", "课程名称", "教师姓名", "学期", "上课时间", "上课地点", "选课时间", "选课志愿"]
 ZJU_TEMPLATE_ROWS = [
-    ["CS3100M", "编译原理", "刘老师", "春夏", "周一第3,4,5节;周三第1,2节", "玉泉教4-310;玉泉曹光彪西-503"],
-    ["CS3221M", "自然语言处理导论", "汤老师", "春夏", "周二第3,4节{单周};周二第3,4,5节{双周}", "玉泉教1-234;玉泉教1-234"],
+    [
+        "CS3100M",
+        "编译原理",
+        "刘老师",
+        "春夏",
+        "周一第3,4,5节;周三第1,2节",
+        "玉泉教4-310;玉泉曹光彪西-503",
+        "2025-12-19 11:59:10",
+        "1.0",
+    ],
+    [
+        "CS3221M",
+        "自然语言处理导论",
+        "汤老师",
+        "春夏",
+        "周二第3,4节{单周};周二第3,4,5节{双周};周四第1,2节",
+        "玉泉教1-234;玉泉教1-234;玉泉曹光彪西-503",
+        "2026-03-04 22:26:30",
+        "1.0",
+    ],
 ]
 WEEKDAY_MAP = {
     "一": 1,
@@ -249,7 +268,9 @@ def parse_course_file(filename: str, content: bytes) -> list[dict[str, Any]]:
         return parse_csv_courses(content)
     if suffix in {".xlsx", ".xlsm"}:
         return parse_excel_courses(content)
-    raise ValueError("仅支持 CSV 或 XLSX 课表文件")
+    if suffix == ".xls":
+        raise ValueError("暂不支持旧版 .xls 文件，请在 Excel/WPS 中另存为 .xlsx 后重新上传。")
+    raise ValueError("仅支持 .csv、.xlsx 或 .xlsm 课表文件。")
 
 
 def parse_csv_courses(content: bytes) -> list[dict[str, Any]]:
@@ -559,17 +580,34 @@ def split_locations(value: Any) -> list[str]:
 
 
 def build_course_template_example() -> dict:
+    standard_csv = "\n".join(
+        [
+            ",".join(COURSE_TEMPLATE_COLUMNS),
+            *[",".join(row) for row in COURSE_TEMPLATE_ROWS],
+        ]
+    )
+    zju_csv = "\n".join(
+        [
+            ZJU_TEMPLATE_TITLE,
+            ",".join(ZJU_TEMPLATE_COLUMNS),
+            *[",".join(row) for row in ZJU_TEMPLATE_ROWS],
+        ]
+    )
     return {
         "headers": COURSE_TEMPLATE_COLUMNS,
         "rows": COURSE_TEMPLATE_ROWS,
-        "csv": "\n".join(
-            [
-                ",".join(COURSE_TEMPLATE_COLUMNS),
-                *[",".join(row) for row in COURSE_TEMPLATE_ROWS],
-            ]
-        ),
+        "csv": standard_csv,
         "zju_headers": ZJU_TEMPLATE_COLUMNS,
         "zju_rows": ZJU_TEMPLATE_ROWS,
+        "zju_title": ZJU_TEMPLATE_TITLE,
+        "zju_csv": zju_csv,
+        "supported_extensions": [".csv", ".xlsx", ".xlsm"],
+        "notes": [
+            "普通模板至少需要：课程名、星期、节次。",
+            "教务导出格式可直接上传，例如课表_3230106240.xlsx。",
+            "教务导出表头需包含：课程名称、教师姓名、上课时间、上课地点。",
+            "多个上课时段会自动拆分，地点会按分号顺序匹配。",
+        ],
     }
 
 
