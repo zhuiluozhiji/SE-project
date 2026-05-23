@@ -21,19 +21,26 @@ def list_activities(
     page_size: int = Query(10, ge=1, le=100),
     db: Session = Depends(get_db),
 ):
-    return success(
-        list_activities_from_db(
-            db=db,
-            keyword=keyword,
-            category=category,
-            campus=campus,
-            college=college,
-            tag=tag,
-            sort_by=sort_by,
-            page=page,
-            page_size=page_size,
-        )
+    result = list_activities_from_db(
+        db=db,
+        keyword=keyword,
+        category=category,
+        campus=campus,
+        college=college,
+        tag=tag,
+        sort_by=sort_by,
+        page=page,
+        page_size=page_size,
     )
+    result["filters"] = {
+        "keyword": keyword,
+        "category": category,
+        "campus": campus,
+        "college": college,
+        "tag": tag,
+        "sort_by": sort_by,
+    }
+    return success(result)
 
 
 @router.get("/{activity_id}")

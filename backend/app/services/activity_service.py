@@ -120,3 +120,27 @@ def get_activity(db: Session, activity_id: int) -> dict | None:
         return None
     tags_by_activity = _load_tags(db, [activity.id])
     return _activity_to_dict(activity, tags_by_activity.get(activity.id, []))
+
+
+def list_activities_mock() -> list[dict]:
+    return [
+        {
+            "id": 101,
+            "title": "人工智能前沿讲座",
+            "description": "围绕大模型、智能体和可信 AI 的前沿进展进行分享。",
+            "speaker": "张三教授",
+            "organizer": "计算机科学与技术学院",
+            "college": "计算机科学与技术学院",
+            "category": "讲座",
+            "campus": "紫金港",
+            "location": "紫金港校区西区报告厅",
+            "start_time": "2026-05-10T14:00:00",
+            "end_time": "2026-05-10T16:00:00",
+            "source_url": "https://example.com/activity/101",
+            "source_type": "manual",
+            "hot_score": 87,
+            "recommend_score": 92,
+            "status": "open",
+            "tags": ["人工智能", "计算机"],
+        }
+    ]

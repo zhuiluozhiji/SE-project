@@ -1,19 +1,27 @@
 <template>
   <section class="detail-page fade-in">
-    <div class="hero detail-hero">
+    <div class="hero detail-hero" v-loading="loading">
       <div>
-        <p class="chip">{{ activity.badge }}</p>
+        <p class="chip">{{ activity.status === 'open' ? '开放报名' : '已下架' }}</p>
         <h2 class="hero-title">{{ activity.title }}</h2>
-        <p class="hero-subtitle">主讲人：{{ activity.speaker }}｜组织单位：{{ activity.org }}</p>
+        <p class="hero-subtitle">主讲人：{{ activity.speaker || '待定' }}｜组织单位：{{ activity.organizer || '待定' }}</p>
       </div>
       <div class="action-card">
         <div class="action-top">
-          <span class="chip warning">{{ activity.time }}</span>
-          <span class="muted">{{ activity.location }}</span>
+          <span class="chip warning">{{ shortTime }}</span>
+          <span class="muted">{{ activity.location || '地点待定' }}</span>
         </div>
-        <el-button type="primary" size="large">一键加入日程</el-button>
-        <el-button size="large" @click="openConflict">检测冲突</el-button>
-        <p class="muted">已为你预检 2 个潜在冲突。</p>
+        <el-button
+          type="primary"
+          size="large"
+          :loading="adding"
+          :disabled="!canJoin"
+          @click="joinSchedule(false)"
+        >
+          {{ joined ? '已加入日程' : '一键加入日程' }}
+        </el-button>
+        <el-button size="large" :loading="checking" @click="openConflict">检测冲突</el-button>
+        <p class="muted">{{ conflictSummary }}</p>
       </div>
     </div>
 
@@ -23,16 +31,17 @@
         <div class="info-grid">
           <div>
             <span class="muted">时间</span>
-            <strong>{{ activity.fullTime }}</strong>
+            <strong>{{ fullTime }}</strong>
           </div>
           <div>
             <span class="muted">地点</span>
-            <strong>{{ activity.locationDetail }}</strong>
+            <strong>{{ activity.location || '地点待定' }}</strong>
           </div>
           <div>
             <span class="muted">标签</span>
             <div class="tag-row">
-              <span class="chip" v-for="tag in activity.tags" :key="tag">{{ tag }}</span>
+              <span class="chip" v-for="tag in activity.tags || []" :key="tag">{{ tag }}</span>
+              <span v-if="!activity.tags?.length" class="muted">暂无标签</span>
             </div>
           </div>
         </div>
@@ -40,13 +49,13 @@
 
       <div class="card">
         <h3 class="section-title">活动简介</h3>
-        <p class="muted">{{ activity.summary }}</p>
+        <p class="muted">{{ activity.description || '暂无活动详情。' }}</p>
         <div class="divider"></div>
         <div class="speaker">
-          <div class="avatar">{{ activity.avatar }}</div>
+          <div class="avatar">{{ avatarText }}</div>
           <div>
-            <strong>{{ activity.speaker }}</strong>
-            <p class="muted">研究方向：{{ activity.topic }}</p>
+            <strong>{{ activity.speaker || '待定' }}</strong>
+            <p class="muted">类别：{{ activity.category || '未分类' }}</p>
           </div>
         </div>
       </div>
@@ -55,28 +64,38 @@
     <div class="card conflict-card">
       <div>
         <h3 class="section-title">冲突提示</h3>
-        <p class="muted">{{ activity.conflictSummary }}</p>
+        <p class="muted">{{ conflictSummary }}</p>
       </div>
-      <el-button type="danger" plain @click="openConflict">查看冲突明细</el-button>
+      <el-button type="danger" plain :loading="checking" @click="openConflict">查看冲突明细</el-button>
     </div>
 
     <el-dialog v-model="conflictVisible" class="conflict-dialog" width="520px">
       <template #header>
         <div class="modal-header">
           <h4>冲突明细</h4>
-          <span class="muted">{{ activity.conflicts.length }} 项</span>
+          <span class="muted">{{ conflicts.length }} 项</span>
         </div>
       </template>
       <div class="modal-body">
-        <div class="modal-item" v-for="item in activity.conflicts" :key="item.title">
+        <div v-if="!conflicts.length" class="modal-item">
+          <strong>未检测到冲突</strong>
+          <p class="muted">该活动可以加入日程。</p>
+        </div>
+        <div v-else class="conflict-warning">
+          <strong>检测到时间重叠</strong>
+          <p>继续加入后，日历会把该活动标记为冲突，方便后续处理。</p>
+        </div>
+        <div class="modal-item" v-for="item in conflicts" :key="item.id">
           <strong>{{ item.title }}</strong>
-          <p class="muted">{{ item.time }} · {{ item.location }}</p>
+          <p class="muted">{{ formatRange(item.start_time, item.end_time) }} · {{ item.location || '地点待定' }}</p>
         </div>
       </div>
       <template #footer>
         <div class="modal-actions">
           <el-button @click="conflictVisible = false">取消</el-button>
-          <el-button type="primary">仍要加入</el-button>
+          <el-button type="primary" :loading="adding" @click="joinSchedule(conflicts.length > 0)">
+            {{ conflicts.length ? '仍要加入' : '加入日程' }}
+          </el-button>
         </div>
       </template>
     </el-dialog>
@@ -84,135 +103,117 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
+import { ElMessage } from 'element-plus'
+import { getActivityDetail } from '../api/activities'
+import { addActivityToSchedule, checkConflict } from '../api/schedules'
 
 const route = useRoute()
+const activity = ref({})
+const conflicts = ref([])
 const conflictVisible = ref(false)
+const loading = ref(false)
+const checking = ref(false)
+const adding = ref(false)
+const checked = ref(false)
+const joined = ref(false)
 
-const openConflict = () => {
-  conflictVisible.value = true
-}
-
-const activityMap = {
-  1: {
-    title: 'AI 赋能城市治理：从算法到公共服务',
-    badge: '开放报名',
-    speaker: '王昱教授（公共管理学院）',
-    org: '公共政策研究中心',
-    time: '今天 15:00',
-    fullTime: '2026-05-01 15:00 - 17:00',
-    location: '紫金港 · 行政楼',
-    locationDetail: '紫金港 · 行政楼 A302',
-    tags: ['人工智能', '城市治理', '跨学科'],
-    summary: '聚焦城市治理智能化转型，讨论数据治理、算法应用与公共服务协同路径。',
-    avatar: 'WY',
-    topic: '城市数据治理、公共政策分析',
-    conflictSummary: '检测到与“科研方法论课程”时间重叠 45 分钟，可选择继续加入。',
-    conflicts: [
-      { title: '科研方法论课程', time: '14:30 - 16:15', location: '教学楼 2A' },
-      { title: '学术写作小组讨论', time: '15:50 - 16:30', location: '线上会议' }
-    ]
-  },
-  2: {
-    title: '量子信息前沿报告：纠缠与计算的新突破',
-    badge: '推荐',
-    speaker: '赵谨教授（信息学院）',
-    org: '量子信息实验室',
-    time: '明天 10:30',
-    fullTime: '2026-05-02 10:30 - 12:00',
-    location: '玉泉 · 信息学院报告厅',
-    locationDetail: '玉泉 · 信息学院报告厅',
-    tags: ['量子计算', '前沿报告'],
-    summary: '面向研究生与青年学者的前沿分享，涵盖纠缠实验与量子算法最新成果。',
-    avatar: 'ZJ',
-    topic: '量子算法、纠缠实验',
-    conflictSummary: '检测到与“科研导师组会”时间冲突 30 分钟，可选择继续加入。',
-    conflicts: [
-      { title: '科研导师组会', time: '10:00 - 11:00', location: '信息学院 B201' }
-    ]
-  },
-  3: {
-    title: '社会科学数据分析工作坊',
-    badge: '名额紧张',
-    speaker: '刘珊副教授（社会学院）',
-    org: '数据方法中心',
-    time: '本周三 13:30',
-    fullTime: '2026-05-03 13:30 - 16:30',
-    location: '西溪 · 人文楼 402',
-    locationDetail: '西溪 · 人文楼 402',
-    tags: ['数据分析', '工作坊'],
-    summary: '结合真实调查数据讲解研究设计、清洗与可视化流程。',
-    avatar: 'LS',
-    topic: '社会科学研究方法、数据可视化',
-    conflictSummary: '检测到与“统计建模课程”时间重叠 60 分钟，可选择继续加入。',
-    conflicts: [
-      { title: '统计建模课程', time: '13:00 - 15:00', location: '线上课堂' },
-      { title: '实验室例会', time: '15:00 - 15:30', location: '社会学院会议室' }
-    ]
-  },
-  4: {
-    title: '新生科研导航：如何选择研究方向',
-    badge: '开放报名',
-    speaker: '孙廷博士（学术发展中心）',
-    org: '学术发展中心',
-    time: '本周四 18:00',
-    fullTime: '2026-05-04 18:00 - 19:30',
-    location: '紫金港 · 学术交流中心',
-    locationDetail: '紫金港 · 学术交流中心',
-    tags: ['科研规划', '新生'],
-    summary: '面向新生的科研入门交流，帮助建立研究方向与方法论意识。',
-    avatar: 'ST',
-    topic: '科研规划、学术训练',
-    conflictSummary: '检测到与“学院新生班会”时间冲突 20 分钟，可选择继续加入。',
-    conflicts: [
-      { title: '学院新生班会', time: '18:00 - 18:50', location: '学术交流中心 301' }
-    ]
-  },
-  5: {
-    title: '人文社科青年论坛',
-    badge: '学院推荐',
-    speaker: '周涵副教授（人文学院）',
-    org: '人文学院',
-    time: '本周五 14:00',
-    fullTime: '2026-05-05 14:00 - 16:00',
-    location: '西溪 · 文科楼 201',
-    locationDetail: '西溪 · 文科楼 201',
-    tags: ['人文社科', '论坛'],
-    summary: '围绕学术表达与跨学科协作，邀请多学院青年学者对话。',
-    avatar: 'ZH',
-    topic: '学术表达、跨学科协作',
-    conflictSummary: '检测到与“学术写作课”时间重叠 30 分钟，可选择继续加入。',
-    conflicts: [
-      { title: '学术写作课', time: '13:30 - 15:00', location: '文科楼 101' },
-      { title: '导师例会', time: '15:30 - 16:00', location: '人文学院会议室' }
-    ]
-  },
-  6: {
-    title: '科研写作与国际投稿策略分享',
-    badge: '热门',
-    speaker: '陈亦文教授（信息学院）',
-    org: '学术发展中心',
-    time: '本周六 16:00',
-    fullTime: '2026-05-06 16:00 - 18:00',
-    location: '玉泉 · 图书馆报告厅',
-    locationDetail: '玉泉 · 图书馆报告厅',
-    tags: ['学术写作', '科研训练'],
-    summary: '从选刊、投稿到审稿回复，提供实操策略与案例拆解。',
-    avatar: 'CY',
-    topic: '知识管理、AI 写作辅助、人机协作',
-    conflictSummary: '检测到与“科研伦理课程”时间重叠 45 分钟，可选择继续加入。',
-    conflicts: [
-      { title: '科研伦理课程', time: '16:00 - 17:00', location: '图书馆 B201' },
-      { title: '学院读书会', time: '17:30 - 18:00', location: '线上会议' }
-    ]
+const loadActivity = async () => {
+  loading.value = true
+  try {
+    const res = await getActivityDetail(route.params.id)
+    if (res.code === 0) {
+      activity.value = res.data
+    } else {
+      ElMessage.error(res.message || '活动加载失败')
+    }
+  } finally {
+    loading.value = false
   }
 }
 
-const activity = computed(() => {
-  const id = Number(route.params.id)
-  return activityMap[id] || activityMap[1]
+const openConflict = async () => {
+  checking.value = true
+  try {
+    const res = await checkConflict({ activity_id: Number(route.params.id) })
+    if (res.code === 0) {
+      conflicts.value = res.data.conflicts || []
+      checked.value = true
+      conflictVisible.value = true
+    } else {
+      ElMessage.error(res.message || '冲突检测失败')
+    }
+  } finally {
+    checking.value = false
+  }
+}
+
+const joinSchedule = async (forceAdd) => {
+  adding.value = true
+  try {
+    const res = await addActivityToSchedule({
+      activity_id: Number(route.params.id),
+      force_add: forceAdd
+    })
+    if (res.code === 0) {
+      conflicts.value = res.data.conflicts || []
+      checked.value = true
+      conflictVisible.value = false
+      joined.value = true
+      if (res.data.already_exists) {
+        ElMessage.info('这个活动已经在你的日程中。')
+      } else {
+        ElMessage.success(res.data.has_conflict ? '已加入日程，并标记为冲突' : '已加入日程')
+      }
+    } else if (res.code === 3003) {
+      await openConflict()
+      ElMessage.warning(res.message)
+    } else {
+      ElMessage.error(res.message || '加入日程失败')
+    }
+  } finally {
+    adding.value = false
+  }
+}
+
+const shortTime = computed(() => {
+  if (!activity.value.start_time) return '时间待定'
+  const date = new Date(activity.value.start_time)
+  return `${date.getMonth() + 1}/${date.getDate()} ${date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}`
 })
+
+const fullTime = computed(() => {
+  if (!activity.value.start_time || !activity.value.end_time) return '时间待定'
+  return formatRange(activity.value.start_time, activity.value.end_time)
+})
+
+const avatarText = computed(() => {
+  return (activity.value.speaker || activity.value.title || '活动').slice(0, 2)
+})
+
+const conflictSummary = computed(() => {
+  if (!canJoin.value) return '该活动缺少时间信息或已不可加入。'
+  if (joined.value) return '该活动已经在你的日程中。'
+  if (!checked.value) return '点击检测冲突后，可查看该活动与课程或已有日程的重叠情况。'
+  if (!conflicts.value.length) return '未检测到时间冲突。'
+  return `检测到 ${conflicts.value.length} 个时间冲突，可确认后继续加入。`
+})
+
+const canJoin = computed(() => {
+  return activity.value.status === 'open' && activity.value.start_time && activity.value.end_time
+})
+
+const formatRange = (start, end) => {
+  const startDate = new Date(start)
+  const endDate = new Date(end)
+  const date = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}-${String(startDate.getDate()).padStart(2, '0')}`
+  const startTime = startDate.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
+  const endTime = endDate.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
+  return `${date} ${startTime} - ${endTime}`
+}
+
+onMounted(loadActivity)
 </script>
 
 <style scoped>
@@ -241,6 +242,7 @@ const activity = computed(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
 }
 
 .detail-grid {
@@ -292,7 +294,6 @@ const activity = computed(() => {
   border-color: #f0d1c8;
 }
 
-
 .conflict-dialog :deep(.el-dialog) {
   border-radius: 16px;
   border: 1px solid #eadac6;
@@ -318,6 +319,18 @@ const activity = computed(() => {
   border: 1px solid #e2d3c0;
 }
 
+.conflict-warning {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #fff4f1;
+  border: 1px solid #f0d1c8;
+}
+
+.conflict-warning p {
+  margin: 4px 0 0;
+  color: #8a3a2b;
+}
+
 .modal-actions {
   display: flex;
   justify-content: flex-end;
@@ -328,6 +341,11 @@ const activity = computed(() => {
 @media (max-width: 960px) {
   .detail-hero {
     grid-template-columns: 1fr;
+  }
+
+  .conflict-card {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }
 </style>
