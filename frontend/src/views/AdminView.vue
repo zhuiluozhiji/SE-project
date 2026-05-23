@@ -1,29 +1,21 @@
 <template>
   <section class="admin-page fade-in">
-    <div class="page-panel admin-header">
+    <div class="page-panel admin-top">
       <div>
         <h2 class="page-title">后台管理</h2>
-        <p class="muted">活动维护、标签修正与爬虫记录统一管理。</p>
+        <p class="muted">活动维护、标签修正与爬虫任务统一管理。</p>
       </div>
-      <el-space>
+      <div class="admin-actions">
         <el-button type="primary" @click="openActivityDialog()">新增活动</el-button>
         <el-button :loading="crawlerRunning" @click="runCrawler">触发爬虫</el-button>
         <el-button @click="showCrawlerLogs = true">查看日志</el-button>
-      </el-space>
-    </div>
-
-    <div class="stats-grid">
-      <div class="card stat-card" v-for="item in stats" :key="item.label">
-        <p class="muted">{{ item.label }}</p>
-        <h3>{{ item.value }}</h3>
-        <span class="chip" :class="item.level">{{ item.tag }}</span>
       </div>
     </div>
 
     <div class="card admin-table" v-loading="loading">
-      <div class="table-header">
-        <h3 class="section-title">活动管理列表</h3>
-        <el-input v-model="searchTitle" placeholder="搜索活动标题" class="table-search" clearable @input="filterTable" />
+      <div class="table-top">
+        <h3 class="section-title">活动管理</h3>
+        <el-input v-model="searchTitle" placeholder="搜索活动标题..." class="table-search" clearable />
       </div>
       <el-table :data="displayedRows" style="width: 100%" stripe>
         <el-table-column prop="title" label="活动标题" min-width="200" />
@@ -49,6 +41,7 @@
       </el-table>
     </div>
 
+    <!-- 新增/编辑弹窗 -->
     <el-dialog v-model="activityDialogVisible" :title="editingActivity ? '编辑活动' : '新增活动'" width="600px">
       <el-form :model="activityForm" label-width="100px">
         <el-form-item label="活动标题">
@@ -60,20 +53,26 @@
         <el-form-item label="组织单位">
           <el-input v-model="activityForm.organizer" placeholder="承办单位" />
         </el-form-item>
-        <el-form-item label="校区">
-          <el-select v-model="activityForm.campus" placeholder="选择校区">
-            <el-option label="紫金港" value="紫金港" />
-            <el-option label="玉泉" value="玉泉" />
-            <el-option label="西溪" value="西溪" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="类别">
-          <el-select v-model="activityForm.category" placeholder="选择类别">
-            <el-option label="学术讲座" value="学术讲座" />
-            <el-option label="研讨会" value="研讨会" />
-            <el-option label="工作坊" value="工作坊" />
-          </el-select>
-        </el-form-item>
+        <el-row :gutter="16">
+          <el-col :span="12">
+            <el-form-item label="校区">
+              <el-select v-model="activityForm.campus" placeholder="选择校区">
+                <el-option label="紫金港" value="紫金港" />
+                <el-option label="玉泉" value="玉泉" />
+                <el-option label="西溪" value="西溪" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="类别">
+              <el-select v-model="activityForm.category" placeholder="选择类别">
+                <el-option label="学术讲座" value="学术讲座" />
+                <el-option label="研讨会" value="研讨会" />
+                <el-option label="工作坊" value="工作坊" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
         <el-form-item label="地点">
           <el-input v-model="activityForm.location" placeholder="具体地点" />
         </el-form-item>
@@ -95,6 +94,7 @@
       </template>
     </el-dialog>
 
+    <!-- 爬虫日志弹窗 -->
     <el-dialog v-model="showCrawlerLogs" title="爬虫运行记录" width="700px">
       <el-table :data="crawlerRecords" v-loading="crawlerLogsLoading">
         <el-table-column prop="source" label="来源" width="120" />
@@ -141,18 +141,8 @@ const defaultForm = () => ({
 
 const activityForm = reactive(defaultForm())
 
-const stats = [
-  { label: '今日新增', value: '-- 场', tag: '爬虫 -- | 手动 --', level: '' },
-  { label: '待审核', value: '-- 场', tag: '需人工确认', level: 'warning' },
-  { label: '已下架', value: '-- 场', tag: '状态同步完成', level: '' }
-]
-
 const statusMap = {
-  open: '可加入',
-  full: '已满',
-  closed: '已结束',
-  offline: '已下架',
-  draft: '草稿'
+  open: '可加入', full: '已满', closed: '已结束', offline: '已下架', draft: '草稿'
 }
 const statusLabel = (s) => statusMap[s] || s
 
@@ -169,17 +159,12 @@ const displayedRows = computed(() => {
   return activities.value.filter((a) => (a.title || '').toLowerCase().includes(kw))
 })
 
-const filterTable = () => {}
-
 const fetchActivities = async () => {
   loading.value = true
   try {
     const res = await getActivities({ page: 1, page_size: 100 })
     activities.value = res.data?.items || res.data?.activities || res.data || []
-    stats[0].value = `${activities.value.length} 场`
-  } catch {
-    // 错误已在拦截器中处理
-  } finally {
+  } catch { /* 拦截器已处理 */ } finally {
     loading.value = false
   }
 }
@@ -220,9 +205,7 @@ const submitActivity = async () => {
     }
     activityDialogVisible.value = false
     fetchActivities()
-  } catch {
-    // 错误已在拦截器中处理
-  } finally {
+  } catch { /* 拦截器已处理 */ } finally {
     savingActivity.value = false
   }
 }
@@ -232,9 +215,7 @@ const handleOffline = async (id) => {
     await offlineActivity(id)
     ElMessage.success('活动已下架')
     fetchActivities()
-  } catch {
-    // 错误已在拦截器中处理
-  }
+  } catch { /* 拦截器已处理 */ }
 }
 
 const runCrawler = async () => {
@@ -242,9 +223,7 @@ const runCrawler = async () => {
   try {
     await runCrawlerApi({ source: 'cs_zju' })
     ElMessage.success('爬虫任务已触发')
-  } catch {
-    // 错误已在拦截器中处理
-  } finally {
+  } catch { /* 拦截器已处理 */ } finally {
     crawlerRunning.value = false
   }
 }
@@ -258,10 +237,17 @@ onMounted(fetchActivities)
   gap: 20px;
 }
 
-.admin-header {
+.admin-top {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.admin-actions {
+  display: flex;
+  gap: 10px;
 }
 
 .admin-table {
@@ -269,7 +255,7 @@ onMounted(fetchActivities)
   gap: 12px;
 }
 
-.table-header {
+.table-top {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -277,5 +263,12 @@ onMounted(fetchActivities)
 
 .table-search {
   width: 240px;
+}
+
+@media (max-width: 960px) {
+  .admin-top {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 }
 </style>

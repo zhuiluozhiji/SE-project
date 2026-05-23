@@ -1,78 +1,61 @@
 <template>
   <section class="home-page fade-in">
     <div class="hero">
-      <div>
-        <p class="chip">AI 推荐引擎就绪</p>
-        <h2 class="hero-title">今天也有值得参加的学术活动</h2>
-        <p class="hero-subtitle">
-          从兴趣标签、热门趋势与学院动态中发现最匹配的讲座、研讨会与学术沙龙。
+      <div class="hero-body">
+        <span class="hero-kicker">Campus Academic Events</span>
+        <h2 class="hero-title">发现属于你的学术活动</h2>
+        <p class="hero-desc">
+          基于兴趣标签与学术轨迹，从全校讲座、研讨会与沙龙中为你筛选最相关的活动。
         </p>
         <div class="hero-actions">
-          <el-button type="primary" @click="$router.push('/activities')">立即探索</el-button>
-          <el-button @click="$router.push('/courses/import')">导入课表</el-button>
+          <el-button type="primary" size="large" @click="$router.push('/activities')">立即探索</el-button>
+          <el-button size="large" @click="$router.push('/courses/import')">导入课表</el-button>
         </div>
       </div>
-      <div class="hero-card">
-        <h3>本周你的日程概览</h3>
-        <div class="hero-metrics">
-          <div>
-            <strong>{{ stats.totalActivities || '--' }}</strong>
-            <span>学术活动</span>
-          </div>
-          <div>
-            <strong>{{ stats.conflicts || '--' }}</strong>
-            <span>课程冲突</span>
-          </div>
-          <div>
-            <strong>{{ stats.matched || '--' }}</strong>
-            <span>推荐匹配</span>
-          </div>
+      <div class="hero-stats">
+        <div class="hero-stat" v-for="s in heroStats" :key="s.label">
+          <strong>{{ s.value }}</strong>
+          <span>{{ s.label }}</span>
         </div>
-        <p class="muted">建议优先参加"可解释推荐"标注的活动。</p>
-      </div>
-    </div>
-
-    <div class="stats-grid">
-      <div class="card stat-card" v-for="item in statCards" :key="item.label">
-        <p class="muted">{{ item.label }}</p>
-        <h3>{{ item.value }}</h3>
-        <span class="chip" :class="item.type">{{ item.tag }}</span>
       </div>
     </div>
 
     <div class="section">
-      <div class="section-header">
-        <h3 class="section-title">今日推荐</h3>
-        <el-button text @click="$router.push('/activities?sort=recommend')">查看全部</el-button>
+      <div class="section-head">
+        <h3 class="section-title">为你推荐</h3>
+        <el-button text type="primary" @click="$router.push('/activities?sort=recommend')">查看全部</el-button>
       </div>
 
-      <div v-if="loading" class="card-grid recommendation-grid">
+      <div v-if="loading" class="card-grid rec-grid">
         <div class="card skeleton" v-for="n in 3" :key="n">
-          <div class="skeleton-line w-60"></div>
-          <div class="skeleton-line w-80"></div>
-          <div class="skeleton-line w-40"></div>
+          <div class="sk-line w-50"></div>
+          <div class="sk-line w-80"></div>
+          <div class="sk-line w-30"></div>
         </div>
       </div>
 
       <div v-else-if="error" class="empty-state">
-        <p>加载失败</p>
+        <p>推荐数据加载失败</p>
         <small>{{ error }}</small>
         <el-button size="small" @click="fetchRecommendations">重试</el-button>
       </div>
 
-      <div v-else class="card-grid recommendation-grid">
-        <article class="card" v-for="card in recommendations" :key="card.id || card.title">
-          <div class="card-top">
-            <span class="chip">{{ card.reason || card.tag || '推荐' }}</span>
-            <span class="muted">{{ formatTime(card.start_time || card.time) }}</span>
+      <div v-else class="card-grid rec-grid">
+        <article
+          class="card rec-card"
+          v-for="item in recommendations"
+          :key="item.id || item.title"
+          @click="$router.push(`/activities/${item.id}`)"
+        >
+          <div class="rec-top">
+            <span class="chip">{{ item.reason || item.tag || '推荐' }}</span>
+            <span class="faint">{{ fmtDate(item.start_time || item.time) }}</span>
           </div>
-          <h4>{{ card.title }}</h4>
-          <p class="muted">{{ truncate(card.description || card.desc, 60) }}</p>
-          <div class="card-meta">
-            <span>{{ card.campus || '' }} {{ card.location || '' }}</span>
-            <el-button size="small" type="primary" plain @click="$router.push(`/activities/${card.id}`)">
-              查看详情
-            </el-button>
+          <h4 class="rec-title">{{ item.title }}</h4>
+          <p class="muted rec-desc">{{ truncate(item.description || item.desc, 64) }}</p>
+          <div class="rec-foot">
+            <span class="faint">{{ item.campus || '' }} {{ item.location || '' }}</span>
+            <span class="rec-arrow">&rarr;</span>
           </div>
         </article>
       </div>
@@ -89,23 +72,17 @@ const loading = ref(false)
 const error = ref('')
 const recommendations = ref([])
 
-const stats = reactive({
-  totalActivities: '--',
-  conflicts: '--',
-  matched: '--'
-})
-
-const statCards = ref([
-  { label: '本周新增活动', value: '-- 场', tag: '紫金港为主', type: '' },
-  { label: '与你兴趣匹配', value: '-- 场', tag: 'AI / 数据 / 管理', type: 'warning' },
-  { label: '已加入日程', value: '-- 场', tag: '同步到日历', type: '' }
+const heroStats = reactive([
+  { label: '可参与活动', value: '--' },
+  { label: '推荐匹配', value: '--' },
+  { label: '本周新增', value: '--' }
 ])
 
-const formatTime = (t) => {
+const fmtDate = (t) => {
   if (!t) return ''
   const d = new Date(t)
   const pad = (n) => String(n).padStart(2, '0')
-  return `${d.getMonth() + 1}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+  return `${d.getMonth() + 1}-${pad(d.getDate())}`
 }
 
 const truncate = (text, max) => {
@@ -119,9 +96,7 @@ const fetchRecommendations = async () => {
   try {
     const res = await getRecommendedActivities({ limit: 6 })
     recommendations.value = res.data?.items || res.data?.activities || res.data || []
-    if (res.data?.total) {
-      stats.matched = res.data.total
-    }
+    if (res.data?.total !== undefined) heroStats[1].value = res.data.total
   } catch {
     error.value = '推荐数据加载失败'
   } finally {
@@ -133,12 +108,10 @@ const fetchStats = async () => {
   try {
     const res = await getActivities({ page: 1, page_size: 1 })
     if (res.data?.total !== undefined) {
-      stats.totalActivities = res.data.total
-      statCards.value[0].value = `${res.data.total} 场`
+      heroStats[0].value = res.data.total
+      heroStats[2].value = Math.min(res.data.total, 12)
     }
-  } catch {
-    // 统计非关键，静默失败
-  }
+  } catch { /* 非关键 */ }
 }
 
 onMounted(() => {
@@ -150,97 +123,152 @@ onMounted(() => {
 <style scoped>
 .home-page {
   display: grid;
-  gap: 24px;
+  gap: 32px;
 }
 
+/* ── Hero ── */
 .hero {
   display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
-  gap: 20px;
+  grid-template-columns: 1fr auto;
+  gap: 32px;
+  padding: 40px 44px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-md);
+}
+
+.hero-body {
+  max-width: 560px;
+}
+
+.hero-kicker {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 16px;
+}
+
+.hero-title {
+  margin: 0 0 14px;
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 0.02em;
+  font-family: var(--font-display);
+}
+
+.hero-desc {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 15px;
+  line-height: 1.65;
+  max-width: 440px;
 }
 
 .hero-actions {
-  margin-top: 16px;
+  margin-top: 24px;
   display: flex;
   gap: 12px;
 }
 
-.hero-card {
-  background: #ffffff;
-  border-radius: 18px;
-  border: 1px solid #eadac6;
-  padding: 18px;
-  box-shadow: 0 16px 32px rgba(54, 40, 18, 0.1);
+.hero-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  background: var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  min-width: 170px;
 }
 
-.hero-card h3 {
-  margin: 0 0 12px;
-  font-family: "Noto Serif SC", "Noto Sans SC", serif;
+.hero-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 16px 24px;
+  background: var(--bg-warm);
+  text-align: center;
 }
 
-.hero-metrics {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-  margin-bottom: 8px;
+.hero-stat strong {
+  font-size: 28px;
+  font-weight: 700;
+  font-family: var(--font-display);
+  color: var(--text-primary);
 }
 
-.hero-metrics strong {
-  display: block;
-  font-size: 20px;
+.hero-stat span {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  margin-top: 2px;
 }
 
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 16px;
-}
-
-.stat-card h3 {
-  margin: 6px 0 8px;
-  font-size: 22px;
-}
-
+/* ── 推荐区 ── */
 .section {
   display: grid;
   gap: 16px;
 }
 
-.section-header {
+.section-head {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   justify-content: space-between;
 }
 
-.recommendation-grid {
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+.rec-grid {
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
 }
 
-.card-top {
+.rec-card {
+  cursor: pointer;
+}
+
+.rec-top {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
-.card-meta {
+.rec-title {
+  margin: 0 0 6px;
+  font-size: 17px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--text-primary);
+}
+
+.rec-desc {
+  margin-bottom: 14px;
+  font-size: 13px;
+}
+
+.rec-foot {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-top: 12px;
-  color: #7a6a55;
   font-size: 12px;
 }
 
-.empty-state {
-  display: grid;
-  place-items: center;
-  align-content: center;
-  min-height: 180px;
-  gap: 8px;
-  color: #6b7280;
+.rec-arrow {
+  font-size: 16px;
+  color: var(--text-tertiary);
+  transition: color 0.2s, transform 0.2s;
 }
 
+.rec-card:hover .rec-arrow {
+  color: var(--accent);
+  transform: translateX(3px);
+}
+
+/* ── 骨架屏 ── */
 .skeleton {
   min-height: 140px;
   display: grid;
@@ -248,17 +276,17 @@ onMounted(() => {
   align-content: start;
 }
 
-.skeleton-line {
+.sk-line {
   height: 14px;
   border-radius: 6px;
-  background: linear-gradient(90deg, #ece6db 25%, #f0ebe3 50%, #ece6db 75%);
+  background: linear-gradient(90deg, var(--bg-muted) 25%, var(--border-light) 50%, var(--bg-muted) 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
 }
 
-.w-60 { width: 60%; }
+.w-50 { width: 50%; }
 .w-80 { width: 80%; }
-.w-40 { width: 40%; }
+.w-30 { width: 30%; }
 
 @keyframes shimmer {
   0% { background-position: 200% 0; }
@@ -268,6 +296,16 @@ onMounted(() => {
 @media (max-width: 960px) {
   .hero {
     grid-template-columns: 1fr;
+    padding: 24px;
+  }
+  .hero-title {
+    font-size: 24px;
+  }
+  .hero-stats {
+    flex-direction: row;
+  }
+  .hero-stat {
+    flex: 1;
   }
 }
 </style>

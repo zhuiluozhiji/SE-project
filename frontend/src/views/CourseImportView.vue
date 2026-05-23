@@ -18,7 +18,7 @@
           >
             <el-icon class="upload-icon"><UploadFilled /></el-icon>
             <p>拖拽 CSV / Excel 文件到这里</p>
-            <small class="muted">支持 .csv / .xlsx / .xls 格式</small>
+            <small class="faint">支持 .csv / .xlsx / .xls 格式</small>
           </el-upload>
           <div class="upload-actions">
             <el-button type="primary" :loading="uploading" @click="submitFile" :disabled="!fileReady">
@@ -54,37 +54,33 @@
           </div>
         </div>
 
-        <div class="card format-card">
-          <h3 class="section-title">示例格式说明</h3>
-          <ul>
-            <li>课程名（必填）</li>
-            <li>星期（1-7）与节次（如 1-2）</li>
-            <li>起止时间（24h）</li>
-            <li>校区 / 教室 / 授课教师</li>
-          </ul>
-          <div class="format-tip">
-            <strong>解析失败时定位到具体错误行，便于快速修正。</strong>
-          </div>
-          <div class="divider"></div>
+        <div class="card manual-card">
           <h3 class="section-title">手动录入</h3>
-          <el-form :model="manualForm" label-width="80px" size="small">
+          <el-form :model="manualForm" label-position="top" size="small">
             <el-form-item label="课程名">
               <el-input v-model="manualForm.course_name" placeholder="如：高等数学" />
             </el-form-item>
             <el-form-item label="授课教师">
               <el-input v-model="manualForm.teacher" placeholder="教师姓名" />
             </el-form-item>
-            <el-form-item label="星期">
-              <el-select v-model="manualForm.weekday" placeholder="选择">
-                <el-option v-for="i in 7" :key="i" :label="'周' + i" :value="i" />
-              </el-select>
-            </el-form-item>
+            <el-row :gutter="12">
+              <el-col :span="12">
+                <el-form-item label="星期">
+                  <el-select v-model="manualForm.weekday" placeholder="选择">
+                    <el-option v-for="i in 7" :key="i" :label="'周' + i" :value="i" />
+                  </el-select>
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item label="教室">
+                  <el-input v-model="manualForm.location" placeholder="如：教学楼A101" />
+                </el-form-item>
+              </el-col>
+            </el-row>
             <el-form-item label="节次">
-              <el-input-number v-model="manualForm.start_section" :min="1" :max="12" /> -
-              <el-input-number v-model="manualForm.end_section" :min="1" :max="12" />
-            </el-form-item>
-            <el-form-item label="教室">
-              <el-input v-model="manualForm.location" placeholder="如：教学楼A101" />
+              <el-input-number v-model="manualForm.start_section" :min="1" :max="12" size="small" />
+              <span class="range-sep">&ndash;</span>
+              <el-input-number v-model="manualForm.end_section" :min="1" :max="12" size="small" />
             </el-form-item>
             <el-form-item>
               <el-button type="primary" size="small" :loading="manualSaving" @click="addManualCourse">
@@ -92,6 +88,12 @@
               </el-button>
             </el-form-item>
           </el-form>
+
+          <div class="divider"></div>
+          <div class="format-hint">
+            <strong>文件格式说明</strong>
+            <p class="faint">支持 CSV / Excel，包含列：课程名、星期(1-7)、节次(如 1-2)、起止时间、教室、授课教师。</p>
+          </div>
         </div>
       </div>
     </div>
@@ -121,7 +123,7 @@ const manualForm = reactive({
   location: ''
 })
 
-const handleFileChange = (file) => {
+const handleFileChange = () => {
   parseResult.value = null
   parseError.value = ''
   fileReady.value = true
@@ -184,9 +186,7 @@ const addManualCourse = async () => {
     manualForm.course_name = ''
     manualForm.teacher = ''
     manualForm.location = ''
-  } catch {
-    // 错误已在拦截器中处理
-  } finally {
+  } catch { /* 拦截器已处理 */ } finally {
     manualSaving.value = false
   }
 }
@@ -206,17 +206,17 @@ const showTemplate = () => {
   display: grid;
   grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
   gap: 16px;
-  margin-top: 12px;
+  margin-top: 16px;
 }
 
 .upload-card {
   display: grid;
-  gap: 12px;
+  gap: 14px;
 }
 
 .upload-icon {
-  font-size: 40px;
-  color: #0f766e;
+  font-size: 36px;
+  color: var(--accent);
 }
 
 .upload-actions {
@@ -229,7 +229,8 @@ const showTemplate = () => {
 }
 
 .parse-result h4 {
-  margin: 8px 0;
+  margin: 10px 0;
+  font-size: 14px;
 }
 
 .parse-actions {
@@ -239,28 +240,45 @@ const showTemplate = () => {
 }
 
 .parse-error {
-  margin-top: 8px;
-  padding: 10px 12px;
-  border-radius: 10px;
-  background: #fef2f2;
-  border: 1px solid #f5c6cb;
-  color: #b91c1c;
+  margin-top: 10px;
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  background: var(--danger-light);
+  border: 1px solid #edc8c6;
+  color: var(--danger);
   font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
 }
 
-.format-card ul {
-  margin: 0;
-  padding-left: 18px;
-  color: #6f6a5f;
+.parse-error p { margin: 0; }
+
+.manual-card {
+  display: grid;
+  gap: 4px;
 }
 
-.format-tip {
-  margin-top: 12px;
-  padding: 10px 12px;
-  background: #fef4e1;
-  border-radius: 10px;
-  border: 1px solid #f3d8b4;
+.range-sep {
+  margin: 0 6px;
+  color: var(--text-tertiary);
 }
+
+.format-hint {
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  background: var(--warning-light);
+  border: 1px solid #ebd5b0;
+}
+
+.format-hint strong {
+  display: block;
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+
+.format-hint p { font-size: 12px; }
 
 @media (max-width: 960px) {
   .import-grid {

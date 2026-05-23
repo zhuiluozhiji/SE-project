@@ -1,14 +1,14 @@
 <template>
   <section class="calendar-page fade-in">
-    <div class="page-panel calendar-header">
+    <div class="page-panel cal-header">
       <div>
         <h2 class="page-title">个人日历</h2>
         <p class="muted">
-          第 {{ weekNumber }} 周（{{ weekParity }}）｜
-          课程与活动统一呈现，冲突与状态清晰标识
+          第 {{ weekNumber }} 周（{{ weekParity }}）&nbsp;&middot;&nbsp;
+          课程与活动统一呈现，冲突清晰标识
         </p>
       </div>
-      <div class="header-actions">
+      <div class="cal-toolbar">
         <el-button-group size="small">
           <el-button :type="showOdd ? 'primary' : 'default'" @click="showOdd = true">单周</el-button>
           <el-button :type="!showOdd ? 'primary' : 'default'" @click="showOdd = false">双周</el-button>
@@ -24,17 +24,16 @@
     </div>
 
     <div class="legend">
-      <span class="legend-item"><span class="dot course"></span>课程</span>
-      <span class="legend-item"><span class="dot activity"></span>活动</span>
-      <span class="legend-item"><span class="dot recommended"></span>推荐</span>
-      <span class="legend-item"><span class="dot conflict"></span>冲突</span>
-      <span class="legend-item"><span class="dot exam"></span>考试</span>
+      <span class="legend-item"><span class="dot course-dot"></span>课程</span>
+      <span class="legend-item"><span class="dot activity-dot"></span>活动</span>
+      <span class="legend-item"><span class="dot rec-dot"></span>推荐</span>
+      <span class="legend-item"><span class="dot conflict-dot"></span>冲突</span>
+      <span class="legend-item"><span class="dot exam-dot"></span>考试</span>
     </div>
 
-    <div v-loading="loading" class="main-grid">
+    <div v-loading="loading" class="cal-grid">
       <div class="card timetable-card">
         <div class="timeline-wrap">
-          <!-- 时间标尺 + 7 天列 -->
           <div class="timeline-header">
             <div class="ruler-spacer"></div>
             <div
@@ -48,23 +47,15 @@
             </div>
           </div>
           <div class="timeline-body">
-            <!-- 左侧时间标尺 -->
             <div class="time-ruler">
               <div
                 v-for="h in hourMarkers"
                 :key="h.label"
                 class="ruler-tick"
                 :style="{ top: h.top + 'px' }"
-              >
-                {{ h.label }}
-              </div>
+              >{{ h.label }}</div>
             </div>
-            <!-- 7 天列，事件绝对定位 -->
-            <div
-              v-for="(day, di) in weekDays"
-              :key="di"
-              class="day-col"
-            >
+            <div v-for="(day, di) in weekDays" :key="di" class="day-col">
               <div class="day-bg">
                 <div
                   v-for="h in hourMarkers"
@@ -85,10 +76,10 @@
                   width: event._width + '%'
                 }"
               >
-                <div class="event-name">{{ event.title }}</div>
-                <div class="event-time">{{ event.startTime }}-{{ event.endTime }}</div>
-                <div class="event-meta" v-if="event.teacher">{{ event.teacher }}</div>
-                <div class="event-meta">{{ event.location || '' }}</div>
+                <div class="ev-name">{{ event.title }}</div>
+                <div class="ev-time">{{ event.startTime }}-{{ event.endTime }}</div>
+                <div class="ev-meta" v-if="event.teacher">{{ event.teacher }}</div>
+                <div class="ev-meta">{{ event.location || '' }}</div>
                 <span v-if="event.weekType" class="week-tag">{{ event.weekType }}</span>
               </div>
             </div>
@@ -97,21 +88,21 @@
       </div>
 
       <div class="card side-panel">
-        <h3 class="section-title">本周课程一览</h3>
+        <h3 class="section-title">课程一览</h3>
         <div v-if="weekCourses.length === 0" class="empty-hint">
           <p class="muted">本周暂无课程</p>
         </div>
-        <div class="course-list" v-else>
-          <div class="course-item" v-for="c in weekCourses" :key="c.id || c.title">
-            <div class="course-item-left">
-              <span class="dot" :class="c.type || 'course'"></span>
+        <div class="side-list" v-else>
+          <div class="side-item" v-for="c in weekCourses" :key="c.id || c.title">
+            <div class="side-item-left">
+              <span class="dot" :class="(c.type || 'course') + '-dot'"></span>
               <div>
                 <strong>{{ c.title }}</strong>
-                <p class="muted">{{ c.teacher }} · {{ c.location }}</p>
+                <p class="muted">{{ c.teacher }} &middot; {{ c.location }}</p>
               </div>
             </div>
-            <div class="course-item-right">
-              <span class="muted">{{ c.dayLabel }} {{ c.timeLabel }}</span>
+            <div class="side-item-right">
+              <span class="faint">{{ c.dayLabel }} {{ c.timeLabel }}</span>
               <span class="chip" v-if="c.weekType">{{ c.weekType }}</span>
             </div>
           </div>
@@ -122,25 +113,25 @@
         <div v-if="upcoming.length === 0" class="empty-hint">
           <p class="muted">本周暂无活动安排</p>
         </div>
-        <div class="schedule-list" v-else>
-          <div class="schedule-item" v-for="item in upcoming" :key="item.id || item.title">
+        <div class="side-list" v-else>
+          <div class="side-item" v-for="item in upcoming" :key="item.id || item.title">
             <div>
               <strong>{{ item.title }}</strong>
-              <p class="muted">{{ formatDate(item.start_time || item.time) }} · {{ item.location || '--' }}</p>
+              <p class="muted">{{ formatDate(item.start_time || item.time) }} &middot; {{ item.location || '--' }}</p>
             </div>
             <span class="chip" :class="item.type">{{ typeLabel(item) }}</span>
           </div>
         </div>
 
         <div class="divider"></div>
-        <div class="conflict-panel" v-if="conflictEvents.length > 0">
-          <h4>冲突提醒</h4>
-          <p class="muted">本周 {{ conflictEvents.length }} 个活动与课程时间重叠。</p>
-          <el-button type="danger" plain size="small" @click="conflictVisible = true">查看冲突详情</el-button>
+        <div class="conflict-box" v-if="conflictEvents.length > 0">
+          <strong>冲突提醒</strong>
+          <p class="muted">本周 {{ conflictEvents.length }} 个活动与课程时间重叠</p>
+          <el-button type="danger" plain size="small" @click="conflictVisible = true">查看详情</el-button>
         </div>
-        <div class="conflict-panel safe" v-else>
-          <h4>冲突提醒</h4>
-          <p class="muted">本周暂无冲突，日程安排良好。</p>
+        <div class="conflict-box safe" v-else>
+          <strong>冲突提醒</strong>
+          <p class="muted">本周暂无冲突，日程安排良好</p>
         </div>
 
         <div class="divider"></div>
@@ -148,20 +139,20 @@
         <div v-if="exams.length === 0" class="empty-hint">
           <p class="muted">暂无临近考试</p>
         </div>
-        <div class="exam-list" v-else>
+        <div class="side-list" v-else>
           <div class="exam-item" v-for="e in exams" :key="e.title">
             <strong>{{ e.title }}</strong>
-            <p class="muted">{{ e.examDate }} · {{ e.location }}</p>
+            <p class="muted">{{ e.examDate }} &middot; {{ e.location }}</p>
           </div>
         </div>
       </div>
     </div>
 
-    <el-dialog v-model="conflictVisible" title="冲突明细" width="520px">
-      <div class="conflict-list">
-        <div class="conflict-item" v-for="item in conflictEvents" :key="item.id || item.title">
+    <el-dialog v-model="conflictVisible" title="冲突明细" width="480px">
+      <div class="dialog-list">
+        <div class="dialog-item" v-for="item in conflictEvents" :key="item.id || item.title">
           <strong>{{ item.title }}</strong>
-          <p class="muted">{{ formatDate(item.start_time || item.time) }} · {{ item.location || '--' }}</p>
+          <p class="faint">{{ formatDate(item.start_time || item.time) }} &middot; {{ item.location || '--' }}</p>
         </div>
       </div>
     </el-dialog>
@@ -188,8 +179,8 @@ const weekOffset = ref(0)
 const showOdd = ref(true)
 
 const PX_PER_HOUR = 80
-const START_HOUR = 8   // 08:00
-const END_HOUR = 21.5  // 21:30
+const START_HOUR = 8
+const END_HOUR = 21.5
 
 const parseTime = (t) => {
   if (!t) return 0
@@ -203,20 +194,17 @@ const hourMarkers = computed(() => {
   const totalPx = totalMinutes / 60 * PX_PER_HOUR
   for (let h = START_HOUR; h <= Math.floor(END_HOUR); h++) {
     const top = (h - START_HOUR) * PX_PER_HOUR
-    if (top <= totalPx) {
-      markers.push({ label: `${String(h).padStart(2, '0')}:00`, top })
-    }
+    if (top <= totalPx) markers.push({ label: `${String(h).padStart(2, '0')}:00`, top })
   }
   return markers
 })
 
 const timelineHeight = computed(() => (END_HOUR - START_HOUR) * PX_PER_HOUR)
 
-// 重叠检测：按开始时间排序，贪心分配水平轨道
 const layoutEvents = (events) => {
   if (!events.length) return events
   const sorted = [...events].sort((a, b) => a._startMin - b._startMin)
-  const tracks = [] // 每条轨道的结束时间（分钟）
+  const tracks = []
   sorted.forEach((e) => {
     let placed = false
     for (let i = 0; i < tracks.length; i++) {
@@ -233,7 +221,7 @@ const layoutEvents = (events) => {
     }
   })
   const totalTracks = tracks.length || 1
-  const gap = 2 // 百分比间距
+  const gap = 2
   sorted.forEach((e) => {
     e._left = (e._track / totalTracks) * 100
     e._width = (100 / totalTracks) - gap
@@ -276,7 +264,6 @@ const defaultCourses = [
   { id: 'c8',  title: '英语写作',     teacher: '刘文博', location: '紫金港外语楼-310', weekday: 5, startPeriod: 3, endPeriod: 4, type: 'course', weekType: '每周', startTime: '10:00', endTime: '11:35' },
   { id: 'c9',  title: '操作系统',     teacher: '孙浩然', location: '玉泉教4-106',     weekday: 3, startPeriod: 3, endPeriod: 5, type: 'course', weekType: '双周', startTime: '10:00', endTime: '12:25' },
   { id: 'c10', title: '学术前沿讲座', teacher: '轮值',   location: '紫金港学术报告厅', weekday: 3, startPeriod: 9, endPeriod: 10, type: 'recommended', weekType: '单周', startTime: '16:15', endTime: '17:50' },
-  // 示例：一场不按标准节次起止的活动（14:00 开始，跨第6-9节）
   { id: 'e1',  title: '生成式AI与科研写作', teacher: '特邀嘉宾', location: '紫金港学术报告厅', weekday: 5, startPeriod: 6, endPeriod: 9, type: 'activity', weekType: '每周', startTime: '14:00', endTime: '16:00' },
 ]
 
@@ -379,9 +366,7 @@ const fetchSchedules = async () => {
     const fmt = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
     const res = await getSchedules({ start_date: fmt(monday), end_date: fmt(sunday) })
     allEvents.value = res.data?.events || res.data?.items || res.data || []
-  } catch {
-    // 后端不可用时使用内置课表数据，静默处理
-  } finally {
+  } catch { /* 后端不可用时静默使用内置数据 */ } finally {
     loading.value = false
   }
 }
@@ -424,23 +409,24 @@ onMounted(fetchSchedules)
   gap: 16px;
 }
 
-.calendar-header {
+.cal-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 14px;
 }
 
-.header-actions {
+.cal-toolbar {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
 }
 
+/* ── Legend ── */
 .legend {
   display: flex;
-  gap: 14px;
+  gap: 16px;
   flex-wrap: wrap;
 }
 
@@ -448,30 +434,31 @@ onMounted(fetchSchedules)
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 13px;
-  color: #5c4f3d;
+  font-size: 12px;
+  color: var(--text-tertiary);
 }
 
 .legend-item .dot {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
 }
 
-.dot.course { background: #3b82f6; }
-.dot.activity { background: #0f766e; }
-.dot.recommended { background: #e27a38; }
-.dot.conflict { background: #ef4444; }
-.dot.exam { background: #8b5cf6; }
+.course-dot   { background: #6a8cbf; }
+.activity-dot { background: #7aaa8a; }
+.rec-dot      { background: var(--accent); }
+.conflict-dot { background: var(--danger); }
+.exam-dot     { background: #8b7ab8; }
 
-.main-grid {
+/* ── Grid ── */
+.cal-grid {
   display: grid;
   grid-template-columns: minmax(0, 3fr) minmax(0, 1fr);
   gap: 16px;
   align-items: start;
 }
 
-/* ── 时间轴课表 ── */
+/* ── Timeline ── */
 .timetable-card {
   padding: 0;
   overflow: hidden;
@@ -483,8 +470,8 @@ onMounted(fetchSchedules)
 
 .timeline-header {
   display: flex;
-  border-bottom: 1px solid var(--line);
-  background: #faf7f0;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-warm);
 }
 
 .ruler-spacer {
@@ -501,20 +488,20 @@ onMounted(fetchSchedules)
 .day-head strong {
   display: block;
   font-size: 13px;
-  color: var(--ink);
+  color: var(--text-primary);
 }
 
 .day-head small {
   font-size: 11px;
-  color: var(--muted);
+  color: var(--text-tertiary);
 }
 
 .day-head.today {
-  background: rgba(15, 118, 110, 0.08);
+  background: var(--accent-light);
 }
 
 .day-head.today strong {
-  color: var(--brand);
+  color: var(--accent);
 }
 
 .timeline-body {
@@ -523,34 +510,30 @@ onMounted(fetchSchedules)
   height: v-bind(timelineHeight + 'px');
 }
 
-/* 时间标尺 */
 .time-ruler {
   width: 56px;
   flex-shrink: 0;
   position: relative;
-  border-right: 1px solid var(--line);
-  background: #fdfcf8;
+  border-right: 1px solid var(--border);
+  background: var(--bg-warm);
 }
 
 .ruler-tick {
   position: absolute;
   width: 100%;
   text-align: center;
-  font-size: 11px;
-  color: #bbb6a8;
+  font-size: 10px;
+  color: var(--text-tertiary);
   transform: translateY(-50%);
 }
 
-/* 天列 */
 .day-col {
   flex: 1;
   position: relative;
-  border-right: 1px solid #f0eade;
+  border-right: 1px solid var(--border-light);
 }
 
-.day-col:last-child {
-  border-right: none;
-}
+.day-col:last-child { border-right: none; }
 
 .day-bg {
   position: absolute;
@@ -560,63 +543,58 @@ onMounted(fetchSchedules)
 .bg-line {
   position: absolute;
   width: 100%;
-  border-top: 1px solid #f0eade;
+  border-top: 1px solid var(--border-light);
 }
 
-/* 时间轴事件块 */
+/* ── Event blocks ── */
 .timeline-event {
   position: absolute;
-  background: #dbeafe;
-  border-left: 3px solid #3b82f6;
   border-radius: 4px;
-  padding: 3px 5px;
+  padding: 3px 6px;
   font-size: 10px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  gap: 0;
   min-height: 16px;
+  border-left: 3px solid transparent;
+}
+
+.timeline-event.course {
+  background: #ecf0f7;
+  border-left-color: #6a8cbf;
 }
 
 .timeline-event.activity {
-  background: #d1f2eb;
-  border-left-color: #0f766e;
+  background: #e8f2ec;
+  border-left-color: #7aaa8a;
 }
 
 .timeline-event.recommended {
-  background: #fef3e4;
-  border-left-color: #e27a38;
+  background: var(--accent-light);
+  border-left-color: var(--accent);
 }
 
 .timeline-event.conflict {
-  background: #ffeeee;
-  border-left-color: #ef4444;
+  background: var(--danger-light);
+  border-left-color: var(--danger);
 }
 
 .timeline-event.exam {
-  background: #ede9fe;
-  border-left-color: #8b5cf6;
+  background: #f0ecf7;
+  border-left-color: #8b7ab8;
 }
 
-.event-name {
+.ev-name {
   font-weight: 600;
-  color: #1e3a5f;
+  color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   line-height: 1.3;
 }
 
-.event-time {
-  color: #64748b;
-  font-size: 9px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.event-meta {
-  color: #94a3b8;
+.ev-time, .ev-meta {
+  color: var(--text-tertiary);
   font-size: 9px;
   white-space: nowrap;
   overflow: hidden;
@@ -628,181 +606,116 @@ onMounted(fetchSchedules)
   top: 2px;
   right: 3px;
   font-size: 8px;
-  background: rgba(59, 130, 246, 0.15);
-  color: #3b82f6;
-  padding: 0px 3px;
+  background: rgba(0,0,0,0.06);
+  color: var(--text-tertiary);
+  padding: 0px 4px;
   border-radius: 2px;
 }
 
-.course-name {
-  font-weight: 600;
-  color: #1e3a5f;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.course-meta {
-  color: #64748b;
-  font-size: 10px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.week-tag {
-  position: absolute;
-  top: 3px;
-  right: 4px;
-  font-size: 9px;
-  background: rgba(59, 130, 246, 0.15);
-  color: #3b82f6;
-  padding: 1px 4px;
-  border-radius: 3px;
-}
-
-.exam-tag {
-  display: block;
-  font-size: 9px;
-  color: #8b5cf6;
-  margin-top: auto;
-}
-
-/* ── 侧边栏 ── */
+/* ── Side panel ── */
 .side-panel {
   display: grid;
-  gap: 12px;
+  gap: 14px;
   position: sticky;
-  top: 108px;
+  top: 88px;
 }
 
-.course-list {
+.side-list {
   display: grid;
   gap: 8px;
 }
 
-.course-item {
+.side-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  padding: 8px 10px;
-  border-radius: 10px;
-  background: #faf7f0;
-  border: 1px solid #f0eade;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-warm);
+  border: 1px solid var(--border-light);
 }
 
-.course-item-left {
+.side-item-left {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+  min-width: 0;
 }
 
-.course-item-left strong {
+.side-item-left strong {
   font-size: 13px;
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.course-item-left p {
-  margin: 0;
-  font-size: 11px;
+.side-item-left p { margin: 2px 0 0; font-size: 11px; }
+
+.side-item-left .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
 }
 
-.course-item-right {
+.side-item-right {
   text-align: right;
   font-size: 11px;
+  flex-shrink: 0;
   display: flex;
   flex-direction: column;
   align-items: flex-end;
   gap: 2px;
 }
 
-.schedule-list {
+.empty-hint { text-align: center; padding: 16px 0; }
+
+.conflict-box {
+  padding: 14px;
+  border-radius: var(--radius-sm);
+  background: var(--danger-light);
+  border: 1px solid #edc8c6;
   display: grid;
-  gap: 10px;
+  gap: 6px;
 }
 
-.schedule-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
+.conflict-box.safe {
+  background: var(--success-light);
+  border-color: #b8d8c3;
 }
 
-.schedule-item strong {
-  font-size: 13px;
-}
-
-.schedule-item p {
-  margin: 2px 0 0;
-  font-size: 11px;
-}
-
-.empty-hint {
-  text-align: center;
-  padding: 12px 0;
-}
-
-.conflict-panel {
-  background: #fff4f1;
-  border: 1px solid #f0d1c8;
-  border-radius: 12px;
-  padding: 12px;
-}
-
-.conflict-panel.safe {
-  background: #f0fdf4;
-  border-color: #bbf7d0;
-}
-
-.conflict-panel.safe p {
-  color: #166534;
-}
-
-.conflict-list {
-  display: grid;
-  gap: 10px;
-}
-
-.conflict-item {
-  padding: 8px 10px;
-  border-radius: 10px;
-  background: #f8efe2;
-  border: 1px solid #e2d3c0;
-}
-
-.exam-list {
-  display: grid;
-  gap: 8px;
-}
+.conflict-box p { font-size: 12px; }
+.conflict-box strong { font-size: 13px; }
 
 .exam-item {
-  padding: 8px 10px;
-  border-radius: 10px;
-  background: #faf5ff;
-  border: 1px solid #e9d5ff;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: #f8f6fb;
+  border: 1px solid #e3ddf0;
 }
 
-.exam-item strong {
-  font-size: 13px;
-  color: #6b21a8;
-}
+.exam-item strong { font-size: 13px; color: #5c4a8a; }
+.exam-item p { margin: 2px 0 0; font-size: 11px; }
 
-.exam-item p {
-  margin: 2px 0 0;
-  font-size: 11px;
-}
-
-.empty-state {
+/* ── dialog ── */
+.dialog-list {
   display: grid;
-  place-items: center;
-  align-content: center;
-  min-height: 160px;
-  gap: 8px;
-  color: #6b7280;
+  gap: 10px;
 }
+
+.dialog-item {
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-warm);
+  border: 1px solid var(--border-light);
+}
+
+.dialog-item p { margin: 4px 0 0; font-size: 12px; }
 
 @media (max-width: 1200px) {
-  .main-grid {
+  .cal-grid {
     grid-template-columns: 1fr;
   }
   .side-panel {

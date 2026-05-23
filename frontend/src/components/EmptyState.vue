@@ -7,36 +7,31 @@
 
 <script setup>
 defineProps({
-  title: {
-    type: String,
-    default: '等待开发'
-  },
-  description: {
-    type: String,
-    default: '这里先保留页面位置，后续接入接口和交互。'
-  }
+  title: { type: String, default: '暂无内容' },
+  description: { type: String, default: '此处暂时没有数据，请稍后再来。' }
 })
 </script>
 
 <style scoped>
 .empty-state {
   display: grid;
-  min-height: 180px;
   place-items: center;
   align-content: center;
-  color: #6b7280;
-  border: 1px dashed #cbd5e1;
-  border-radius: 8px;
-  background: #f8fafc;
+  min-height: 180px;
+  color: var(--text-tertiary);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-warm);
+  gap: 6px;
 }
 
 .empty-state p {
   margin: 0;
-  color: #374151;
-  font-weight: 600;
+  color: var(--text-secondary);
+  font-weight: 500;
 }
 
 .empty-state small {
-  margin-top: 8px;
+  font-size: 13px;
 }
 </style>

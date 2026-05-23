@@ -1,19 +1,13 @@
 <template>
-  <el-tag :type="tagType" effect="light">{{ label }}</el-tag>
+  <el-tag :type="tagType" effect="light" size="small">{{ label }}</el-tag>
 </template>
 
 <script setup>
 import { computed } from 'vue'
 
 const props = defineProps({
-  label: {
-    type: String,
-    required: true
-  },
-  status: {
-    type: String,
-    default: 'open'
-  }
+  label: { type: String, required: true },
+  status: { type: String, default: 'open' }
 })
 
 const tagType = computed(() => {

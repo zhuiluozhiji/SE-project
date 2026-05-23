@@ -1,13 +1,13 @@
 <template>
   <section class="activity-page fade-in">
-    <div class="page-panel filter-panel">
-      <div>
+    <div class="page-panel filter-bar">
+      <div class="filter-head">
         <h2 class="page-title">活动列表</h2>
-        <p class="muted">支持关键词、校区、类别与时间范围的组合筛选。</p>
+        <span class="faint" v-if="total > 0">共 {{ total }} 场活动</span>
       </div>
       <el-form class="filter-row" inline @submit.prevent="search">
         <el-form-item label="关键词">
-          <el-input v-model="filters.keyword" placeholder="搜索标题 / 主讲人" clearable />
+          <el-input v-model="filters.keyword" placeholder="搜索标题或主讲人" clearable />
         </el-form-item>
         <el-form-item label="校区">
           <el-select v-model="filters.campus" placeholder="全部校区" clearable>
@@ -24,7 +24,7 @@
           </el-select>
         </el-form-item>
         <el-form-item label="排序">
-          <el-select v-model="filters.sort" placeholder="默认排序" clearable style="width:130px">
+          <el-select v-model="filters.sort" placeholder="默认排序" clearable style="width:120px">
             <el-option label="最新发布" value="time" />
             <el-option label="最热门" value="hot" />
             <el-option label="推荐优先" value="recommend" />
@@ -37,7 +37,7 @@
       </el-form>
     </div>
 
-    <div v-loading="loading" class="list-content">
+    <div v-loading="loading" class="list-body">
       <div v-if="error" class="empty-state">
         <p>加载失败</p>
         <small>{{ error }}</small>
@@ -50,28 +50,15 @@
       </div>
 
       <div v-else class="card-grid list-grid">
-        <article class="card activity-card" v-for="item in activities" :key="item.id">
-          <div class="card-top">
-            <StatusTag :label="statusLabel(item.status)" :status="item.status" />
-            <span class="muted">{{ formatTime(item.start_time) }}</span>
-          </div>
-          <h3>{{ item.title }}</h3>
-          <p class="muted">{{ truncate(item.description || item.summary, 80) }}</p>
-          <div class="tag-row" v-if="item.tags && item.tags.length">
-            <span class="chip" v-for="tag in item.tags" :key="tag">{{ tag }}</span>
-          </div>
-          <div class="card-meta">
-            <span>{{ item.campus }} · {{ item.location }}</span>
-            <el-button size="small" type="primary" plain @click="goDetail(item.id)">
-              查看详情
-            </el-button>
-          </div>
-        </article>
+        <ActivityCard
+          v-for="item in activities"
+          :key="item.id"
+          :activity="item"
+        />
       </div>
     </div>
 
-    <div class="pagination" v-if="total > 0">
-      <span class="muted">共 {{ total }} 场活动</span>
+    <div class="pag-row" v-if="total > 0">
       <el-pagination
         v-model:current-page="pagination.page"
         :page-size="pagination.pageSize"
@@ -87,7 +74,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getActivities } from '../api/activities'
-import StatusTag from '../components/StatusTag.vue'
+import ActivityCard from '../components/ActivityCard.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -109,44 +96,19 @@ const pagination = reactive({
   pageSize: 9
 })
 
-const statusMap = {
-  open: '可加入',
-  full: '已满',
-  closed: '已结束',
-  offline: '已下架',
-  draft: '草稿'
-}
-
-const statusLabel = (s) => statusMap[s] || s
-
-const formatTime = (t) => {
-  if (!t) return ''
-  const d = new Date(t)
-  const pad = (n) => String(n).padStart(2, '0')
-  return `${d.getMonth() + 1}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
-}
-
-const truncate = (text, max) => {
-  if (!text) return ''
-  return text.length > max ? text.slice(0, max) + '...' : text
-}
-
 const search = async () => {
   loading.value = true
   error.value = ''
   try {
-    const params = {
-      page: pagination.page,
-      page_size: pagination.pageSize
-    }
+    const params = { page: pagination.page, page_size: pagination.pageSize }
     if (filters.keyword) params.keyword = filters.keyword
     if (filters.campus) params.campus = filters.campus
     if (filters.category) params.category = filters.category
     if (filters.sort) params.sort = filters.sort
 
     const res = await getActivities(params)
-    activities.value = res.data.items || res.data.activities || res.data || []
-    total.value = res.data.total || 0
+    activities.value = res.data?.items || res.data?.activities || res.data || []
+    total.value = res.data?.total || 0
   } catch (e) {
     error.value = e.message || '网络异常'
   } finally {
@@ -163,14 +125,8 @@ const reset = () => {
   search()
 }
 
-const goDetail = (id) => {
-  router.push(`/activities/${id}`)
-}
-
 onMounted(() => {
-  if (route.query.keyword) {
-    filters.keyword = route.query.keyword
-  }
+  if (route.query.keyword) filters.keyword = route.query.keyword
   search()
 })
 </script>
@@ -181,11 +137,16 @@ onMounted(() => {
   gap: 20px;
 }
 
-.filter-panel {
+.filter-bar {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 20px;
+  flex-wrap: wrap;
+}
+
+.filter-head {
+  flex-shrink: 0;
 }
 
 .filter-row {
@@ -193,66 +154,27 @@ onMounted(() => {
   flex-wrap: wrap;
   align-items: center;
   justify-content: flex-end;
-  gap: 12px;
+  gap: 8px;
 }
 
-.list-content {
+.list-body {
   min-height: 200px;
 }
 
 .list-grid {
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
 }
 
-.activity-card h3 {
-  margin: 8px 0 6px;
-  font-size: 18px;
-}
-
-.tag-row {
+.pag-row {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 8px;
-}
-
-.card-meta {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: 12px;
-  color: #7a6a55;
-  font-size: 12px;
-}
-
-.card-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 8px;
-}
-
-.pagination {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.empty-state {
-  display: grid;
-  place-items: center;
-  align-content: center;
-  min-height: 200px;
-  gap: 8px;
-  color: #6b7280;
+  justify-content: center;
 }
 
 @media (max-width: 960px) {
-  .filter-panel {
+  .filter-bar {
     flex-direction: column;
-    align-items: flex-start;
   }
-
   .filter-row {
     justify-content: flex-start;
   }
