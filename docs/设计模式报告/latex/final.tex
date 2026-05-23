@@ -1,0 +1,159 @@
+% !TeX program = XeLaTeX
+\documentclass[UTF8,a4paper,12pt,fontset=none]{ctexrep}
+
+\usepackage[a4paper,margin=2.5cm]{geometry}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{calc}
+\usepackage{array}
+\usepackage{longtable}
+\usepackage{booktabs}
+\usepackage{caption}
+\usepackage{hyperref}
+\usepackage{titlesec}
+\usepackage{setspace}
+\usepackage{xcolor}
+\usepackage{fancyhdr}
+\usepackage{lastpage}
+\usepackage{etoolbox}
+\usepackage{adjustbox}
+
+\providecommand{\pandocbounded}[1]{#1}
+\providecommand{\tightlist}{}
+\newcounter{none}
+\renewcommand{\pandocbounded}[1]{\maxsizebox{\linewidth}{0.82\textheight}{#1}}
+
+\makeatletter
+\define@key{Gin}{alt}{}
+\makeatother
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=black,
+  urlcolor=black,
+  citecolor=black,
+  pdftitle={校园学术活动智能推荐平台设计模式报告}
+}
+
+\setmainfont{Times New Roman}
+\setsansfont{Helvetica}
+\setmonofont{Menlo}
+\setCJKmainfont{Songti SC}
+\setCJKsansfont{PingFang SC}
+\setCJKmonofont{PingFang SC}
+
+\newcommand{\songti}{\rmfamily}
+\newcommand{\heiti}{\sffamily}
+\definecolor{ZJUBlue}{RGB}{0, 63, 136}
+
+\setcounter{secnumdepth}{-1}
+\setcounter{tocdepth}{2}
+\setlength{\parindent}{2em}
+\setlength{\parskip}{0.35em}
+\setlength{\headheight}{15pt}
+\setlength{\LTpre}{0.85\baselineskip}
+\setlength{\LTpost}{0.75\baselineskip}
+\setlength{\intextsep}{0.8\baselineskip}
+\setlength{\textfloatsep}{0.9\baselineskip}
+\setlength{\tabcolsep}{4pt}
+\setlength{\emergencystretch}{3em}
+\renewcommand{\arraystretch}{1.3}
+\onehalfspacing
+\urlstyle{same}
+
+\captionsetup{font=small,labelfont=bf,labelsep=quad}
+\captionsetup[figure]{labelformat=empty,justification=centering}
+\floatplacement{figure}{H}
+
+\graphicspath{{../}{../../总体设计报告/figures/}{../../总体设计报告/figures/exported/}}
+
+\ctexset{
+  chapter = {
+    format = \centering\heiti\zihao{3},
+    beforeskip = 18pt,
+    afterskip = 24pt
+  },
+  section = {
+    format = \bfseries\zihao{4}\color{ZJUBlue},
+    beforeskip = 10pt,
+    afterskip = 8pt
+  },
+  subsection = {
+    format = \bfseries\zihao{-4},
+    beforeskip = 8pt,
+    afterskip = 6pt
+  },
+  subsubsection = {
+    format = \bfseries\zihao{5},
+    beforeskip = 6pt,
+    afterskip = 4pt
+  }
+}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{设计模式报告}
+\fancyhead[R]{\nouppercase{\leftmark}}
+\fancyfoot[C]{第 \thepage 页\ /\ 共 \pageref*{LastPage} 页}
+\renewcommand{\headrulewidth}{0.6pt}
+\renewcommand{\footrulewidth}{0.4pt}
+
+\fancypagestyle{plain}{
+  \fancyhf{}
+  \fancyhead[L]{设计模式报告}
+  \fancyhead[R]{\nouppercase{\leftmark}}
+  \fancyfoot[C]{第 \thepage 页\ /\ 共 \pageref*{LastPage} 页}
+  \renewcommand{\headrulewidth}{0.6pt}
+  \renewcommand{\footrulewidth}{0.4pt}
+}
+
+\newcommand{\reportadvisor}{邓水光}
+\newcommand{\reportteamlineone}{黄晗\quad 宫上珺\quad 孟祥烨}
+\newcommand{\reportteamlinetwo}{李妍雅\quad 庞星磊\quad 朱致远}
+\newcommand{\reportdate}{\number\year\quad 年\quad \number\month\quad 月\quad \number\day\quad 日}
+\newcommand{\coverfill}[2]{\underline{\makebox[#1][l]{#2}}}
+
+\newcommand{\makecover}{
+  \begin{titlepage}
+    \thispagestyle{empty}
+    \centering
+    \vspace*{1.0cm}
+    \includegraphics[width=0.42\textwidth]{zju_title.png}\par
+    \vspace{1.4cm}
+    {\songti\zihao{2} 设计模式报告 \par}
+    \vspace{1.6cm}
+    \includegraphics[width=0.30\textwidth]{zju_logo.png}\par
+    \vspace{1.5cm}
+    \begin{minipage}{0.78\textwidth}
+      \raggedright
+      \renewcommand{\arraystretch}{1.85}
+      {\songti\zihao{-3}
+      \begin{tabular}{@{}p{2.5cm}p{9.4cm}@{}}
+        项目主题： & \coverfill{8.6cm}{校园学术活动智能推荐平台} \\
+        任课老师： & \coverfill{4.8cm}{\reportadvisor} \\
+        项目组员： &
+        \begin{tabular}[t]{@{}l@{}}
+          \coverfill{8.6cm}{\reportteamlineone} \\
+          \coverfill{8.6cm}{\reportteamlinetwo}
+        \end{tabular} \\
+      \end{tabular}\par}
+    \end{minipage}
+    \vfill
+    {\songti\zihao{4} \reportdate \par}
+  \end{titlepage}
+}
+
+\begin{document}
+\pagenumbering{gobble}
+\makecover
+\clearpage
+
+\pagenumbering{Roman}
+\tableofcontents
+\clearpage
+
+\pagenumbering{arabic}
+\setcounter{page}{1}
+\input{body.tex}
+
+\end{document}
