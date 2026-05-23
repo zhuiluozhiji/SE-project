@@ -1,0 +1,31 @@
+@startuml
+!include common-theme.puml
+title 中介者模式：筛选面板由统一协调者管理联动
+
+class ActivityFilterMediator {
+  +handleKeywordChange()
+  +handleCampusChange()
+  +handleCategoryChange()
+  +resetPage()
+  +refreshList()
+}
+
+class KeywordInput
+class CampusSelect
+class CategorySelect
+class Pager
+class ActivityListView
+
+KeywordInput --> ActivityFilterMediator : onChange
+CampusSelect --> ActivityFilterMediator : onChange
+CategorySelect --> ActivityFilterMediator : onChange
+Pager --> ActivityFilterMediator : onPageChange
+
+ActivityFilterMediator --> Pager : 条件变化后重置分页
+ActivityFilterMediator --> ActivityListView : 触发查询与渲染
+
+note bottom of ActivityFilterMediator
+把多个控件之间的联动逻辑集中起来，
+避免页面组件两两直接依赖。
+end note
+@enduml

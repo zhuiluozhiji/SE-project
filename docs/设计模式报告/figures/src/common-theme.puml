@@ -1,0 +1,44 @@
+!theme plain
+skinparam backgroundColor white
+skinparam shadowing false
+skinparam dpi 180
+skinparam defaultFontName PingFang SC
+skinparam defaultTextAlignment center
+skinparam classAttributeIconSize 0
+skinparam ArrowColor #31445b
+skinparam packageStyle rectangle
+skinparam roundcorner 12
+
+skinparam class {
+  BackgroundColor #f6fbff
+  BorderColor #4a78a8
+}
+
+skinparam interface {
+  BackgroundColor #fff7df
+  BorderColor #d8a232
+}
+
+skinparam abstractClass {
+  BackgroundColor #eef7ea
+  BorderColor #69a25a
+}
+
+skinparam note {
+  BackgroundColor #fff8d8
+  BorderColor #d8a232
+}
+
+skinparam state {
+  BackgroundColor #f6fbff
+  BorderColor #4a78a8
+}
+
+skinparam participant {
+  BackgroundColor #f6fbff
+  BorderColor #4a78a8
+}
+
+skinparam actor {
+  BorderColor #4a78a8
+}

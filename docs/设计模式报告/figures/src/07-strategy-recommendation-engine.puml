@@ -1,0 +1,31 @@
+@startuml
+!include common-theme.puml
+title 策略模式：推荐引擎组合多种打分算法
+
+interface ScoreStrategy {
+  +score(context, activity): int
+}
+
+class InterestMatchStrategy
+class HotScoreStrategy
+class TimeProximityStrategy
+class CollegeRelatedStrategy
+class ConflictPenaltyStrategy
+
+class RecommendationEngine {
+  +rank(activities, context)
+}
+
+ScoreStrategy <|.. InterestMatchStrategy
+ScoreStrategy <|.. HotScoreStrategy
+ScoreStrategy <|.. TimeProximityStrategy
+ScoreStrategy <|.. CollegeRelatedStrategy
+ScoreStrategy <|.. ConflictPenaltyStrategy
+
+RecommendationEngine o--> "1..*" ScoreStrategy : 组合调用
+
+note right of RecommendationEngine
+总分 = 兴趣匹配 + 热度 + 时间临近
+      + 学院相关 - 冲突惩罚
+end note
+@enduml
