@@ -1,14 +1,13 @@
 services:
   mysql:
     image: mysql:8.0
-    container_name: se-project-mysql
     environment:
-      MYSQL_ROOT_PASSWORD: root_password
-      MYSQL_DATABASE: se_project
-      MYSQL_USER: se_user
-      MYSQL_PASSWORD: se_password
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
     ports:
-      - "3306:3306"
+      - "${MYSQL_PORT:-3306}:3306"
     volumes:
       - mysql_data:/var/lib/mysql
       - ./database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
@@ -16,32 +15,53 @@ services:
     command:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
 
   backend:
     build:
-      context: ./backend
-    container_name: se-project-backend
+      context: .
+      dockerfile: backend/Dockerfile
+    working_dir: /workspace
     env_file:
       - .env
     environment:
-      DATABASE_URL: mysql+pymysql://se_user:se_password@mysql:3306/se_project
+      MYSQL_HOST: mysql
+      DATABASE_URL: mysql+pymysql://${MYSQL_USER}:${MYSQL_PASSWORD}@mysql:3306/${MYSQL_DATABASE}
+      PYTHONPATH: /workspace/backend
     ports:
-      - "8000:8000"
+      - "${BACKEND_PORT:-8000}:8000"
+    volumes:
+      - .:/workspace
     depends_on:
-      - mysql
+      mysql:
+        condition: service_healthy
+    command: uvicorn app.main:app --app-dir backend --host 0.0.0.0 --port 8000 --reload --reload-dir backend
 
-  # 注意：当前前端容器使用 npm run dev（开发模式），仅用于本地调试。
-  # 生产部署应改为 npm run build + nginx 静态服务。
   frontend:
     build:
-      context: ./frontend
-    container_name: se-project-frontend
+      context: .
+      dockerfile: frontend/Dockerfile
+    working_dir: /workspace/frontend
+    env_file:
+      - .env
     environment:
-      VITE_API_BASE_URL: http://localhost:8000/api/v1
+      VITE_API_BASE_URL: /api/v1
+      VITE_DEV_PROXY_TARGET: http://backend:8000
+      CHOKIDAR_USEPOLLING: "true"
     ports:
       - "5173:5173"
+    volumes:
+      - .:/workspace
+      - frontend_node_modules:/workspace/frontend/node_modules
     depends_on:
       - backend
+    command: npm run dev -- --host 0.0.0.0 --port 5173
 
 volumes:
   mysql_data:
+  frontend_node_modules:

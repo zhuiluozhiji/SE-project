@@ -1,8 +1,183 @@
+# 环境配置
 
-# NOTE
-- `docs/`：开发项目的时候喂给vibe coding初始化，了解项目任务，可以用`docs/` 下面的各文档，
-- `progress/`：大家各自的进展可以放在底下的文件夹下，同时有一份`总进度.md`记录整体项目推进到了哪里，可以由负责测试的同学维护
+本项目统一使用 Docker Compose 管理开发环境。所有组员都使用同一套 `mysql + backend + frontend` 容器，不再混用本地 `venv`、本地 `npm` 和本地 MySQL。
 
+## 1. 组员需要安装什么
+
+每位组员本机只需要安装：
+
+```text
+Git
+Docker
+Docker Compose
+```
+
+可先检查：
+
+```bash
+git --version
+docker --version
+docker compose version
+```
+
+如果上面命令能正常输出版本号，就可以继续。
+
+## 2. 第一次拉代码后怎么配置
+
+第一次拉取项目后，在项目根目录执行：
+
+```bash
+git clone 项目仓库地址
+cd SE-project
+cp .env.example .env
+docker compose up --build
+```
+
+说明：
+
+- `.env.example` 是团队统一模板，复制成 `.env` 后即可直接使用。
+- `docker compose up --build` 会统一构建并启动前端、后端、数据库三个服务。
+- MySQL 第一次启动时会自动执行 `database/schema.sql` 和 `database/seed.sql`。
+
+启动成功后访问：
+
+```text
+前端：http://localhost:5173/
+后端健康检查：http://localhost:8000/health
+Swagger：http://localhost:8000/docs
+活动列表示例：http://localhost:8000/api/v1/activities
+```
+
+## 3. 团队统一开发命令
+
+所有组员统一只使用下面这套命令：
+
+```bash
+docker compose up --build
+docker compose up --build -d
+docker compose down
+docker compose down -v
+docker compose exec backend pytest
+docker compose exec backend sh
+docker compose exec frontend sh
+docker compose logs -f backend
+docker compose logs -f frontend
+docker compose logs -f mysql
+```
+
+常用说明：
+
+- `docker compose up --build`
+  启动整个开发环境，前台查看日志。
+- `docker compose up --build -d`
+  后台启动整个开发环境。
+- `docker compose down`
+  停止并删除容器。
+- `docker compose down -v`
+  停止并删除容器，同时删除 MySQL 数据卷；下次启动会重新执行建表和种子数据。
+- `docker compose exec backend pytest`
+  在后端容器内执行测试。
+- `docker compose exec backend sh`
+  进入后端容器排查问题、运行 Python 命令。
+- `docker compose exec frontend sh`
+  进入前端容器排查前端依赖或开发服务问题。
+
+## 4. 组员日常开发应该怎么做
+
+每次开始开发前：
+
+```bash
+git pull
+docker compose up -d
+```
+
+开发过程中：
+
+- 前端代码改动会通过 Vite 热更新自动生效。
+- 后端代码改动会通过 `uvicorn --reload` 自动重载。
+- 数据库统一使用 Compose 里的 MySQL，不要自己再本地单独起一个库来联调。
+
+开发完成后，提交前至少执行：
+
+```bash
+docker compose exec backend pytest
+```
+
+如果你改了前端页面，建议同时手动打开：
+
+```text
+http://localhost:5173/
+```
+
+检查页面是否正常。
+
+## 5. 环境变量约定
+
+项目统一提供 `.env.example`。组员必须从它复制生成自己的 `.env`：
+
+```bash
+cp .env.example .env
+```
+
+默认情况下不需要修改，关键项如下：
+
+```text
+MYSQL_HOST=mysql
+MYSQL_PORT=3306
+MYSQL_DATABASE=se_project
+MYSQL_USER=se_user
+MYSQL_PASSWORD=se_password
+MYSQL_ROOT_PASSWORD=root_password
+DATABASE_URL=mysql+pymysql://se_user:se_password@mysql:3306/se_project
+VITE_API_BASE_URL=/api/v1
+VITE_DEV_PROXY_TARGET=http://backend:8000
+```
+
+注意：
+
+- `.env.example` 可以提交到仓库。
+- `.env` 是每个人本地文件，不要提交。
+- 如果组长后续修改了环境变量模板，其他组员需要 `git pull` 后同步更新自己的 `.env`。
+
+## 6. 常见问题
+
+### `docker compose up --build` 后服务启动失败
+
+先看日志：
+
+```bash
+docker compose logs -f mysql
+docker compose logs -f backend
+docker compose logs -f frontend
+```
+
+重点检查：
+
+- Docker 是否已经正常启动。
+- `3306`、`8000`、`5173` 端口是否被占用。
+- `.env` 是否确实由 `.env.example` 复制而来。
+
+### 需要重置数据库
+
+执行：
+
+```bash
+docker compose down -v
+docker compose up --build
+```
+
+这会删除旧数据卷，并重新执行 `schema.sql` 和 `seed.sql`。
+
+### 不要做的事情
+
+组员不要这样做：
+
+- 不要提交 `.env`。
+- 不要手动维护某个人本机容器再让别人 `docker commit` / `docker save` / `docker load`。
+- 不要一部分人用 Docker，一部分人用本地 `venv` 或本地 MySQL。
+- 不要跳过 `docker compose` 直接在宿主机运行 `uvicorn`、`pytest`、`npm run dev` 作为团队标准流程。
+
+# 分工
 
 | 成员 | 角色 | 主要负责内容 | 第一阶段重点交付 |
 | --- | --- | --- | --- |
@@ -12,307 +187,6 @@
 | lyy | 后端负责人 2 | 日历与课表业务 | 课表导入、截图识别接口预留、冲突检测、日程、ICS 导出 |
 | pxl | 后端负责人 3 | 推荐与筛选排序 | 活动搜索、标签/类别/校区筛选、排序、推荐规则、后台辅助统计 |
 | hh | 测试与文书负责人 | 测试管理与项目文档 | 测试用例、接口测试、Bug 记录、进度记录、用户手册和报告材料 |
-
-
-# 环境配置
-
-本节说明组员第一次拉取项目后，如何把本地环境配置到可以运行前端、后端和基础测试的状态。
-
-当前项目涉及：
-
-```text
-前端：Node.js + npm
-后端：Python + venv + pip
-数据库：MySQL
-协作：Git
-```
-
-推荐版本：
-
-```text
-Node.js >= 18
-npm >= 9
-Python >= 3.10
-MySQL 8.0
-```
-
-可以先检查本机是否已安装：
-
-```bash
-git --version
-node --version
-npm --version
-python --version
-mysql --version
-```
-
-如果某个命令不存在，需要先安装对应软件。
-
-## 1. 拉取项目
-
-第一次拉取：
-
-```bash
-git clone 项目仓库地址
-cd SE-project
-```
-
-如果已经拉取过：
-
-```bash
-git pull
-```
-
-## 2. 配置环境变量
-
-项目提供了环境变量模板：
-
-```bash
-cp .env.example .env
-```
-
-然后根据本机 MySQL 配置修改 `.env`：
-
-```text
-MYSQL_HOST=localhost
-MYSQL_PORT=3306
-MYSQL_DATABASE=se_project
-MYSQL_USER=你的 MySQL 用户名
-MYSQL_PASSWORD=你的 MySQL 密码
-DATABASE_URL=mysql+pymysql://你的 MySQL 用户名:你的 MySQL 密码@localhost:3306/se_project
-```
-
-注意：
-
-```text
-.env.example 可以提交到仓库
-.env 是个人本地配置，不要提交
-```
-
-## 3. 配置后端环境
-
-在项目根目录执行：
-
-```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -r backend/requirements.txt
-```
-
-Windows PowerShell 可以使用：
-
-```powershell
-.\.venv\Scripts\Activate.ps1
-pip install -r backend/requirements.txt
-```
-
-安装完成后，运行后端测试：
-
-```bash
-pytest
-```
-
-如果测试通过，会看到类似：
-
-```text
-1 passed
-```
-
-## 4. 配置前端环境
-
-进入前端目录：
-
-```bash
-cd frontend
-npm install
-npm run build
-```
-
-如果 `npm run build` 通过，说明前端依赖和构建配置正常。
-
-执行完成后回到项目根目录：
-
-```bash
-cd ..
-```
-
-## 5. 配置数据库
-
-确保本机 MySQL 已启动，然后在项目根目录执行：
-
-```bash
-mysql -u root -p < database/schema.sql
-mysql -u root -p < database/seed.sql
-```
-
-如果你不是用 `root` 用户，请替换成自己的 MySQL 用户名：
-
-```bash
-mysql -u 你的用户名 -p < database/schema.sql
-mysql -u 你的用户名 -p < database/seed.sql
-```
-
-这两份 SQL 的作用：
-
-```text
-database/schema.sql  # 创建数据库和核心表
-database/seed.sql    # 写入测试用户、测试活动、课程和日程样例数据
-```
-
-## 6. 启动后端服务
-
-在项目根目录执行：
-
-```bash
-source .venv/bin/activate
-uvicorn app.main:app --app-dir backend --reload --host 0.0.0.0 --port 8000
-```
-
-启动成功后访问：
-
-```text
-健康检查：http://localhost:8000/health
-接口文档：http://localhost:8000/docs
-活动列表：http://localhost:8000/api/v1/activities
-```
-
-## 7. 启动前端服务
-
-另开一个终端，进入前端目录：
-
-```bash
-cd frontend
-npm run dev -- --host 0.0.0.0
-```
-
-启动成功后访问：
-
-```text
-前端页面：http://localhost:5173/
-```
-
-## 8. 最短跑通流程
-
-如果已经安装好 Git、Node.js、npm、Python、MySQL，可以按下面顺序直接跑：
-
-```bash
-git pull
-cp .env.example .env
-
-python -m venv .venv
-source .venv/bin/activate
-pip install -r backend/requirements.txt
-pytest
-
-mysql -u root -p < database/schema.sql
-mysql -u root -p < database/seed.sql
-
-cd frontend
-npm install
-npm run build
-cd ..
-```
-
-然后分别启动两个服务：
-
-```bash
-# 终端 1：后端
-source .venv/bin/activate
-uvicorn app.main:app --app-dir backend --reload --host 0.0.0.0 --port 8000
-```
-
-```bash
-# 终端 2：前端
-cd frontend
-npm run dev -- --host 0.0.0.0
-```
-
-最后打开：
-
-```text
-http://localhost:5173/
-http://localhost:8000/docs
-```
-
-## 9. 已自动完成和不需要重复做的事情
-
-项目初始化时已经完成：
-
-```text
-前端 Vue 3 + Vite 工程
-后端 FastAPI 工程
-基础 API 路由
-Swagger 接口文档
-数据库 SQL 脚本
-测试目录和测试样例
-爬虫目录骨架
-Docker 配置占位
-```
-
-组员不需要重新创建这些工程，只需要在现有目录上继续开发。
-
-不要提交这些本地生成内容：
-
-```text
-.venv/
-node_modules/
-.env
-frontend/dist/
-__pycache__/
-.pytest_cache/
-```
-
-这些已经写入 `.gitignore`。
-
-## 10. 常见问题
-
-### `uvicorn: command not found`
-
-说明没有激活虚拟环境，或者后端依赖没有安装：
-
-```bash
-source .venv/bin/activate
-pip install -r backend/requirements.txt
-```
-
-### `ModuleNotFoundError: No module named 'app'`
-
-启动后端时需要带上 `--app-dir backend`：
-
-```bash
-uvicorn app.main:app --app-dir backend --reload --host 0.0.0.0 --port 8000
-```
-
-### 前端端口被占用
-
-可以换端口：
-
-```bash
-npm run dev -- --host 0.0.0.0 --port 5174
-```
-
-### 后端端口被占用
-
-可以换端口：
-
-```bash
-uvicorn app.main:app --app-dir backend --reload --host 0.0.0.0 --port 8001
-```
-
-如果后端端口改了，前端接口地址也要同步调整。
-
-### 数据库连接失败
-
-优先检查：
-
-```text
-MySQL 是否启动
-.env 中用户名和密码是否正确
-DATABASE_URL 是否正确
-database/schema.sql 是否已经导入
-```
-
-当前大部分接口仍是 mock 数据，所以数据库连接失败不一定会影响接口占位访问，但后续真实业务会依赖 MySQL。
 
 
 # GitHub 提交规范
@@ -426,9 +300,7 @@ git push origin --delete frontend/activity-list
 合并到 `main` 前至少确认：
 
 ```bash
-pytest
-cd frontend
-npm run build
+docker compose exec backend pytest
 ```
 
 如果只改文档，可以不跑前端构建和后端测试，但提交信息或进度记录里要说明“仅文档修改”。
@@ -442,121 +314,4 @@ npm run build
 5. 前端调用接口前，先看 Swagger 和 `docs/api-contract.md`。
 6. 分支合并前建议在群里说明本次改动范围，例如 `feat: add course import api`。
 7. 每次合并尽量只做一类事情，不要把前端、后端、文档、格式化混在一次提交里。
-
-
-# 项目架构
-## **仓库目录结构**
-
-```text
-SE-project/
-├── frontend/                 # 前端 Vue 3 + Vite 项目
-│   └── src/                  # 页面、接口封装、路由、状态管理、样式
-├── backend/                  # 后端 FastAPI 项目
-│   └── app/                  # 入口、路由、服务层、模型、Schema、数据库
-├── crawler/                  # 爬虫脚本与数据清洗/存储工具
-├── database/                 # 建库建表、测试数据、迁移预留、ER 图预留
-├── docs/                     # 需求、设计、计划、测试、接口等文档
-├── progress/                 # 项目进度记录
-├── tests/                    # 接口测试、测试数据、端到端测试预留
-├── README.md                 # 项目总说明与环境配置
-├── AGENTS.md                 # 协作与开发规范
-├── .env.example              # 环境变量模板
-├── pytest.ini                # pytest 配置
-└── docker-compose.yml        # Docker 启动配置
-```
-
-## **前端架构**
-```text
-frontend/
-├── src/
-│   ├── api/                  # Axios 接口封装
-│   ├── assets/               # 静态资源
-│   ├── components/           # 通用组件
-│   ├── views/                # 页面级组件
-│   ├── router/               # 路由配置
-│   ├── store/                # Pinia 状态管理
-│   └── utils/                # 工具函数
-└── package.json
-```
-
-前端主要页面：
-
-```text
-LoginView                # 登录/注册
-HomeView                 # 首页、推荐活动
-ActivityListView         # 活动列表、搜索、筛选、排序
-ActivityDetailView       # 活动详情、一键加入日程
-CalendarView             # 日历视图、冲突展示
-CourseImportView         # 课表导入
-ProfileView              # 个人中心
-AdminView                # 简化后台管理
-```
-
-## **后端架构**
-```text
-backend/
-├── app/
-│   ├── main.py
-│   ├── core/                 # 配置、JWT、统一响应、异常处理
-│   ├── api/
-│   │   └── v1/
-│   │       ├── auth.py
-│   │       ├── users.py
-│   │       ├── activities.py
-│   │       ├── recommendations.py
-│   │       ├── schedules.py
-│   │       ├── courses.py
-│   │       ├── admin.py
-│   │       └── crawler.py
-│   ├── models/               # SQLAlchemy 模型
-│   ├── schemas/              # Pydantic 请求/响应模型
-│   ├── services/             # 业务逻辑
-│   ├── db/                   # 数据库连接
-│   └── utils/                # 工具函数
-└── requirements.txt
-```
-
-核心后端模块：
-
-```text
-auth                 # 登录、注册、Token 鉴权
-activities           # 活动列表、详情、筛选、后台 CRUD
-recommendations      # 规则推荐
-schedules            # 日程查询、冲突检测、加入日程、ICS 导出
-courses              # 课表手动录入、CSV/Excel 导入、OCR 预留
-crawler              # 手动触发爬虫、爬虫记录查询
-admin                # 下架活动、修正活动、查看统计
-```
-
-## **数据库架构**
-第一阶段建议核心表：
-
-```text
-user                 # 用户
-activity             # 活动
-activity_tag         # 活动标签
-user_interest        # 用户兴趣
-schedule_event       # 用户日程
-course_schedule      # 课程表
-registration         # 报名/加入记录
-crawl_record         # 爬虫运行记录
-admin_log            # 管理员操作日志
-```
-
-主流程里最重要的是：
-
-```text
-activity → 活动展示、筛选、推荐
-course_schedule → 课表导入与冲突检测
-schedule_event → 日历展示、加入日程、ICS 导出
-registration → 记录用户和活动关系
-```
-
-
-# 技术栈
-前端：Vue 3 + Vite + Element Plus
-后端：Python + FastAPI
-数据库：MySQL
-爬虫：Python requests + BeautifulSoup
-测试：接口测试 + 文档测试 + 手工验收用例
-接口文档：FastAPI Swagger / docs 接口文档
+8. 团队统一使用 Docker Compose，不要再把本地 `venv`、本地 `npm`、本地 MySQL 当成主开发流程。

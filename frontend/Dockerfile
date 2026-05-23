@@ -1,9 +1,10 @@
 FROM node:20-alpine
 
-WORKDIR /app
-COPY package.json package-lock.json* ./
+WORKDIR /workspace/frontend
+
+COPY frontend/package.json frontend/package-lock.json* ./
 RUN npm install
 
-COPY . .
+COPY frontend /workspace/frontend
 EXPOSE 5173
-CMD ["npm", "run", "dev"]
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "5173"]
