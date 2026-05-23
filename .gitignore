@@ -44,6 +44,7 @@ yarn-error.log*
 .DS_Store
 .idea/
 .vscode/
+AGENTS.md
 
 # Local database / uploads
 *.sqlite3
