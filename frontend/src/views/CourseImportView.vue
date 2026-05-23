@@ -280,6 +280,14 @@ const showTemplate = () => {
 
 .format-hint p { font-size: 12px; }
 
+[data-theme="dark"] .parse-error {
+  border-color: #5a3a38;
+}
+
+[data-theme="dark"] .format-hint {
+  border-color: #5a4a2a;
+}
+
 @media (max-width: 960px) {
   .import-grid {
     grid-template-columns: 1fr;

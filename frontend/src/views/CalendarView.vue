@@ -40,7 +40,6 @@
               v-for="d in weekDays"
               :key="d.label"
               class="day-head"
-              :class="{ today: d.isToday }"
             >
               <strong>{{ d.label }}</strong>
               <small>{{ d.date }}</small>
@@ -148,21 +147,21 @@
       </div>
     </div>
 
-    <el-dialog v-model="conflictVisible" title="冲突明细" width="480px">
-      <div class="dialog-list">
-        <div class="dialog-item" v-for="item in conflictEvents" :key="item.id || item.title">
-          <strong>{{ item.title }}</strong>
-          <p class="faint">{{ formatDate(item.start_time || item.time) }} &middot; {{ item.location || '--' }}</p>
-        </div>
-      </div>
-    </el-dialog>
-
     <div v-if="error" class="empty-state">
       <p>加载失败</p>
       <small>{{ error }}</small>
       <el-button size="small" @click="fetchSchedules">重试</el-button>
     </div>
   </section>
+
+  <el-dialog v-model="conflictVisible" title="冲突明细" width="480px" append-to-body align-center>
+    <div class="dialog-list">
+      <div class="dialog-item" v-for="item in conflictEvents" :key="item.id || item.title">
+        <strong>{{ item.title }}</strong>
+        <p class="faint">{{ formatDate(item.start_time || item.time) }} &middot; {{ item.location || '--' }}</p>
+      </div>
+    </div>
+  </el-dialog>
 </template>
 
 <script setup>
@@ -483,6 +482,7 @@ onMounted(fetchSchedules)
   flex: 1;
   padding: 10px 4px;
   text-align: center;
+  background: inherit;
 }
 
 .day-head strong {
@@ -494,14 +494,6 @@ onMounted(fetchSchedules)
 .day-head small {
   font-size: 11px;
   color: var(--text-tertiary);
-}
-
-.day-head.today {
-  background: var(--accent-light);
-}
-
-.day-head.today strong {
-  color: var(--accent);
 }
 
 .timeline-body {
@@ -530,10 +522,7 @@ onMounted(fetchSchedules)
 .day-col {
   flex: 1;
   position: relative;
-  border-right: 1px solid var(--border-light);
 }
-
-.day-col:last-child { border-right: none; }
 
 .day-bg {
   position: absolute;
@@ -713,6 +702,40 @@ onMounted(fetchSchedules)
 }
 
 .dialog-item p { margin: 4px 0 0; font-size: 12px; }
+
+[data-theme="dark"] .course-dot   { background: #7a9ed3; }
+[data-theme="dark"] .activity-dot { background: #8bc4a0; }
+[data-theme="dark"] .exam-dot     { background: #a08ec8; }
+
+[data-theme="dark"] .timeline-event.course {
+  background: #1e222d;
+  border-left-color: #6a8cbf;
+}
+
+[data-theme="dark"] .timeline-event.activity {
+  background: #1e2822;
+  border-left-color: #7aaa8a;
+}
+
+[data-theme="dark"] .timeline-event.exam {
+  background: #24202d;
+  border-left-color: #8b7ab8;
+}
+
+[data-theme="dark"] .conflict-box {
+  border-color: #5a3a38;
+}
+
+[data-theme="dark"] .conflict-box.safe {
+  border-color: #3a5a48;
+}
+
+[data-theme="dark"] .exam-item {
+  background: #24202d;
+  border-color: #3d3850;
+}
+
+[data-theme="dark"] .exam-item strong { color: #a08ec8; }
 
 @media (max-width: 1200px) {
   .cal-grid {

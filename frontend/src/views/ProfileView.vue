@@ -122,8 +122,8 @@ onMounted(fetchProfile)
 .profile-hero {
   display: flex;
   align-items: center;
-  gap: 24px;
-  padding: 28px 32px;
+  gap: 20px;
+  padding: 20px 24px;
   background: var(--bg-surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
@@ -137,7 +137,7 @@ onMounted(fetchProfile)
   display: grid;
   place-items: center;
   background: var(--text-primary);
-  color: #fff;
+  color: var(--bg-surface);
   font-size: 18px;
   font-weight: 700;
   font-family: var(--font-display);

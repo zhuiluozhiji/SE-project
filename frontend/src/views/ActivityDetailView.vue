@@ -11,7 +11,7 @@
     <template v-else-if="activity">
       <div class="detail-hero">
         <div class="detail-hero-body">
-          <span class="chip">{{ statusLabel }}</span>
+          <span class="chip">{{ statusLabel() }}</span>
           <h2 class="detail-title">{{ activity.title }}</h2>
           <p class="detail-sub">
             {{ activity.speaker || '主讲人待定' }} &nbsp;&middot;&nbsp; {{ activity.organizer || '组织单位待定' }}
@@ -25,13 +25,11 @@
             </div>
             <span class="faint">{{ activity.campus }} &middot; {{ activity.location }}</span>
           </div>
-          <el-button type="primary" size="large" :loading="adding" @click="addToSchedule">
+          <el-button class="action-btn" type="primary" size="large" :loading="adding" @click="addToSchedule">
             加入日程
           </el-button>
-          <el-button size="large" :loading="checking" @click="checkConflict">
-            检测冲突
-          </el-button>
-          <p class="faint" v-if="conflictCount > 0">已预检到 {{ conflictCount }} 个时间冲突</p>
+          <p class="faint" v-if="checking">正在检测冲突...</p>
+          <p class="faint" v-else-if="conflictCount > 0">已预检到 {{ conflictCount }} 个时间冲突</p>
         </div>
       </div>
 
@@ -87,27 +85,27 @@
           </div>
         </div>
       </div>
-
-      <el-dialog v-model="conflictVisible" width="480px">
-        <template #header>
-          <div class="dialog-head">
-            <strong>冲突明细</strong>
-            <span class="faint">{{ conflicts.length }} 项</span>
-          </div>
-        </template>
-        <div class="dialog-list">
-          <div class="dialog-item" v-for="item in conflicts" :key="item.title">
-            <strong>{{ item.title }}</strong>
-            <p class="faint">{{ item.time || fmtShort(item.start_time) }} &middot; {{ item.location || '--' }}</p>
-          </div>
-        </div>
-        <template #footer>
-          <el-button @click="conflictVisible = false">取消</el-button>
-          <el-button type="primary" :loading="adding" @click="addToSchedule">仍要加入</el-button>
-        </template>
-      </el-dialog>
     </template>
   </section>
+
+  <el-dialog v-model="conflictVisible" width="480px" append-to-body align-center>
+    <template #header>
+      <div class="dialog-head">
+        <strong>冲突明细</strong>
+        <span class="faint">{{ conflicts.length }} 项</span>
+      </div>
+    </template>
+    <div class="dialog-list">
+      <div class="dialog-item" v-for="item in conflicts" :key="item.title">
+        <strong>{{ item.title }}</strong>
+        <p class="faint">{{ item.time || fmtShort(item.start_time) }} &middot; {{ item.location || '--' }}</p>
+      </div>
+    </div>
+    <template #footer>
+      <el-button @click="conflictVisible = false">取消</el-button>
+      <el-button type="primary" :loading="adding" @click="addToSchedule">仍要加入</el-button>
+    </template>
+  </el-dialog>
 </template>
 
 <script setup>
@@ -157,6 +155,7 @@ const fetchDetail = async () => {
   try {
     const res = await getActivityDetail(Number(route.params.id))
     activity.value = res.data
+    await checkConflict()
   } catch (e) {
     error.value = e.message || '加载失败'
   } finally {
@@ -170,17 +169,16 @@ const checkConflict = async () => {
     const res = await checkConflictApi({ activity_id: Number(route.params.id) })
     conflicts.value = res.data?.conflicts || res.data || []
     conflictCount.value = conflicts.value.length
-    if (conflicts.value.length > 0) {
-      conflictVisible.value = true
-    } else {
-      ElMessage.success('没有检测到时间冲突')
-    }
-  } catch { /* 拦截器已处理 */ } finally {
+  } catch { /* 静默失败，冲突检测非阻塞 */ } finally {
     checking.value = false
   }
 }
 
 const addToSchedule = async () => {
+  if (conflicts.value.length > 0 && !conflictVisible.value) {
+    conflictVisible.value = true
+    return
+  }
   adding.value = true
   try {
     await addActivityToSchedule({ activity_id: Number(route.params.id) })
@@ -206,8 +204,9 @@ onMounted(fetchDetail)
 .detail-hero {
   display: grid;
   grid-template-columns: 1fr auto;
+  align-items: center;
   gap: 28px;
-  padding: 32px 36px;
+  padding: 24px 28px;
   background: var(--bg-surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
@@ -233,8 +232,8 @@ onMounted(fetchDetail)
   display: flex;
   flex-direction: column;
   gap: 10px;
-  min-width: 200px;
-  padding: 20px;
+  min-width: 190px;
+  padding: 16px;
   background: var(--bg-warm);
   border: 1px solid var(--border-light);
   border-radius: var(--radius-md);
@@ -256,8 +255,10 @@ onMounted(fetchDetail)
   gap: 6px;
 }
 
-.detail-action > .el-button {
+.action-btn {
+  display: flex;
   width: 100%;
+  justify-content: center;
 }
 
 /* ── Body ── */
@@ -297,7 +298,7 @@ onMounted(fetchDetail)
   display: grid;
   place-items: center;
   background: var(--text-primary);
-  color: #fff;
+  color: var(--bg-surface);
   font-weight: 600;
   font-size: 14px;
 }
@@ -313,7 +314,7 @@ onMounted(fetchDetail)
   justify-content: space-between;
   gap: 16px;
   background: var(--danger-light);
-  border-color: #edc8c6;
+  border-color: var(--danger-light);
 }
 
 .conflict-banner p { margin: 4px 0 0; font-size: 12px; }

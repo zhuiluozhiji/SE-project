@@ -40,72 +40,72 @@
         </el-table-column>
       </el-table>
     </div>
-
-    <!-- 新增/编辑弹窗 -->
-    <el-dialog v-model="activityDialogVisible" :title="editingActivity ? '编辑活动' : '新增活动'" width="600px">
-      <el-form :model="activityForm" label-width="100px">
-        <el-form-item label="活动标题">
-          <el-input v-model="activityForm.title" placeholder="请输入活动标题" />
-        </el-form-item>
-        <el-form-item label="主讲人">
-          <el-input v-model="activityForm.speaker" placeholder="主讲人" />
-        </el-form-item>
-        <el-form-item label="组织单位">
-          <el-input v-model="activityForm.organizer" placeholder="承办单位" />
-        </el-form-item>
-        <el-row :gutter="16">
-          <el-col :span="12">
-            <el-form-item label="校区">
-              <el-select v-model="activityForm.campus" placeholder="选择校区">
-                <el-option label="紫金港" value="紫金港" />
-                <el-option label="玉泉" value="玉泉" />
-                <el-option label="西溪" value="西溪" />
-              </el-select>
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="类别">
-              <el-select v-model="activityForm.category" placeholder="选择类别">
-                <el-option label="学术讲座" value="学术讲座" />
-                <el-option label="研讨会" value="研讨会" />
-                <el-option label="工作坊" value="工作坊" />
-              </el-select>
-            </el-form-item>
-          </el-col>
-        </el-row>
-        <el-form-item label="地点">
-          <el-input v-model="activityForm.location" placeholder="具体地点" />
-        </el-form-item>
-        <el-form-item label="开始时间">
-          <el-date-picker v-model="activityForm.start_time" type="datetime" placeholder="选择开始时间" />
-        </el-form-item>
-        <el-form-item label="结束时间">
-          <el-date-picker v-model="activityForm.end_time" type="datetime" placeholder="选择结束时间" />
-        </el-form-item>
-        <el-form-item label="活动简介">
-          <el-input v-model="activityForm.description" type="textarea" :rows="3" placeholder="活动描述" />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="activityDialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="savingActivity" @click="submitActivity">
-          {{ editingActivity ? '保存修改' : '创建活动' }}
-        </el-button>
-      </template>
-    </el-dialog>
-
-    <!-- 爬虫日志弹窗 -->
-    <el-dialog v-model="showCrawlerLogs" title="爬虫运行记录" width="700px">
-      <el-table :data="crawlerRecords" v-loading="crawlerLogsLoading">
-        <el-table-column prop="source" label="来源" width="120" />
-        <el-table-column prop="status" label="状态" width="100" />
-        <el-table-column prop="fetched_count" label="抓取数" width="80" />
-        <el-table-column prop="success_count" label="成功数" width="80" />
-        <el-table-column prop="run_time" label="运行时间" width="180" />
-        <el-table-column prop="error_msg" label="错误信息" min-width="150" />
-      </el-table>
-    </el-dialog>
   </section>
+
+  <!-- 新增/编辑弹窗 -->
+  <el-dialog v-model="activityDialogVisible" :title="editingActivity ? '编辑活动' : '新增活动'" width="600px" append-to-body align-center>
+    <el-form :model="activityForm" label-width="100px">
+      <el-form-item label="活动标题">
+        <el-input v-model="activityForm.title" placeholder="请输入活动标题" />
+      </el-form-item>
+      <el-form-item label="主讲人">
+        <el-input v-model="activityForm.speaker" placeholder="主讲人" />
+      </el-form-item>
+      <el-form-item label="组织单位">
+        <el-input v-model="activityForm.organizer" placeholder="承办单位" />
+      </el-form-item>
+      <el-row :gutter="16">
+        <el-col :span="12">
+          <el-form-item label="校区">
+            <el-select v-model="activityForm.campus" placeholder="选择校区">
+              <el-option label="紫金港" value="紫金港" />
+              <el-option label="玉泉" value="玉泉" />
+              <el-option label="西溪" value="西溪" />
+            </el-select>
+          </el-form-item>
+        </el-col>
+        <el-col :span="12">
+          <el-form-item label="类别">
+            <el-select v-model="activityForm.category" placeholder="选择类别">
+              <el-option label="学术讲座" value="学术讲座" />
+              <el-option label="研讨会" value="研讨会" />
+              <el-option label="工作坊" value="工作坊" />
+            </el-select>
+          </el-form-item>
+        </el-col>
+      </el-row>
+      <el-form-item label="地点">
+        <el-input v-model="activityForm.location" placeholder="具体地点" />
+      </el-form-item>
+      <el-form-item label="开始时间">
+        <el-date-picker v-model="activityForm.start_time" type="datetime" placeholder="选择开始时间" />
+      </el-form-item>
+      <el-form-item label="结束时间">
+        <el-date-picker v-model="activityForm.end_time" type="datetime" placeholder="选择结束时间" />
+      </el-form-item>
+      <el-form-item label="活动简介">
+        <el-input v-model="activityForm.description" type="textarea" :rows="3" placeholder="活动描述" />
+      </el-form-item>
+    </el-form>
+    <template #footer>
+      <el-button @click="activityDialogVisible = false">取消</el-button>
+      <el-button type="primary" :loading="savingActivity" @click="submitActivity">
+        {{ editingActivity ? '保存修改' : '创建活动' }}
+      </el-button>
+    </template>
+  </el-dialog>
+
+  <!-- 爬虫日志弹窗 -->
+  <el-dialog v-model="showCrawlerLogs" title="爬虫运行记录" width="700px" append-to-body align-center>
+    <el-table :data="crawlerRecords" v-loading="crawlerLogsLoading">
+      <el-table-column prop="source" label="来源" width="120" />
+      <el-table-column prop="status" label="状态" width="100" />
+      <el-table-column prop="fetched_count" label="抓取数" width="80" />
+      <el-table-column prop="success_count" label="成功数" width="80" />
+      <el-table-column prop="run_time" label="运行时间" width="180" />
+      <el-table-column prop="error_msg" label="错误信息" min-width="150" />
+    </el-table>
+  </el-dialog>
 </template>
 
 <script setup>

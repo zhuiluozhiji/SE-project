@@ -96,7 +96,7 @@ p { margin: 0; line-height: 1.65; }
   display: flex;
   gap: 14px;
   align-items: center;
-  padding: 24px 20px 20px;
+  padding: 18px 20px 16px;
 }
 
 .brand-mark {
@@ -104,7 +104,7 @@ p { margin: 0; line-height: 1.65; }
   width: 40px;
   height: 40px;
   place-items: center;
-  color: #ffffff;
+  color: var(--bg-surface);
   font-weight: 700;
   font-size: 15px;
   font-family: var(--font-display);
@@ -130,6 +130,8 @@ p { margin: 0; line-height: 1.65; }
 .nav-menu {
   border-right: none !important;
   background: transparent;
+  overflow-y: auto;
+  flex: 1;
 }
 
 .nav-menu .el-menu-item {
@@ -149,7 +151,7 @@ p { margin: 0; line-height: 1.65; }
 
 .nav-menu .el-menu-item.is-active {
   background: var(--text-primary);
-  color: #ffffff;
+  color: var(--bg-surface);
   font-weight: 500;
 }
 
@@ -212,16 +214,16 @@ p { margin: 0; line-height: 1.65; }
 }
 
 .app-main {
-  padding: 32px;
+  padding: 20px;
   position: relative;
   z-index: 1;
-  max-width: 1440px;
-  margin: 0 auto;
+  max-width: none;
+  margin: 0;
 }
 
 /* ── 页面通用面板 ── */
 .page-panel {
-  padding: 28px 32px;
+  padding: 20px 24px;
   background: var(--bg-surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
@@ -409,6 +411,63 @@ p { margin: 0; line-height: 1.65; }
 
 .el-menu {
   border-right: none;
+}
+
+/* ── 暗色模式 ── */
+[data-theme="dark"] {
+  --bg-root: #1a1d21;
+  --bg-surface: #212529;
+  --bg-warm: #25282c;
+  --bg-muted: #2a2e33;
+
+  --text-primary: #e8e6e3;
+  --text-secondary: #b0aca5;
+  --text-tertiary: #7a7570;
+  --text-disabled: #5a554f;
+
+  --accent: #cc9358;
+  --accent-light: #2d261e;
+  --accent-muted: #3d2e20;
+
+  --info: #6b8fc5;
+  --info-light: #1e2430;
+  --success: #6ba882;
+  --success-light: #1e2823;
+  --warning: #cc9d4d;
+  --warning-light: #2d261a;
+  --danger: #c9706b;
+  --danger-light: #2d1f1e;
+
+  --border: #383d42;
+  --border-light: #2e3237;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.18);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.28);
+  --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.35);
+}
+
+[data-theme="dark"] .app-header {
+  background: rgba(33, 37, 41, 0.9);
+}
+
+[data-theme="dark"] .chip.warning {
+  border-color: #5a4a2a;
+}
+
+[data-theme="dark"] .chip.danger {
+  border-color: #5a3a38;
+}
+
+[data-theme="dark"] .conflict-banner {
+  border-color: #5a3a38;
+}
+
+[data-theme="dark"] .el-button--primary {
+  --el-button-hover-bg-color: #d0cecb;
+  --el-button-hover-border-color: #d0cecb;
+  --el-button-active-bg-color: #b8b5b1;
+  --el-button-active-border-color: #b8b5b1;
+  --el-button-text-color: var(--bg-surface);
 }
 
 /* ── 响应式 ── */

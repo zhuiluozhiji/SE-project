@@ -131,7 +131,7 @@ onMounted(() => {
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 32px;
-  padding: 40px 44px;
+  padding: 28px 32px;
   background: var(--bg-surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-xl);

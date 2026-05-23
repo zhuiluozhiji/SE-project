@@ -45,12 +45,18 @@
               <small>{{ auth.user?.college || '' }}</small>
             </div>
           </div>
+          <el-button text class="theme-toggle-btn" @click="toggleTheme">
+            <el-icon :size="18"><Sunny v-if="isDark" /><Moon v-else /></el-icon>
+          </el-button>
           <el-button text class="logout-btn" @click="handleLogout">
             <el-icon><SwitchButton /></el-icon>
           </el-button>
         </template>
         <template v-else>
           <el-button type="primary" class="login-btn-side" @click="$router.push('/login')">登录</el-button>
+          <el-button text class="theme-toggle-btn" @click="toggleTheme">
+            <el-icon :size="18"><Sunny v-if="isDark" /><Moon v-else /></el-icon>
+          </el-button>
         </template>
       </div>
     </el-aside>
@@ -82,14 +88,16 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Search, HomeFilled, List, Calendar, Upload, User, Setting, SwitchButton } from '@element-plus/icons-vue'
+import { Search, HomeFilled, List, Calendar, Upload, User, Setting, SwitchButton, Sunny, Moon } from '@element-plus/icons-vue'
 import { useAuthStore } from './store/auth'
+import { useDarkMode } from './composables/useDarkMode'
 
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
+const { isDark, init: initTheme, toggle: toggleTheme } = useDarkMode()
 
 const searchKeyword = ref('')
 const routeTitle = computed(() => route.meta.title || '校园学术活动智能推荐平台')
@@ -105,12 +113,20 @@ const handleLogout = () => {
   auth.logout()
   router.push('/')
 }
+
+onMounted(() => {
+  initTheme()
+})
 </script>
 
 <style scoped>
 .app-sidebar {
   display: flex;
   flex-direction: column;
+  height: 100vh;
+  position: sticky;
+  top: 0;
+  overflow: hidden;
 }
 
 .header-left {
@@ -130,7 +146,7 @@ const handleLogout = () => {
 /* ── 侧边栏底部用户区 ── */
 .sidebar-footer {
   margin-top: auto;
-  padding: 16px 14px;
+  padding: 12px 14px;
   border-top: 1px solid var(--border);
   display: flex;
   align-items: center;
@@ -160,7 +176,7 @@ const handleLogout = () => {
   display: grid;
   place-items: center;
   background: var(--text-primary);
-  color: #fff;
+  color: var(--bg-surface);
   font-size: 13px;
   font-weight: 700;
   font-family: var(--font-display);
@@ -187,6 +203,16 @@ const handleLogout = () => {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.theme-toggle-btn {
+  flex-shrink: 0;
+  color: var(--text-tertiary);
+  padding: 4px;
+}
+
+.theme-toggle-btn:hover {
+  color: var(--accent);
 }
 
 .logout-btn {
