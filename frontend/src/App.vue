@@ -38,12 +38,25 @@
           <p>聚合校园学术活动与个人日程，优先保证主流程清晰可用。</p>
         </div>
         <div class="header-actions">
-          <el-input class="header-search" placeholder="搜索活动、讲座或主讲人" />
-          <el-button type="primary" @click="$router.push('/login')">登录</el-button>
-          <div class="user-chip">
-            <span class="dot"></span>
-            学生访客
-          </div>
+          <el-input
+            class="header-search"
+            v-model="searchKeyword"
+            placeholder="搜索活动、讲座或主讲人"
+            @keyup.enter="goSearch"
+          >
+            <template #prefix>
+              <el-icon><Search /></el-icon>
+            </template>
+          </el-input>
+          <template v-if="auth.isLoggedIn">
+            <el-button text @click="$router.push('/profile')">
+              {{ auth.user?.username || '用户' }}
+            </el-button>
+            <el-button type="danger" plain size="small" @click="handleLogout">退出</el-button>
+          </template>
+          <template v-else>
+            <el-button type="primary" @click="$router.push('/login')">登录</el-button>
+          </template>
         </div>
       </el-header>
 
@@ -55,12 +68,29 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
-import { useRoute } from 'vue-router'
+import { ref, computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { Search } from '@element-plus/icons-vue'
+import { useAuthStore } from './store/auth'
 
 const route = useRoute()
+const router = useRouter()
+const auth = useAuthStore()
 
+const searchKeyword = ref('')
 const routeTitle = computed(() => route.meta.title || '校园学术活动智能推荐平台')
+
+const goSearch = () => {
+  const kw = searchKeyword.value.trim()
+  if (kw) {
+    router.push({ path: '/activities', query: { keyword: kw } })
+  }
+}
+
+const handleLogout = () => {
+  auth.logout()
+  router.push('/')
+}
 </script>
 
 <style scoped>

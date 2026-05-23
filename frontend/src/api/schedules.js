@@ -11,3 +11,7 @@ export function checkConflict(data) {
 export function addActivityToSchedule(data) {
   return http.post('/schedules/add-activity', data)
 }
+
+export function exportIcs(params) {
+  return http.get('/schedules/export-ics', { params, responseType: 'blob' })
+}

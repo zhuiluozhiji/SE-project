@@ -15,23 +15,117 @@
       </div>
     </div>
     <div class="card login-card">
-      <h2 class="page-title">登录注册</h2>
-      <el-form label-width="72px">
-        <el-form-item label="用户名">
-          <el-input placeholder="student001" />
+      <h2 class="page-title">{{ isRegister ? '注册账号' : '登录' }}</h2>
+      <el-form
+        ref="formRef"
+        :model="form"
+        :rules="rules"
+        label-width="80px"
+        @submit.prevent="handleSubmit"
+      >
+        <el-form-item label="用户名" prop="username">
+          <el-input v-model="form.username" placeholder="请输入用户名" />
         </el-form-item>
-        <el-form-item label="密码">
-          <el-input type="password" placeholder="请输入密码" show-password />
+        <el-form-item label="密码" prop="password">
+          <el-input
+            v-model="form.password"
+            type="password"
+            placeholder="请输入密码"
+            show-password
+            @keyup.enter="handleSubmit"
+          />
+        </el-form-item>
+        <el-form-item label="确认密码" prop="confirmPassword" v-if="isRegister">
+          <el-input
+            v-model="form.confirmPassword"
+            type="password"
+            placeholder="请再次输入密码"
+            show-password
+          />
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" size="large">登录</el-button>
-          <el-button size="large">注册</el-button>
+          <el-button type="primary" size="large" :loading="loading" @click="handleSubmit">
+            {{ isRegister ? '注册' : '登录' }}
+          </el-button>
+          <el-button size="large" @click="isRegister = !isRegister; resetForm()">
+            {{ isRegister ? '已有账号？去登录' : '没有账号？去注册' }}
+          </el-button>
         </el-form-item>
       </el-form>
       <p class="muted">登录后可同步课表、生成日程冲突提示与个性化推荐。</p>
     </div>
   </section>
 </template>
+
+<script setup>
+import { ref, reactive } from 'vue'
+import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
+import { useAuthStore } from '../store/auth'
+
+const router = useRouter()
+const auth = useAuthStore()
+
+const isRegister = ref(false)
+const loading = ref(false)
+const formRef = ref(null)
+
+const form = reactive({
+  username: '',
+  password: '',
+  confirmPassword: ''
+})
+
+const rules = {
+  username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
+  password: [
+    { required: true, message: '请输入密码', trigger: 'blur' },
+    { min: 6, message: '密码长度不能少于6位', trigger: 'blur' }
+  ],
+  confirmPassword: [
+    { required: true, message: '请再次输入密码', trigger: 'blur' },
+    {
+      validator: (rule, value, callback) => {
+        if (value !== form.password) {
+          callback(new Error('两次输入的密码不一致'))
+        } else {
+          callback()
+        }
+      },
+      trigger: 'blur'
+    }
+  ]
+}
+
+const resetForm = () => {
+  form.username = ''
+  form.password = ''
+  form.confirmPassword = ''
+  formRef.value?.clearValidate()
+}
+
+const handleSubmit = async () => {
+  if (!formRef.value) return
+  await formRef.value.validate(async (valid) => {
+    if (!valid) return
+    loading.value = true
+    try {
+      if (isRegister.value) {
+        ElMessage.info('注册功能将在后续版本开放，请使用测试账号登录')
+        loading.value = false
+        return
+      }
+      await auth.login({ username: form.username, password: form.password })
+      ElMessage.success('登录成功')
+      router.push('/')
+    } catch {
+      // 错误已在 http 拦截器中处理
+    } finally {
+      loading.value = false
+    }
+  })
+}
+</script>
 
 <style scoped>
 .login-page {
