@@ -1,8 +1,12 @@
+from datetime import datetime
+
 from sqlalchemy import Select, and_, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.models.activity import Activity
 from app.models.activity_tag import ActivityTag
+
+ZJU_CAMPUSES = ["紫金港", "玉泉", "西溪", "华家池", "之江", "舟山", "海宁"]
 
 
 def _iso(value):
@@ -37,6 +41,8 @@ def _apply_filters(
     campus: str | None = None,
     college: str | None = None,
     tag: str | None = None,
+    start_from: datetime | None = None,
+    start_to: datetime | None = None,
 ) -> Select[tuple[Activity]]:
     conditions = [Activity.status == "open"]
     if keyword:
@@ -47,6 +53,7 @@ def _apply_filters(
                 Activity.description.like(like_keyword),
                 Activity.speaker.like(like_keyword),
                 Activity.organizer.like(like_keyword),
+                Activity.location.like(like_keyword),
             )
         )
     if category:
@@ -58,6 +65,10 @@ def _apply_filters(
     if tag:
         stmt = stmt.join(ActivityTag, ActivityTag.activity_id == Activity.id)
         conditions.append(ActivityTag.tag_name == tag)
+    if start_from:
+        conditions.append(Activity.start_time >= start_from)
+    if start_to:
+        conditions.append(Activity.start_time <= start_to)
     return stmt.where(and_(*conditions))
 
 
@@ -75,6 +86,18 @@ def _load_tags(db: Session, activity_ids: list[int]) -> dict[int, list[str]]:
     return tags_by_activity
 
 
+def _generic_recommend_score(activity: Activity) -> int:
+    hot_score = max(0, min(activity.hot_score or 0, 100)) * 0.3
+    time_score = 0
+    if activity.start_time:
+        days_until_start = (activity.start_time - datetime.now()).days
+        if 0 <= days_until_start <= 7:
+            time_score = 20
+        elif 0 <= days_until_start <= 30:
+            time_score = 10
+    return int(round(hot_score + time_score))
+
+
 def list_activities(
     db: Session,
     keyword: str | None = None,
@@ -82,6 +105,8 @@ def list_activities(
     campus: str | None = None,
     college: str | None = None,
     tag: str | None = None,
+    start_from: datetime | None = None,
+    start_to: datetime | None = None,
     sort_by: str = "time",
     page: int = 1,
     page_size: int = 10,
@@ -93,19 +118,39 @@ def list_activities(
         campus=campus,
         college=college,
         tag=tag,
+        start_from=start_from,
+        start_to=start_to,
     )
     total = db.scalar(select(func.count()).select_from(base_stmt.subquery())) or 0
 
-    if sort_by == "hot":
+    if sort_by == "recommend":
+        activities_all = db.scalars(base_stmt).all()
+        activities_all.sort(
+            key=lambda activity: (
+                -_generic_recommend_score(activity),
+                activity.start_time or datetime.max,
+                activity.id,
+            )
+        )
+        activities = activities_all[(page - 1) * page_size : page * page_size]
+    elif sort_by == "hot":
         base_stmt = base_stmt.order_by(Activity.hot_score.desc(), Activity.start_time.asc())
+        activities = db.scalars(base_stmt.offset((page - 1) * page_size).limit(page_size)).all()
     else:
         base_stmt = base_stmt.order_by(Activity.start_time.asc(), Activity.id.asc())
+        activities = db.scalars(base_stmt.offset((page - 1) * page_size).limit(page_size)).all()
 
-    activities = db.scalars(base_stmt.offset((page - 1) * page_size).limit(page_size)).all()
     tags_by_activity = _load_tags(db, [activity.id for activity in activities])
     return {
         "items": [
-            _activity_to_dict(activity, tags_by_activity.get(activity.id, []))
+            {
+                **_activity_to_dict(activity, tags_by_activity.get(activity.id, [])),
+                **(
+                    {"recommend_score": _generic_recommend_score(activity)}
+                    if sort_by == "recommend"
+                    else {}
+                ),
+            }
             for activity in activities
         ],
         "total": total,
@@ -120,6 +165,32 @@ def get_activity(db: Session, activity_id: int) -> dict | None:
         return None
     tags_by_activity = _load_tags(db, [activity.id])
     return _activity_to_dict(activity, tags_by_activity.get(activity.id, []))
+
+
+def get_filter_options(db: Session) -> dict:
+    def distinct_values(column) -> list[str]:
+        rows = db.scalars(
+            select(column)
+            .where(Activity.status == "open", column.is_not(None), column != "")
+            .distinct()
+            .order_by(column.asc())
+        ).all()
+        return list(rows)
+
+    tags = db.scalars(
+        select(ActivityTag.tag_name)
+        .join(Activity, Activity.id == ActivityTag.activity_id)
+        .where(Activity.status == "open", ActivityTag.tag_name != "")
+        .distinct()
+        .order_by(ActivityTag.tag_name.asc())
+    ).all()
+
+    return {
+        "categories": distinct_values(Activity.category),
+        "campuses": list(dict.fromkeys([*ZJU_CAMPUSES, *distinct_values(Activity.campus)])),
+        "colleges": distinct_values(Activity.college),
+        "tags": list(tags),
+    }
 
 
 def list_activities_mock() -> list[dict]:

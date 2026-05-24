@@ -7,24 +7,35 @@
       </div>
       <el-form class="filter-row" inline @submit.prevent="search">
         <el-form-item label="关键词">
-          <el-input v-model="filters.keyword" placeholder="搜索标题或主讲人" clearable />
+          <el-input
+            v-model="filters.keyword"
+            class="keyword-input"
+            placeholder="搜索标题或主讲人"
+            clearable
+          />
         </el-form-item>
         <el-form-item label="校区">
-          <el-select v-model="filters.campus" placeholder="全部校区" clearable>
-            <el-option label="紫金港" value="紫金港" />
-            <el-option label="玉泉" value="玉泉" />
-            <el-option label="西溪" value="西溪" />
+          <el-select v-model="filters.campus" class="filter-select" placeholder="全部校区" clearable>
+            <el-option
+              v-for="campus in filterOptions.campuses"
+              :key="campus"
+              :label="campus"
+              :value="campus"
+            />
           </el-select>
         </el-form-item>
         <el-form-item label="类别">
-          <el-select v-model="filters.category" placeholder="全部类别" clearable>
-            <el-option label="学术讲座" value="学术讲座" />
-            <el-option label="研讨会" value="研讨会" />
-            <el-option label="工作坊" value="工作坊" />
+          <el-select v-model="filters.category" class="filter-select" placeholder="全部类别" clearable>
+            <el-option
+              v-for="category in filterOptions.categories"
+              :key="category"
+              :label="category"
+              :value="category"
+            />
           </el-select>
         </el-form-item>
         <el-form-item label="排序">
-          <el-select v-model="filters.sort" placeholder="默认排序" clearable style="width:120px">
+          <el-select v-model="filters.sort" class="sort-select" placeholder="默认排序" clearable>
             <el-option label="最新发布" value="time" />
             <el-option label="最热门" value="hot" />
             <el-option label="推荐优先" value="recommend" />
@@ -72,12 +83,11 @@
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { getActivities } from '../api/activities'
+import { useRoute } from 'vue-router'
+import { getActivities, getActivityFilterOptions } from '../api/activities'
 import ActivityCard from '../components/ActivityCard.vue'
 
 const route = useRoute()
-const router = useRouter()
 
 const loading = ref(false)
 const error = ref('')
@@ -91,10 +101,29 @@ const filters = reactive({
   sort: ''
 })
 
+const filterOptions = reactive({
+  campuses: ['紫金港', '玉泉', '西溪', '华家池', '之江', '舟山', '海宁'],
+  categories: ['讲座', '沙龙', '论坛', 'Workshop']
+})
+
 const pagination = reactive({
   page: 1,
   pageSize: 9
 })
+
+const loadFilterOptions = async () => {
+  try {
+    const res = await getActivityFilterOptions()
+    filterOptions.campuses = res.data?.campuses?.length
+      ? res.data.campuses
+      : filterOptions.campuses
+    filterOptions.categories = res.data?.categories?.length
+      ? res.data.categories
+      : filterOptions.categories
+  } catch {
+    // Keep local defaults so the filter bar remains usable if the options endpoint fails.
+  }
+}
 
 const search = async () => {
   loading.value = true
@@ -104,7 +133,7 @@ const search = async () => {
     if (filters.keyword) params.keyword = filters.keyword
     if (filters.campus) params.campus = filters.campus
     if (filters.category) params.category = filters.category
-    if (filters.sort) params.sort = filters.sort
+    if (filters.sort) params.sort_by = filters.sort
 
     const res = await getActivities(params)
     activities.value = res.data?.items || res.data?.activities || res.data || []
@@ -127,6 +156,7 @@ const reset = () => {
 
 onMounted(() => {
   if (route.query.keyword) filters.keyword = route.query.keyword
+  loadFilterOptions()
   search()
 })
 </script>
@@ -157,6 +187,22 @@ onMounted(() => {
   gap: 8px;
 }
 
+.filter-row :deep(.el-form-item) {
+  margin-right: 0;
+}
+
+.keyword-input {
+  width: 220px;
+}
+
+.filter-select {
+  width: 140px;
+}
+
+.sort-select {
+  width: 150px;
+}
+
 .list-body {
   min-height: 200px;
 }
@@ -177,6 +223,11 @@ onMounted(() => {
   }
   .filter-row {
     justify-content: flex-start;
+  }
+  .keyword-input,
+  .filter-select,
+  .sort-select {
+    width: min(100%, 260px);
   }
 }
 </style>

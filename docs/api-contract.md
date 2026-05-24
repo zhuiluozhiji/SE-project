@@ -22,6 +22,7 @@
 POST   /api/v1/auth/login
 GET    /api/v1/users/me
 GET    /api/v1/activities
+GET    /api/v1/activities/filter-options
 GET    /api/v1/activities/{id}
 GET    /api/v1/recommendations/activities
 GET    /api/v1/schedules
@@ -38,6 +39,8 @@ DELETE /api/v1/courses/{id}
 POST   /api/v1/admin/activities
 PUT    /api/v1/admin/activities/{id}
 DELETE /api/v1/admin/activities/{id}
+GET    /api/v1/admin/stats
+GET    /api/v1/admin/recommendations/preview
 POST   /api/v1/admin/crawler/run
 GET    /api/v1/admin/crawler/records
 ```
@@ -98,11 +101,13 @@ Authorization: Bearer <token>
 
 | 参数 | 说明 |
 | --- | --- |
-| `keyword` | 按标题、简介、主讲人、组织方模糊搜索 |
+| `keyword` | 按标题、简介、主讲人、组织方、地点模糊搜索 |
 | `category` | 活动类别 |
 | `campus` | 校区 |
 | `college` | 学院 |
 | `tag` | 活动标签 |
+| `start_from` | 活动开始时间下界，ISO datetime |
+| `start_to` | 活动开始时间上界，ISO datetime |
 | `sort_by` | `time` / `hot` / `recommend` |
 | `page` | 页码，从 1 开始 |
 | `page_size` | 每页数量 |
@@ -121,6 +126,21 @@ Authorization: Bearer <token>
 
 活动条目字段：`id`、`title`、`description`、`speaker`、`organizer`、`college`、`category`、`campus`、`location`、`start_time`、`end_time`、`source_url`、`source_type`、`hot_score`、`status`、`tags`。
 
+当 `sort_by=recommend` 时，活动条目额外包含 `recommend_score`，用于按通用推荐分排序。
+
+### `GET /api/v1/activities/filter-options`
+
+返回当前开放活动可用的筛选项：
+
+```json
+{
+  "categories": ["讲座", "沙龙"],
+  "campuses": ["紫金港", "玉泉", "西溪", "华家池", "之江", "舟山", "海宁"],
+  "colleges": ["计算机科学与技术学院"],
+  "tags": ["人工智能", "数据库"]
+}
+```
+
 ### `GET /api/v1/activities/{id}`
 
 成功响应 `data` 为单个活动详情，字段与活动列表项一致。
@@ -134,6 +154,35 @@ Authorization: Bearer <token>
   "data": null
 }
 ```
+
+## 推荐接口
+
+### `GET /api/v1/recommendations/activities`
+
+查询参数：
+
+| 参数 | 说明 |
+| --- | --- |
+| `limit` | 返回数量，范围 1-50，默认 10 |
+
+认证为可选。请求头包含 `Authorization: Bearer <token>` 时，按当前用户兴趣标签、学院和日程冲突计算个性化推荐；不包含 token 时，按热度和时间临近度返回通用推荐。
+
+成功响应 `data`：
+
+```json
+{
+  "items": []
+}
+```
+
+推荐活动字段包含活动基础字段，并额外包含：
+
+| 字段 | 说明 |
+| --- | --- |
+| `recommend_score` | 推荐分 |
+| `reason` | 推荐理由 |
+| `matched_tags` | 命中的用户兴趣标签 |
+| `has_conflict` | 是否与当前用户已有日程冲突 |
 
 ## 日程与课表接口
 
@@ -316,3 +365,34 @@ Authorization: Bearer <token>
 ### `POST /api/v1/courses/ocr`
 
 课表截图 OCR 预留接口，第一阶段返回 `reserved` 状态。
+
+## 后台接口
+
+### `GET /api/v1/admin/stats`
+
+返回后台辅助统计：
+
+```json
+{
+  "activity_count": 2,
+  "open_activity_count": 2,
+  "offline_activity_count": 0,
+  "user_count": 2,
+  "tag_count": 5,
+  "campus_count": 2,
+  "category_count": 2,
+  "average_hot_score": 75.5,
+  "max_hot_score": 87
+}
+```
+
+### `GET /api/v1/admin/recommendations/preview`
+
+查询参数：
+
+| 参数 | 说明 |
+| --- | --- |
+| `user_id` | 可选。指定用户后按该用户兴趣和日程预览推荐；为空时返回通用推荐 |
+| `limit` | 返回数量，范围 1-50，默认 10 |
+
+成功响应字段同 `GET /api/v1/recommendations/activities`。

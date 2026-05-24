@@ -1,3 +1,5 @@
+SET NAMES utf8mb4;
+
 USE se_project;
 
 INSERT INTO user (id, username, password_hash, role, major, college)
@@ -99,11 +101,23 @@ VALUES
   (1, '数据库')
 ON DUPLICATE KEY UPDATE tag_name = VALUES(tag_name);
 
+DELETE FROM course_schedule
+WHERE user_id = 1
+  AND weekday = 1
+  AND start_section = 3
+  AND end_section = 4;
+
 INSERT INTO course_schedule (
   user_id, course_name, teacher, weekday, start_section, end_section, weeks, location
 )
 VALUES
   (1, '机器学习', '李老师', 1, 3, 4, '1-16', '紫金港东1A-101');
+
+DELETE FROM schedule_event
+WHERE user_id = 1
+  AND type = 'course'
+  AND start_time = '2026-05-10 13:00:00'
+  AND end_time = '2026-05-10 15:00:00';
 
 INSERT INTO schedule_event (
   user_id, title, type, activity_id, start_time, end_time, location, color_type
