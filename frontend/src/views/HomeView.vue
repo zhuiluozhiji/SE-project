@@ -48,9 +48,10 @@
           @click="$router.push(`/activities/${item.id}`)"
         >
           <div class="rec-top">
-            <span class="chip">{{ item.reason || item.tag || '推荐' }}</span>
+            <span class="chip rec-label">{{ item.matched_tags?.[0] || item.tag || '推荐' }}</span>
             <span class="faint">{{ fmtDate(item.start_time || item.time) }}</span>
           </div>
+          <p class="rec-reason" v-if="item.reason">{{ item.reason }}</p>
           <h4 class="rec-title">{{ item.title }}</h4>
           <p class="muted rec-desc">{{ truncate(item.description || item.desc, 64) }}</p>
           <div class="rec-foot">
@@ -227,13 +228,34 @@ onMounted(() => {
 
 .rec-card {
   cursor: pointer;
+  min-width: 0;
 }
 
 .rec-top {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
   margin-bottom: 10px;
+}
+
+.rec-label {
+  max-width: calc(100% - 52px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rec-reason {
+  margin: 0 0 12px;
+  min-height: 40px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.6;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .rec-title {
@@ -248,13 +270,26 @@ onMounted(() => {
 .rec-desc {
   margin-bottom: 14px;
   font-size: 13px;
+  line-height: 1.6;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .rec-foot {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
   font-size: 12px;
+}
+
+.rec-foot .faint {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .rec-arrow {
