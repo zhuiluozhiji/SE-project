@@ -20,6 +20,7 @@
 
 ```text
 POST   /api/v1/auth/login
+POST   /api/v1/auth/register
 GET    /api/v1/users/me
 GET    /api/v1/activities
 GET    /api/v1/activities/filter-options
@@ -365,6 +366,66 @@ Authorization: Bearer <token>
 ### `POST /api/v1/courses/ocr`
 
 课表截图 OCR 预留接口，第一阶段返回 `reserved` 状态。
+
+## mxy 认证接口补充（2026-05-24）
+
+### `POST /api/v1/auth/register`
+
+注册普通学生用户。注册接口不允许指定管理员角色，新用户固定写入为 `student`。
+
+请求体：
+
+```json
+{
+  "username": "newstudent",
+  "password": "123456",
+  "major": "软件工程",
+  "college": "软件学院"
+}
+```
+
+成功响应 `data`：
+
+```json
+{
+  "token": "jwt token",
+  "user": {
+    "id": 3,
+    "username": "newstudent",
+    "role": "student",
+    "major": "软件工程",
+    "college": "软件学院"
+  }
+}
+```
+
+用户名已存在时返回：
+
+```json
+{
+  "code": 1004,
+  "message": "用户名已存在",
+  "data": null
+}
+```
+
+### 管理员登录与权限
+
+管理员继续使用 `POST /api/v1/auth/login` 登录。只要 `user.role = "admin"`，登录响应中的 `user.role` 会返回 `admin`，JWT 里也会携带管理员角色。
+
+当前测试管理员账号：
+
+```text
+admin001 / 123456
+```
+
+所有 `/api/v1/admin/*` 接口现在要求请求头携带管理员 token：
+
+```text
+Authorization: Bearer <admin token>
+```
+
+未登录返回 HTTP 401，非管理员用户返回 HTTP 403。
 
 ## 后台接口
 

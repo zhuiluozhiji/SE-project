@@ -21,3 +21,7 @@
 | TC-MXY-002 | 用户 | 获取当前用户 | 已通过登录拿到 token | GET `/api/v1/users/me`，携带 Bearer token | 返回当前用户公开信息 | 已加入自动化测试 |
 | TC-MXY-003 | 活动 | 活动列表查询 | 数据库存在 open 活动 | GET `/api/v1/activities?page=1&page_size=10` | 返回分页结构、活动条目和标签 | 已加入自动化测试 |
 | TC-MXY-004 | 活动 | 活动详情查询 | 数据库存在活动 101 | GET `/api/v1/activities/101` | 返回活动详情字段 | 已加入自动化测试 |
+| TC-MXY-005 | 注册 | 新用户注册 | 用户名未被占用 | POST `/api/v1/auth/register` | 返回 `code=0`、JWT token 和 `student` 用户信息 | 已加入自动化测试 |
+| TC-MXY-006 | 注册 | 重复用户名注册 | 数据库已存在 `student001` | POST `/api/v1/auth/register` | 返回 `code=1004` | 已加入自动化测试 |
+| TC-MXY-007 | 后台权限 | 学生访问后台被拒 | 学生已登录 | GET `/api/v1/admin/stats`，携带学生 token | 返回 HTTP 403 | 已加入自动化测试 |
+| TC-MXY-008 | 后台权限 | 管理员访问后台成功 | 管理员已登录 | GET `/api/v1/admin/stats`，携带管理员 token | 返回后台统计数据 | 已加入自动化测试 |

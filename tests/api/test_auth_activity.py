@@ -39,6 +39,17 @@ def client():
         )
     )
     db.add(
+        User(
+            id=2,
+            username="admin001",
+            password_hash=hash_password("123456"),
+            role="admin",
+            major=None,
+            college="信息技术中心",
+            created_at=now,
+        )
+    )
+    db.add(
         Activity(
             id=101,
             title="人工智能前沿讲座",
@@ -93,6 +104,64 @@ def test_login_and_get_current_user(client):
     )
     assert me_response.status_code == 200
     assert me_response.json()["data"]["id"] == 1
+
+
+def test_register_creates_student_user(client):
+    response = client.post(
+        "/api/v1/auth/register",
+        json={
+            "username": "newstudent",
+            "password": "123456",
+            "major": "软件工程",
+            "college": "软件学院",
+        },
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["code"] == 0
+    assert data["data"]["user"]["username"] == "newstudent"
+    assert data["data"]["user"]["role"] == "student"
+    assert data["data"]["token"]
+
+
+def test_register_rejects_duplicate_username(client):
+    response = client.post(
+        "/api/v1/auth/register",
+        json={"username": "student001", "password": "123456"},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["code"] == 1004
+
+
+def test_admin_login_and_admin_permission(client):
+    admin_login = client.post(
+        "/api/v1/auth/login",
+        json={"username": "admin001", "password": "123456"},
+    )
+    assert admin_login.status_code == 200
+    admin_data = admin_login.json()
+    assert admin_data["code"] == 0
+    assert admin_data["data"]["user"]["role"] == "admin"
+
+    student_login = client.post(
+        "/api/v1/auth/login",
+        json={"username": "student001", "password": "123456"},
+    )
+    student_token = student_login.json()["data"]["token"]
+    forbidden_response = client.get(
+        "/api/v1/admin/stats",
+        headers={"Authorization": f"Bearer {student_token}"},
+    )
+    assert forbidden_response.status_code == 403
+
+    admin_token = admin_data["data"]["token"]
+    stats_response = client.get(
+        "/api/v1/admin/stats",
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    assert stats_response.status_code == 200
+    assert stats_response.json()["code"] == 0
 
 
 def test_list_and_get_activity_from_database(client):

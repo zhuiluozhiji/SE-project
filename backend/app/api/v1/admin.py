@@ -1,13 +1,18 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
+from app.core.deps import require_admin_user
 from app.core.response import success
 from app.db.session import get_db
 from app.schemas.activity import ActivityCreate, ActivityUpdate
 from app.services.admin_service import get_admin_stats as get_admin_stats_from_db
 from app.services.recommendation_service import list_recommended_activities
 
-router = APIRouter(prefix="/admin", tags=["admin"])
+router = APIRouter(
+    prefix="/admin",
+    tags=["admin"],
+    dependencies=[Depends(require_admin_user)],
+)
 
 
 @router.post("/activities")
