@@ -25,3 +25,4 @@
 | TC-MXY-006 | 注册 | 重复用户名注册 | 数据库已存在 `student001` | POST `/api/v1/auth/register` | 返回 `code=1004` | 已加入自动化测试 |
 | TC-MXY-007 | 后台权限 | 学生访问后台被拒 | 学生已登录 | GET `/api/v1/admin/stats`，携带学生 token | 返回 HTTP 403 | 已加入自动化测试 |
 | TC-MXY-008 | 后台权限 | 管理员访问后台成功 | 管理员已登录 | GET `/api/v1/admin/stats`，携带管理员 token | 返回后台统计数据 | 已加入自动化测试 |
+| TC-MXY-009 | 后台活动 | 新增、编辑与下架活动持久化 | 管理员已登录 | 依次调用 POST/PUT/DELETE `/api/v1/admin/activities` | 新增可在列表查询，编辑可在详情查询，下架后前台不再展示 | 已加入自动化测试 |

@@ -429,6 +429,18 @@ Authorization: Bearer <admin token>
 
 ## 后台接口
 
+### `POST /api/v1/admin/activities`
+
+管理员新增活动，要求携带管理员 token。活动写入 `activity` 表，默认 `source_type=manual`、`hot_score=0`、`status=open`；成功后可在活动列表查询到。
+
+### `PUT /api/v1/admin/activities/{id}`
+
+管理员编辑已存在活动并持久化到 `activity` 表。活动不存在时返回 `code=1003`。
+
+### `DELETE /api/v1/admin/activities/{id}`
+
+管理员下架活动，将 `activity.status` 更新为 `offline`；下架后普通活动列表和详情不再展示该活动。
+
 ### `GET /api/v1/admin/stats`
 
 返回后台辅助统计：

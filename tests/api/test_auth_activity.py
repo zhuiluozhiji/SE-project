@@ -154,6 +154,7 @@ def test_admin_login_and_admin_permission(client):
         headers={"Authorization": f"Bearer {student_token}"},
     )
     assert forbidden_response.status_code == 403
+    assert forbidden_response.json()["message"] == "需要管理员权限"
 
     admin_token = admin_data["data"]["token"]
     stats_response = client.get(
@@ -162,6 +163,54 @@ def test_admin_login_and_admin_permission(client):
     )
     assert stats_response.status_code == 200
     assert stats_response.json()["code"] == 0
+
+
+def test_admin_activity_create_update_and_offline_persist_to_database(client):
+    admin_login = client.post(
+        "/api/v1/auth/login",
+        json={"username": "admin001", "password": "123456"},
+    )
+    admin_token = admin_login.json()["data"]["token"]
+    headers = {"Authorization": f"Bearer {admin_token}"}
+
+    create_response = client.post(
+        "/api/v1/admin/activities",
+        headers=headers,
+        json={
+            "title": "Backend Workshop",
+            "speaker": "Teacher Li",
+            "category": "Workshop",
+            "campus": "Zijingang",
+            "location": "Room 101",
+        },
+    )
+    assert create_response.status_code == 200
+    created = create_response.json()["data"]
+    assert created["status"] == "open"
+    assert created["source_type"] == "manual"
+
+    list_response = client.get("/api/v1/activities", params={"keyword": "Backend Workshop"})
+    assert list_response.json()["data"]["total"] == 1
+    assert list_response.json()["data"]["items"][0]["id"] == created["id"]
+
+    update_response = client.put(
+        f"/api/v1/admin/activities/{created['id']}",
+        headers=headers,
+        json={"title": "Updated Backend Workshop"},
+    )
+    assert update_response.json()["data"]["title"] == "Updated Backend Workshop"
+
+    detail_response = client.get(f"/api/v1/activities/{created['id']}")
+    assert detail_response.json()["data"]["title"] == "Updated Backend Workshop"
+
+    offline_response = client.delete(
+        f"/api/v1/admin/activities/{created['id']}",
+        headers=headers,
+    )
+    assert offline_response.json()["data"]["status"] == "offline"
+
+    hidden_response = client.get(f"/api/v1/activities/{created['id']}")
+    assert hidden_response.json()["code"] == 1003
 
 
 def test_list_and_get_activity_from_database(client):

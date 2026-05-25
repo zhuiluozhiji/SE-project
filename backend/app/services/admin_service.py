@@ -1,9 +1,68 @@
+from datetime import datetime
+
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models.activity import Activity
 from app.models.activity_tag import ActivityTag
+from app.schemas.activity import ActivityCreate, ActivityUpdate
 from app.models.user import User
+
+
+def activity_to_admin_dict(activity: Activity) -> dict:
+    return {
+        "id": activity.id,
+        "title": activity.title,
+        "description": activity.description,
+        "speaker": activity.speaker,
+        "organizer": activity.organizer,
+        "college": activity.college,
+        "category": activity.category,
+        "campus": activity.campus,
+        "location": activity.location,
+        "start_time": activity.start_time.isoformat() if activity.start_time else None,
+        "end_time": activity.end_time.isoformat() if activity.end_time else None,
+        "source_url": activity.source_url,
+        "source_type": activity.source_type,
+        "hot_score": activity.hot_score,
+        "status": activity.status,
+    }
+
+
+def create_activity(db: Session, payload: ActivityCreate) -> dict:
+    activity = Activity(
+        **payload.model_dump(),
+        source_type="manual",
+        hot_score=0,
+        status="open",
+    )
+    db.add(activity)
+    db.commit()
+    db.refresh(activity)
+    return activity_to_admin_dict(activity)
+
+
+def update_activity(db: Session, activity_id: int, payload: ActivityUpdate) -> dict | None:
+    activity = db.get(Activity, activity_id)
+    if activity is None:
+        return None
+    for field, value in payload.model_dump(exclude_none=True).items():
+        setattr(activity, field, value)
+    activity.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(activity)
+    return activity_to_admin_dict(activity)
+
+
+def offline_activity(db: Session, activity_id: int) -> dict | None:
+    activity = db.get(Activity, activity_id)
+    if activity is None:
+        return None
+    activity.status = "offline"
+    activity.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(activity)
+    return activity_to_admin_dict(activity)
 
 
 def get_admin_stats(db: Session) -> dict:
