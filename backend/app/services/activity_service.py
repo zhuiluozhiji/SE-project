@@ -4,7 +4,9 @@ from sqlalchemy import Select, and_, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.models.activity import Activity
+from app.models.activity_interaction import ActivityInteraction
 from app.models.activity_tag import ActivityTag
+from app.schemas.activity import ActivityInteractionCreate
 
 ZJU_CAMPUSES = ["紫金港", "玉泉", "西溪", "华家池", "之江", "舟山", "海宁"]
 
@@ -165,6 +167,43 @@ def get_activity(db: Session, activity_id: int) -> dict | None:
         return None
     tags_by_activity = _load_tags(db, [activity.id])
     return _activity_to_dict(activity, tags_by_activity.get(activity.id, []))
+
+
+def record_activity_interaction(
+    db: Session,
+    activity_id: int,
+    payload: ActivityInteractionCreate,
+    user_id: int | None,
+) -> dict | None:
+    if user_id is None:
+        return {
+            "recorded": False,
+            "reason": "anonymous_user",
+            "activity_id": activity_id,
+            "action_type": payload.action_type,
+        }
+
+    activity = db.get(Activity, activity_id)
+    if activity is None or activity.status != "open":
+        return None
+
+    interaction = ActivityInteraction(
+        user_id=user_id,
+        activity_id=activity_id,
+        action_type=payload.action_type,
+        source=payload.source,
+    )
+    db.add(interaction)
+    db.commit()
+    db.refresh(interaction)
+    return {
+        "recorded": True,
+        "id": interaction.id,
+        "activity_id": activity_id,
+        "action_type": interaction.action_type,
+        "source": interaction.source,
+        "created_at": interaction.created_at.isoformat(),
+    }
 
 
 def get_filter_options(db: Session) -> dict:

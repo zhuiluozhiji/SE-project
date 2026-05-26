@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel
 
@@ -23,3 +24,8 @@ class ActivityCreate(ActivityBase):
 
 class ActivityUpdate(ActivityBase):
     title: str | None = None
+
+
+class ActivityInteractionCreate(BaseModel):
+    action_type: Literal["view", "add_schedule"]
+    source: str | None = None
