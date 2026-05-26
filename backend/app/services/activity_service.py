@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from sqlalchemy import Select, and_, func, or_, select
+from sqlalchemy.exc import OperationalError, ProgrammingError
 from sqlalchemy.orm import Session
 
 from app.models.activity import Activity
@@ -194,7 +195,16 @@ def record_activity_interaction(
         source=payload.source,
     )
     db.add(interaction)
-    db.commit()
+    try:
+        db.commit()
+    except (OperationalError, ProgrammingError):
+        db.rollback()
+        return {
+            "recorded": False,
+            "reason": "interaction_storage_unavailable",
+            "activity_id": activity_id,
+            "action_type": payload.action_type,
+        }
     db.refresh(interaction)
     return {
         "recorded": True,

@@ -18,6 +18,7 @@
           <el-button type="primary" plain>{{ weekRangeText }}</el-button>
           <el-button @click="nextWeek">下一周</el-button>
         </el-button-group>
+        <el-button type="primary" plain @click="openScreenshotDialog">截图加入</el-button>
         <el-button @click="fetchSchedules">刷新</el-button>
         <el-button type="primary" @click="exportIcs" :loading="exporting">导出 ICS</el-button>
       </div>
@@ -67,12 +68,13 @@
                 v-for="event in getTimelineEvents(di)"
                 :key="event.id || event.title"
                 class="timeline-event"
-                :class="[event.type || 'course', { conflict: event.conflict }]"
+                :class="[event.type || 'course', { 'has-conflict': event.conflict }]"
                 :style="{
                   top: event._top + 'px',
                   height: event._height + 'px',
                   left: event._left + '%',
-                  width: event._width + '%'
+                  width: event._width + '%',
+                  ...event.colorStyle
                 }"
                 role="button"
                 tabindex="0"
@@ -80,10 +82,13 @@
                 @keydown.enter.prevent="openEventDialog(event)"
                 @keydown.space.prevent="openEventDialog(event)"
               >
-                <div class="ev-name">{{ event.title }}</div>
+                <div class="ev-title-row">
+                  <span class="ev-marker">{{ event.markerLabel }}</span>
+                  <div class="ev-name">{{ event.title }}</div>
+                </div>
+                <div v-if="event.remark" class="ev-remark">{{ event.remark }}</div>
                 <div class="ev-time">{{ event.startTime }}-{{ event.endTime }}</div>
-                <div class="ev-meta" v-if="event.teacher">{{ event.teacher }}</div>
-                <div class="ev-meta">{{ event.location || '' }}</div>
+                <div class="ev-location">{{ event.location || '' }}</div>
                 <span v-if="event.weekType" class="week-tag">{{ event.weekType }}</span>
               </div>
             </div>
@@ -99,7 +104,7 @@
         <div class="side-list" v-else>
           <div class="side-item" v-for="c in weekCourses" :key="c.id || c.title">
             <div class="side-item-left">
-              <span class="dot" :class="(c.type || 'course') + '-dot'"></span>
+              <span class="ev-marker side-marker" :style="c.colorStyle">{{ c.markerLabel }}</span>
               <div>
                 <strong>{{ c.title }}</strong>
                 <p class="muted">{{ c.teacher }} &middot; {{ c.location }}</p>
@@ -119,10 +124,22 @@
           <p class="muted">本周暂无活动安排</p>
         </div>
         <div class="side-list" v-else>
-          <div class="side-item" v-for="item in upcoming" :key="item.id || item.title">
-            <div>
+          <div
+            class="side-item clickable"
+            v-for="item in upcoming"
+            :key="item.id || item.title"
+            role="button"
+            tabindex="0"
+            @click="openEventDialog(item)"
+            @keydown.enter.prevent="openEventDialog(item)"
+            @keydown.space.prevent="openEventDialog(item)"
+          >
+            <div class="side-item-left">
+              <span class="ev-marker side-marker" :style="item.colorStyle">{{ item.markerLabel }}</span>
+              <div>
               <strong>{{ item.title }}</strong>
               <p class="muted">{{ formatDate(item.start_time || item.time) }} &middot; {{ item.location || '--' }}</p>
+              </div>
             </div>
             <span class="chip" :class="item.type">{{ typeLabel(item) }}</span>
           </div>
@@ -160,11 +177,195 @@
     </div>
   </section>
 
+  <el-dialog v-model="screenshotDialogVisible" title="截图加入日程" width="min(640px, 94vw)" append-to-body align-center>
+    <div class="screenshot-dialog-body">
+      <el-upload
+        ref="screenshotUploadRef"
+        drag
+        action="#"
+        :auto-upload="false"
+        multiple
+        :limit="MAX_SCREENSHOT_FILES"
+        accept=".png,.jpg,.jpeg,.webp,.bmp,.tif,.tiff"
+        :on-change="handleScreenshotFileChange"
+        :on-remove="handleScreenshotFileRemove"
+        :on-exceed="handleScreenshotFileExceed"
+      >
+        <el-icon class="upload-icon"><UploadFilled /></el-icon>
+        <p>拖拽活动截图到这里</p>
+        <small class="faint">支持 PNG / JPG / WEBP / BMP / TIFF</small>
+      </el-upload>
+
+      <div class="screenshot-capture-actions">
+        <el-button
+          size="small"
+          @click="captureCalendarScreenshot"
+          :disabled="screenshotFiles.length >= MAX_SCREENSHOT_FILES"
+        >
+          快捷截屏
+        </el-button>
+        <span class="faint">{{ screenshotFiles.length }}/{{ MAX_SCREENSHOT_FILES }} · {{ SCREENSHOT_SHORTCUT_LABEL }}</span>
+      </div>
+
+      <el-form :model="screenshotForm" label-width="86px" class="screenshot-form">
+        <el-form-item label="活动名称">
+          <el-input v-model="screenshotForm.title" placeholder="活动名称" />
+        </el-form-item>
+        <el-form-item label="地点">
+          <el-input v-model="screenshotForm.location" placeholder="地点" />
+        </el-form-item>
+        <el-form-item label="备注">
+          <el-input
+            v-model="screenshotForm.remark"
+            type="textarea"
+            maxlength="500"
+            show-word-limit
+            :autosize="{ minRows: 2, maxRows: 3 }"
+          />
+        </el-form-item>
+        <el-row :gutter="12">
+          <el-col :span="12">
+            <el-form-item label="开始时间">
+              <el-date-picker
+                v-model="screenshotForm.start_time"
+                type="datetime"
+                format="YYYY-MM-DD HH:mm"
+                value-format="YYYY-MM-DDTHH:mm:ss"
+                placeholder="开始时间"
+                @change="fillScreenshotEstimatedEndTime(false)"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="结束时间">
+              <el-date-picker
+                v-model="screenshotForm.end_time"
+                type="datetime"
+                format="YYYY-MM-DD HH:mm"
+                value-format="YYYY-MM-DDTHH:mm:ss"
+                placeholder="结束时间"
+              />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-form-item label="预计时长">
+          <div class="duration-input">
+            <el-input-number
+              v-model="screenshotForm.estimated_duration_minutes"
+              :min="15"
+              :max="720"
+              :step="15"
+              controls-position="right"
+              @change="fillScreenshotEstimatedEndTime(true)"
+            />
+            <span>min</span>
+          </div>
+        </el-form-item>
+        <el-row :gutter="12">
+          <el-col :span="8">
+            <el-form-item label="标识">
+              <el-input v-model="screenshotForm.marker_label" maxlength="1" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="16">
+            <el-form-item label="颜色">
+              <div class="color-swatch-grid screenshot-swatches">
+                <button
+                  v-for="option in scheduleColorOptions"
+                  :key="option.value"
+                  type="button"
+                  class="color-swatch"
+                  :class="{ active: screenshotForm.color_type === option.value }"
+                  :style="swatchStyle(option)"
+                  :aria-label="option.name"
+                  :title="option.name"
+                  @click="screenshotForm.color_type = option.value"
+                ></button>
+              </div>
+            </el-form-item>
+          </el-col>
+        </el-row>
+      </el-form>
+
+      <div v-if="screenshotConflicts.length" class="screenshot-conflicts">
+        <strong>检测到冲突</strong>
+        <div v-for="item in screenshotConflicts" :key="item.id || item.title">
+          {{ item.title }} · {{ formatRange(item.start_time, item.end_time) }}
+        </div>
+      </div>
+
+      <div v-if="screenshotRawText" class="screenshot-preview">
+        <strong>识别文本</strong>
+        <p>{{ screenshotRawText }}</p>
+      </div>
+    </div>
+    <template #footer>
+      <el-button @click="screenshotDialogVisible = false">取消</el-button>
+      <el-button :loading="recognizingScreenshot" :disabled="!screenshotFileReady" @click="recognizeScreenshot">
+        识别截图
+      </el-button>
+      <el-button
+        type="primary"
+        :loading="addingScreenshotEvent"
+        :disabled="!canAddScreenshotEvent"
+        @click="addScreenshotEvent"
+      >
+        加入日程
+      </el-button>
+    </template>
+  </el-dialog>
+
+  <el-dialog
+    v-model="cropDialogVisible"
+    title="框选截图范围"
+    width="min(920px, 96vw)"
+    append-to-body
+    align-center
+    @closed="clearCropState"
+  >
+    <div class="crop-stage">
+      <div
+        v-if="cropImageUrl"
+        ref="cropStageRef"
+        class="crop-canvas"
+        @pointerdown="startCropSelection"
+        @pointermove="moveCropSelection"
+        @pointerup="finishCropSelection"
+        @pointercancel="finishCropSelection"
+      >
+        <img
+          ref="cropImageRef"
+          :src="cropImageUrl"
+          draggable="false"
+          alt=""
+          @load="resetCropSelection"
+        />
+        <div
+          v-if="hasCropSelection"
+          class="crop-selection"
+          :style="cropSelectionStyle"
+        ></div>
+      </div>
+    </div>
+    <template #footer>
+      <el-button @click="cropDialogVisible = false">取消</el-button>
+      <el-button @click="confirmCapturedScreenshot(false)">截取整张</el-button>
+      <el-button
+        type="primary"
+        :loading="confirmingCrop"
+        :disabled="!hasCropSelection"
+        @click="confirmCapturedScreenshot(true)"
+      >
+        确认框选
+      </el-button>
+    </template>
+  </el-dialog>
+
   <el-dialog v-model="conflictVisible" title="冲突明细" width="480px" append-to-body align-center>
     <div class="dialog-list">
       <div class="dialog-item" v-for="item in conflictEvents" :key="item.id || item.title">
         <strong>{{ item.title }}</strong>
-        <p class="faint">{{ formatDate(item.start_time || item.time) }} &middot; {{ item.location || '--' }}</p>
+        <p class="faint">{{ formatRange(item.start_time, item.end_time) }} &middot; {{ item.location || '--' }}</p>
       </div>
     </div>
   </el-dialog>
@@ -172,9 +373,11 @@
   <el-dialog v-model="eventDialogVisible" class="course-dialog" width="min(520px, 92vw)" append-to-body align-center>
     <template #header>
       <div class="dialog-title">
-        <span class="chip" :class="{ danger: selectedEvent?.conflict }">
-          {{ selectedEvent ? typeLabel(selectedEvent) : '日程' }}
-        </span>
+        <span
+          v-if="selectedEvent"
+          class="ev-marker dialog-marker"
+          :style="selectedEvent.colorStyle"
+        >{{ selectedEvent.markerLabel }}</span>
         <strong>{{ selectedEvent?.title || '日程详情' }}</strong>
       </div>
     </template>
@@ -201,10 +404,57 @@
         </el-radio-group>
         <p class="muted">{{ deleteScopeHint }}</p>
       </div>
+
+      <div class="event-edit-panel">
+        <h4>标识与备注</h4>
+        <el-input
+          v-model="selectedMarkerLabel"
+          class="marker-input"
+          maxlength="1"
+          show-word-limit
+        />
+        <div class="color-swatch-grid">
+          <button
+            v-for="option in scheduleColorOptions"
+            :key="option.value"
+            type="button"
+            class="color-swatch"
+            :class="{ active: selectedColorType === option.value }"
+            :style="swatchStyle(option)"
+            :aria-label="option.name"
+            :title="option.name"
+            @click="selectedColorType = option.value"
+          ></button>
+        </div>
+        <el-input
+          v-model="selectedRemark"
+          class="remark-input"
+          type="textarea"
+          maxlength="500"
+          show-word-limit
+          :autosize="{ minRows: 2, maxRows: 4 }"
+        />
+      </div>
     </div>
 
     <template #footer>
       <el-button @click="eventDialogVisible = false">关闭</el-button>
+      <el-button
+        type="primary"
+        plain
+        :loading="savingAppearance"
+        @click="saveSelectedEventAppearance"
+      >
+        保存修改
+      </el-button>
+      <el-button
+        v-if="selectedEvent?.rawType === 'activity'"
+        type="danger"
+        :loading="deletingActivity"
+        @click="removeSelectedActivity"
+      >
+        删除活动
+      </el-button>
       <el-button
         v-if="selectedEvent?.rawType === 'course'"
         type="danger"
@@ -218,10 +468,25 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getSchedules } from '../api/schedules'
+import { UploadFilled } from '@element-plus/icons-vue'
+import {
+  addCustomEventToSchedule,
+  checkCustomEventConflict,
+  deleteScheduleEvent,
+  getSchedules,
+  recognizeScheduleImage,
+  updateScheduleEventAppearance
+} from '../api/schedules'
 import { deleteCourse } from '../api/courses'
+import {
+  captureScreenImage,
+  isAllowedScreenshotFile,
+  isScreenshotShortcut,
+  MAX_SCREENSHOT_FILES,
+  SCREENSHOT_SHORTCUT_LABEL
+} from '../utils/screenCapture'
 
 const loading = ref(false)
 const error = ref('')
@@ -234,10 +499,71 @@ const showOdd = ref(true)
 const selectedEvent = ref(null)
 const deleteScope = ref('one')
 const deletingCourse = ref(false)
+const deletingActivity = ref(false)
+const savingAppearance = ref(false)
+const selectedColorType = ref('green')
+const selectedMarkerLabel = ref('活')
+const selectedRemark = ref('')
+const screenshotDialogVisible = ref(false)
+const screenshotUploadRef = ref(null)
+const screenshotFiles = ref([])
+const screenshotFileReady = ref(false)
+const cropDialogVisible = ref(false)
+const cropImageUrl = ref('')
+const cropImageRef = ref(null)
+const cropStageRef = ref(null)
+const cropSourceFile = ref(null)
+const cropSelection = reactive({ x: 0, y: 0, width: 0, height: 0 })
+const cropDragStart = reactive({ x: 0, y: 0 })
+const cropping = ref(false)
+const confirmingCrop = ref(false)
+const recognizingScreenshot = ref(false)
+const addingScreenshotEvent = ref(false)
+const screenshotRawText = ref('')
+const screenshotWarnings = ref([])
+const screenshotConflicts = ref([])
+const DEFAULT_ESTIMATED_DURATION_MINUTES = 120
+const MIN_CROP_SIZE = 12
+
+const screenshotForm = reactive({
+  title: '',
+  location: '',
+  start_time: null,
+  end_time: null,
+  remark: '',
+  estimated_duration_minutes: DEFAULT_ESTIMATED_DURATION_MINUTES,
+  color_type: 'green',
+  marker_label: '活'
+})
+
+const scheduleColorOptions = [
+  { name: '蓝', value: 'blue', border: '#5f84c3', bg: '#e9f0fb' },
+  { name: '绿', value: 'green', border: '#62a374', bg: '#e8f4ec' },
+  { name: '青', value: 'teal', border: '#4c9d9b', bg: '#e5f4f3' },
+  { name: '黄', value: 'amber', border: '#d0a340', bg: '#fbf2d9' },
+  { name: '橙', value: 'orange', border: '#d78245', bg: '#faecdf' },
+  { name: '红', value: 'red', border: '#cf625b', bg: '#fae7e5' },
+  { name: '紫', value: 'purple', border: '#8772bd', bg: '#f0ebfa' },
+  { name: '粉', value: 'pink', border: '#ca6c9d', bg: '#fae9f1' },
+  { name: '灰', value: 'gray', border: '#7d8793', bg: '#eceff3' }
+]
+
+const defaultColorByType = {
+  course: 'blue',
+  activity: 'green',
+  exam: 'purple'
+}
+
+const defaultMarkerByType = {
+  course: '课',
+  activity: '活',
+  exam: '考'
+}
 
 const PX_PER_HOUR = 80
 const START_HOUR = 8
 const END_HOUR = 21.5
+const SEMESTER_WEEK_ONE_MONDAY = new Date(2026, 2, 2)
 
 const parseTime = (t) => {
   if (!t) return 0
@@ -334,15 +660,46 @@ const weekRangeText = computed(() => {
 
 const weekNumber = computed(() => {
   const monday = getMonday(weekOffset.value)
-  const startOfYear = new Date(monday.getFullYear(), 0, 1)
-  const days = Math.floor((monday - startOfYear) / (24 * 60 * 60 * 1000))
-  return Math.ceil((days + startOfYear.getDay() + 1) / 7)
+  const days = Math.floor((monday - SEMESTER_WEEK_ONE_MONDAY) / (24 * 60 * 60 * 1000))
+  return Math.floor(days / 7) + 1
 })
 
 const weekParity = computed(() => weekNumber.value % 2 === 1 ? '单周' : '双周')
 
-const prevWeek = () => { weekOffset.value--; fetchSchedules() }
-const nextWeek = () => { weekOffset.value++; fetchSchedules() }
+const syncWeekParityFilter = () => {
+  showOdd.value = weekNumber.value % 2 === 1
+}
+
+const prevWeek = () => {
+  weekOffset.value--
+  syncWeekParityFilter()
+  fetchSchedules()
+}
+const nextWeek = () => {
+  weekOffset.value++
+  syncWeekParityFilter()
+  fetchSchedules()
+}
+
+const canAddScreenshotEvent = computed(() => {
+  return Boolean(
+    screenshotForm.title?.trim()
+    && screenshotForm.start_time
+    && screenshotForm.end_time
+    && screenshotForm.marker_label?.trim()
+  )
+})
+
+const hasCropSelection = computed(() => {
+  return cropSelection.width >= MIN_CROP_SIZE && cropSelection.height >= MIN_CROP_SIZE
+})
+
+const cropSelectionStyle = computed(() => ({
+  left: `${cropSelection.x}px`,
+  top: `${cropSelection.y}px`,
+  width: `${cropSelection.width}px`,
+  height: `${cropSelection.height}px`
+}))
 
 const formatDate = (t) => {
   if (!t) return ''
@@ -351,21 +708,409 @@ const formatDate = (t) => {
   return `${d.getMonth() + 1}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
+const formatRange = (start, end) => {
+  if (!start) return ''
+  const startDate = formatDate(start)
+  if (!end) return startDate
+  const d = new Date(end)
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${startDate}-${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+const toLocalIso = (value) => {
+  if (!value) return null
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(value)) {
+    return value.length === 16 ? `${value}:00` : value
+  }
+  const d = new Date(value)
+  if (Number.isNaN(d.getTime())) return null
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:00`
+}
+
+const normalizeDurationMinutes = (value) => {
+  const minutes = Number(value)
+  return Number.isFinite(minutes) && minutes > 0 ? minutes : DEFAULT_ESTIMATED_DURATION_MINUTES
+}
+
+const addMinutesToLocalIso = (value, minutes) => {
+  if (!value) return null
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return null
+  date.setMinutes(date.getMinutes() + normalizeDurationMinutes(minutes))
+  return toLocalIso(date)
+}
+
+const shouldReplaceEstimatedEnd = (start, end) => {
+  if (!start) return false
+  if (!end) return true
+  const startDate = new Date(start)
+  const endDate = new Date(end)
+  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) return true
+  return endDate <= startDate
+}
+
+const fillScreenshotEstimatedEndTime = (force = false) => {
+  if (!screenshotForm.start_time) return
+  if (!force && !shouldReplaceEstimatedEnd(screenshotForm.start_time, screenshotForm.end_time)) return
+  const endTime = addMinutesToLocalIso(
+    screenshotForm.start_time,
+    screenshotForm.estimated_duration_minutes
+  )
+  if (endTime) screenshotForm.end_time = endTime
+}
+
 const typeLabel = (event) => {
-  const map = { course: '课程', activity: '活动', recommended: '推荐', conflict: '冲突', exam: '考试' }
-  return map[event.color_type || event.type] || '活动'
+  const map = { course: '课程', activity: '活动', exam: '考试' }
+  return map[event.rawType || event.type] || '日程'
 }
 
 const openEventDialog = (event) => {
   selectedEvent.value = event
   deleteScope.value = 'one'
+  selectedColorType.value = getColorOption(event.color_type, event.rawType).value
+  selectedMarkerLabel.value = event.markerLabel || defaultMarkerForType(event.rawType)
+  selectedRemark.value = event.remark || ''
   eventDialogVisible.value = true
+}
+
+const resetScreenshotState = () => {
+  screenshotFiles.value = []
+  screenshotFileReady.value = false
+  screenshotRawText.value = ''
+  screenshotWarnings.value = []
+  screenshotConflicts.value = []
+  clearCropState()
+  Object.assign(screenshotForm, {
+    title: '',
+    location: '',
+    start_time: null,
+    end_time: null,
+    remark: '',
+    estimated_duration_minutes: DEFAULT_ESTIMATED_DURATION_MINUTES,
+    color_type: 'green',
+    marker_label: '活'
+  })
+  screenshotUploadRef.value?.clearFiles()
+}
+
+const openScreenshotDialog = () => {
+  resetScreenshotState()
+  screenshotDialogVisible.value = true
+}
+
+const resetCropSelection = () => {
+  cropSelection.x = 0
+  cropSelection.y = 0
+  cropSelection.width = 0
+  cropSelection.height = 0
+  cropping.value = false
+}
+
+const clearCropState = () => {
+  if (cropImageUrl.value) URL.revokeObjectURL(cropImageUrl.value)
+  cropImageUrl.value = ''
+  cropSourceFile.value = null
+  resetCropSelection()
+}
+
+const syncScreenshotFiles = (uploadFiles = []) => {
+  const rawFiles = uploadFiles
+    .map((item) => item.raw || item)
+    .filter(Boolean)
+
+  if (rawFiles.some((file) => !isAllowedScreenshotFile(file))) {
+    screenshotFiles.value = []
+    screenshotFileReady.value = false
+    screenshotUploadRef.value?.clearFiles()
+    ElMessage.warning('请上传 PNG、JPG、WEBP、BMP 或 TIFF 格式的图片。')
+    return
+  }
+
+  screenshotFiles.value = rawFiles.slice(0, MAX_SCREENSHOT_FILES)
+  screenshotFileReady.value = screenshotFiles.value.length > 0
+}
+
+const handleScreenshotFileChange = (_file, uploadFiles = []) => {
+  screenshotRawText.value = ''
+  screenshotWarnings.value = []
+  screenshotConflicts.value = []
+  syncScreenshotFiles(uploadFiles)
+}
+
+const handleScreenshotFileRemove = (_file, uploadFiles = []) => {
+  screenshotRawText.value = ''
+  screenshotWarnings.value = []
+  screenshotConflicts.value = []
+  syncScreenshotFiles(uploadFiles)
+}
+
+const handleScreenshotFileExceed = (files) => {
+  const nextFiles = [...screenshotFiles.value, ...(files || [])].slice(0, MAX_SCREENSHOT_FILES)
+  screenshotUploadRef.value?.clearFiles()
+  nextFiles.forEach((file) => screenshotUploadRef.value?.handleStart(file))
+  syncScreenshotFiles(nextFiles)
+  ElMessage.warning(`一个活动最多支持 ${MAX_SCREENSHOT_FILES} 张截图。`)
+}
+
+const showCropDialogForFile = (file) => {
+  clearCropState()
+  cropSourceFile.value = file
+  cropImageUrl.value = URL.createObjectURL(file)
+  cropDialogVisible.value = true
+}
+
+const cropPointerPosition = (event) => {
+  const stage = cropStageRef.value
+  const image = cropImageRef.value
+  const rect = stage?.getBoundingClientRect()
+  if (!stage || !image || !rect) return { x: 0, y: 0 }
+  return {
+    x: Math.min(Math.max(event.clientX - rect.left + stage.scrollLeft, 0), image.clientWidth),
+    y: Math.min(Math.max(event.clientY - rect.top + stage.scrollTop, 0), image.clientHeight)
+  }
+}
+
+const startCropSelection = (event) => {
+  if (!cropImageRef.value) return
+  resetCropSelection()
+  const point = cropPointerPosition(event)
+  cropDragStart.x = point.x
+  cropDragStart.y = point.y
+  cropSelection.x = point.x
+  cropSelection.y = point.y
+  cropSelection.width = 0
+  cropSelection.height = 0
+  cropping.value = true
+  event.currentTarget.setPointerCapture?.(event.pointerId)
+}
+
+const moveCropSelection = (event) => {
+  if (!cropping.value) return
+  const point = cropPointerPosition(event)
+  cropSelection.x = Math.min(cropDragStart.x, point.x)
+  cropSelection.y = Math.min(cropDragStart.y, point.y)
+  cropSelection.width = Math.abs(point.x - cropDragStart.x)
+  cropSelection.height = Math.abs(point.y - cropDragStart.y)
+}
+
+const finishCropSelection = (event) => {
+  if (!cropping.value) return
+  moveCropSelection(event)
+  cropping.value = false
+  event.currentTarget.releasePointerCapture?.(event.pointerId)
+}
+
+const imageFromFile = (file) => new Promise((resolve, reject) => {
+  const url = URL.createObjectURL(file)
+  const image = new Image()
+  image.onload = () => {
+    URL.revokeObjectURL(url)
+    resolve(image)
+  }
+  image.onerror = () => {
+    URL.revokeObjectURL(url)
+    reject(new Error('截图预览失败，请重试。'))
+  }
+  image.src = url
+})
+
+const cropImageFile = async (file) => {
+  if (!hasCropSelection.value) return file
+  const image = await imageFromFile(file)
+  const rect = cropImageRef.value?.getBoundingClientRect()
+  if (!rect || !image.naturalWidth || !image.naturalHeight) return file
+
+  const scaleX = image.naturalWidth / rect.width
+  const scaleY = image.naturalHeight / rect.height
+  const sourceX = Math.round(cropSelection.x * scaleX)
+  const sourceY = Math.round(cropSelection.y * scaleY)
+  const sourceWidth = Math.round(cropSelection.width * scaleX)
+  const sourceHeight = Math.round(cropSelection.height * scaleY)
+  if (sourceWidth < MIN_CROP_SIZE || sourceHeight < MIN_CROP_SIZE) return file
+
+  const canvas = document.createElement('canvas')
+  canvas.width = sourceWidth
+  canvas.height = sourceHeight
+  const context = canvas.getContext('2d')
+  if (!context) throw new Error('截图裁剪失败，请重试。')
+  context.drawImage(
+    image,
+    sourceX,
+    sourceY,
+    sourceWidth,
+    sourceHeight,
+    0,
+    0,
+    sourceWidth,
+    sourceHeight
+  )
+  const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'))
+  if (!blob) throw new Error('截图裁剪失败，请重试。')
+  return new File([blob], `activity-schedule-crop-${Date.now()}.png`, { type: 'image/png' })
+}
+
+const appendScreenshotFile = (file) => {
+  screenshotUploadRef.value?.handleStart(file)
+  syncScreenshotFiles([...screenshotFiles.value, file])
+}
+
+const confirmCapturedScreenshot = async (useSelection = true) => {
+  if (!cropSourceFile.value) return
+  if (confirmingCrop.value) return
+  confirmingCrop.value = true
+  try {
+    const file = useSelection ? await cropImageFile(cropSourceFile.value) : cropSourceFile.value
+    appendScreenshotFile(file)
+    cropDialogVisible.value = false
+  } catch (err) {
+    ElMessage.error(err?.message || '截图裁剪失败，请重试。')
+  } finally {
+    confirmingCrop.value = false
+  }
+}
+
+const captureCalendarScreenshot = async () => {
+  if (!screenshotDialogVisible.value) openScreenshotDialog()
+  if (screenshotFiles.value.length >= MAX_SCREENSHOT_FILES) {
+    ElMessage.warning(`一个活动最多支持 ${MAX_SCREENSHOT_FILES} 张截图。`)
+    return
+  }
+  try {
+    const file = await captureScreenImage('activity-schedule')
+    showCropDialogForFile(file)
+  } catch (err) {
+    ElMessage.warning(err?.message || '截屏已取消')
+  }
+}
+
+const handleScreenshotShortcut = (event) => {
+  if (!isScreenshotShortcut(event)) return
+  event.preventDefault()
+  event.stopPropagation()
+  captureCalendarScreenshot()
+}
+
+const handleCropKeyboard = (event) => {
+  if (!cropDialogVisible.value) return
+  if (event.key === 'Enter') {
+    event.preventDefault()
+    event.stopPropagation()
+    if (hasCropSelection.value) {
+      confirmCapturedScreenshot(true)
+    }
+  }
+  if (event.key === 'Escape') {
+    event.preventDefault()
+    event.stopPropagation()
+    cropDialogVisible.value = false
+  }
+}
+
+const recognizeScreenshot = async () => {
+  if (!screenshotFiles.value.length) {
+    ElMessage.warning('请先选择活动截图。')
+    return
+  }
+
+  recognizingScreenshot.value = true
+  screenshotRawText.value = ''
+  screenshotWarnings.value = []
+  screenshotConflicts.value = []
+  try {
+    const formData = new FormData()
+    screenshotFiles.value.forEach((file) => formData.append('files', file))
+    const res = await recognizeScheduleImage(formData)
+    const data = res.data || {}
+    const event = data.event || {}
+    const activity = data.activity || {}
+    Object.assign(screenshotForm, {
+      title: event.title || activity.title || '',
+      location: event.location || activity.location || '',
+      start_time: event.start_time || activity.start_time || null,
+      end_time: event.end_time || activity.end_time || null,
+      remark: event.remark || activity.remark || '',
+      color_type: event.color_type || 'green',
+      marker_label: event.marker_label || '活'
+    })
+    fillScreenshotEstimatedEndTime(false)
+    screenshotRawText.value = data.raw_text || ''
+    screenshotWarnings.value = data.warnings || []
+    screenshotConflicts.value = data.conflicts || []
+    if (screenshotWarnings.value.length) {
+      ElMessage.warning(`已识别，请补充：${screenshotWarnings.value.join('、')}`)
+    } else {
+      ElMessage.success('已识别活动信息')
+    }
+  } catch { /* 拦截器已处理 */ } finally {
+    recognizingScreenshot.value = false
+  }
+}
+
+const buildScreenshotPayload = (forceAdd = false) => ({
+  title: screenshotForm.title.trim(),
+  location: screenshotForm.location?.trim() || null,
+  start_time: toLocalIso(screenshotForm.start_time),
+  end_time: toLocalIso(screenshotForm.end_time),
+  remark: screenshotForm.remark?.trim() || null,
+  color_type: screenshotForm.color_type || 'green',
+  marker_label: screenshotForm.marker_label?.trim() || '活',
+  force_add: forceAdd
+})
+
+const addScreenshotEvent = async () => {
+  const payload = buildScreenshotPayload(false)
+  if (!payload.title || !payload.start_time || !payload.end_time) {
+    ElMessage.warning('请先补全活动名称和起止时间。')
+    return
+  }
+  if (new Date(payload.start_time) >= new Date(payload.end_time)) {
+    ElMessage.warning('结束时间必须晚于开始时间。')
+    return
+  }
+
+  addingScreenshotEvent.value = true
+  try {
+    const checkRes = await checkCustomEventConflict(payload)
+    const conflicts = checkRes.data?.conflicts || []
+    let forceAdd = false
+    if (conflicts.length) {
+      screenshotConflicts.value = conflicts
+      const detail = conflicts
+        .map((item) => `${item.title} · ${formatRange(item.start_time, item.end_time)}`)
+        .join('\n')
+      try {
+        await ElMessageBox.confirm(
+          `检测到冲突日程：\n${detail}\n\n仍然加入吗？`,
+          '确认加入冲突日程',
+          {
+            type: 'warning',
+            confirmButtonText: '仍然加入',
+            cancelButtonText: '取消'
+          }
+        )
+        forceAdd = true
+      } catch {
+        return
+      }
+    }
+
+    const addRes = await addCustomEventToSchedule(buildScreenshotPayload(forceAdd))
+    const alreadyExists = addRes.data?.already_exists
+    ElMessage.success(alreadyExists ? '该日程已存在' : '已加入日程')
+    screenshotDialogVisible.value = false
+    await fetchSchedules()
+  } catch (err) {
+    ElMessage.error(err?.message || '加入日程失败，请稍后重试。')
+  } finally {
+    addingScreenshotEvent.value = false
+  }
 }
 
 const deleteScopeHint = computed(() => {
   if (deleteScope.value === 'day') return '删除当前星期中这门课的所有时段。'
   if (deleteScope.value === 'all') return '删除课表中同名同教师课程的全部时段。'
-  return '只删除当前点击的这一条课程时段。'
+  return '只移除当前日期的这一节课，其他周的重复课程会保留。'
 })
 
 const deleteScopeConfirmText = computed(() => {
@@ -397,16 +1142,81 @@ const removeSelectedCourse = async () => {
 
   deletingCourse.value = true
   try {
-    const res = await deleteCourse(event.course_id, deleteScope.value)
+    const res = await deleteCourse(event.course_id, deleteScope.value, {
+      occurrenceStart: deleteScope.value === 'one' ? toLocalIso(event.start_time) : null
+    })
     const deletedCourses = res.data?.deleted_courses || 0
     const deletedEvents = res.data?.deleted_events || 0
-    ElMessage.success(`已删除 ${deletedCourses} 条课程记录，移除 ${deletedEvents} 条日程。`)
+    const cancelledOccurrences = res.data?.cancelled_occurrences || 0
+    if (deleteScope.value === 'one' && cancelledOccurrences > 0) {
+      ElMessage.success('已移除本次课程，其他周的重复课程已保留。')
+    } else {
+      ElMessage.success(`已删除 ${deletedCourses} 条课程记录，移除 ${deletedEvents} 条日程。`)
+    }
     eventDialogVisible.value = false
     await fetchSchedules()
   } catch (err) {
     ElMessage.error(err?.message || '删除课程失败，请稍后重试。')
   } finally {
     deletingCourse.value = false
+  }
+}
+
+const saveSelectedEventAppearance = async () => {
+  const event = selectedEvent.value
+  if (!event?.id) {
+    ElMessage.error('未找到对应日程，请刷新日历后重试。')
+    return
+  }
+
+  savingAppearance.value = true
+  try {
+    await updateScheduleEventAppearance(event.id, {
+      color_type: selectedColorType.value,
+      marker_label: selectedMarkerLabel.value,
+      remark: selectedRemark.value
+    })
+    ElMessage.success('日程已更新')
+    eventDialogVisible.value = false
+    await fetchSchedules()
+  } catch (err) {
+    ElMessage.error(err?.message || '更新日程失败，请稍后重试。')
+  } finally {
+    savingAppearance.value = false
+  }
+}
+
+const removeSelectedActivity = async () => {
+  const event = selectedEvent.value
+  if (!event?.id || event.rawType !== 'activity') {
+    ElMessage.error('未找到对应活动日程，请刷新日历后重试。')
+    return
+  }
+
+  try {
+    await ElMessageBox.confirm(
+      `确定从日程中删除“${event.title}”吗？活动本身不会被下架。`,
+      '删除活动日程',
+      {
+        type: 'warning',
+        confirmButtonText: '删除',
+        cancelButtonText: '取消'
+      }
+    )
+  } catch {
+    return
+  }
+
+  deletingActivity.value = true
+  try {
+    await deleteScheduleEvent(event.id)
+    ElMessage.success('活动日程已删除')
+    eventDialogVisible.value = false
+    await fetchSchedules()
+  } catch (err) {
+    ElMessage.error(err?.message || '删除活动日程失败，请稍后重试。')
+  } finally {
+    deletingActivity.value = false
   }
 }
 
@@ -431,12 +1241,12 @@ const upcoming = computed(() => {
 })
 
 const conflictEvents = computed(() => {
-  return allEvents.value.filter((e) => (e.color_type || e.type) === 'conflict')
+  return allEvents.value.filter((e) => e.conflict)
 })
 
 const exams = computed(() => {
   return allEvents.value
-    .filter((c) => c.type === 'exam')
+    .filter((c) => c.rawType === 'exam')
     .map((c) => ({ title: c.title, examDate: formatDate(c.start_time), location: c.location }))
 })
 
@@ -467,12 +1277,16 @@ const normalizeScheduleItems = (items) => {
     const end = new Date(item.end_time)
     const startMin = start.getHours() * 60 + start.getMinutes()
     const endMin = end.getHours() * 60 + end.getMinutes()
-    const normalizedType = normalizeEventType(item)
+    const normalizedType = item.type || 'course'
+    const colorOption = getColorOption(item.color_type, normalizedType)
     return {
       ...item,
       rawType: item.type,
       type: normalizedType,
-      conflict: item.color_type === 'conflict',
+      conflict: Boolean(item.is_conflict),
+      markerLabel: item.marker_label || defaultMarkerForType(item.type),
+      remark: item.remark || '',
+      colorStyle: colorStyle(colorOption),
       weekday: start.getDay() || 7,
       startTime: timeText(start),
       endTime: timeText(end),
@@ -488,12 +1302,24 @@ const normalizeScheduleItems = (items) => {
   })
 }
 
-const normalizeEventType = (item) => {
-  if (item.color_type === 'conflict') return 'conflict'
-  if (item.color_type === 'recommended') return 'recommended'
-  if (item.type === 'activity') return 'activity'
-  if (item.type === 'exam') return 'exam'
-  return 'course'
+const getColorOption = (value, eventType) => {
+  const color = value || defaultColorByType[eventType] || 'gray'
+  return scheduleColorOptions.find((option) => option.value === color)
+    || scheduleColorOptions.find((option) => option.value === 'gray')
+}
+
+const colorStyle = (option) => ({
+  '--event-bg': option.bg,
+  '--event-border': option.border
+})
+
+const swatchStyle = (option) => ({
+  '--swatch-bg': option.bg,
+  '--swatch-border': option.border
+})
+
+const defaultMarkerForType = (eventType) => {
+  return defaultMarkerByType[eventType] || '日'
 }
 
 const parseWeekType = (weeks) => {
@@ -552,7 +1378,17 @@ const exportIcs = async () => {
   }
 }
 
-onMounted(fetchSchedules)
+onMounted(() => {
+  syncWeekParityFilter()
+  fetchSchedules()
+  window.addEventListener('keydown', handleScreenshotShortcut, true)
+  window.addEventListener('keydown', handleCropKeyboard, true)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', handleScreenshotShortcut, true)
+  window.removeEventListener('keydown', handleCropKeyboard, true)
+})
 </script>
 
 <style scoped>
@@ -698,7 +1534,8 @@ onMounted(fetchSchedules)
   display: flex;
   flex-direction: column;
   min-height: 16px;
-  border-left: 3px solid transparent;
+  background: var(--event-bg);
+  border-left: 3px solid var(--event-border);
   cursor: pointer;
 }
 
@@ -707,46 +1544,87 @@ onMounted(fetchSchedules)
   outline-offset: 2px;
 }
 
-.timeline-event.course {
-  background: #ecf0f7;
-  border-left-color: #6a8cbf;
+.timeline-event.has-conflict {
+  box-shadow: inset 0 0 0 1px var(--danger);
 }
 
-.timeline-event.activity {
-  background: #e8f2ec;
-  border-left-color: #7aaa8a;
+.ev-title-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  min-width: 0;
+  flex: 0 0 auto;
+  padding-right: 24px;
 }
 
-.timeline-event.recommended {
-  background: var(--accent-light);
-  border-left-color: var(--accent);
-}
-
-.timeline-event.conflict {
-  background: var(--danger-light);
-  border-left-color: var(--danger);
-}
-
-.timeline-event.exam {
-  background: #f0ecf7;
-  border-left-color: #8b7ab8;
+.ev-marker {
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 16px;
+  background: var(--event-border);
+  color: #fff;
+  font-size: 10px;
+  line-height: 1;
+  font-weight: 700;
 }
 
 .ev-name {
   font-weight: 600;
   color: var(--text-primary);
-  white-space: nowrap;
+  font-size: 12px;
+  min-width: 0;
   overflow: hidden;
-  text-overflow: ellipsis;
-  line-height: 1.3;
+  line-height: 1.25;
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
-.ev-time, .ev-meta {
+.ev-remark,
+.ev-time {
   color: var(--text-tertiary);
   font-size: 9px;
+  line-height: 1.25;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  flex: 0 0 auto;
+}
+
+.ev-remark {
+  color: var(--event-border);
+  font-size: 11px;
+  font-weight: 600;
+  padding-left: 8px;
+  position: relative;
+}
+
+.ev-remark::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--event-border);
+  transform: translateY(-50%);
+}
+
+.ev-location {
+  color: var(--text-tertiary);
+  font-size: 9px;
+  line-height: 1.25;
+  min-height: 0;
+  overflow: hidden;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  flex: 1 1 auto;
 }
 
 .week-tag {
@@ -784,6 +1662,15 @@ onMounted(fetchSchedules)
   border: 1px solid var(--border-light);
 }
 
+.side-item.clickable {
+  cursor: pointer;
+}
+
+.side-item.clickable:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 .side-item-left {
   display: flex;
   align-items: center;
@@ -801,11 +1688,11 @@ onMounted(fetchSchedules)
 
 .side-item-left p { margin: 2px 0 0; font-size: 11px; }
 
-.side-item-left .dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  flex-shrink: 0;
+.side-marker {
+  width: 20px;
+  height: 20px;
+  flex-basis: 20px;
+  font-size: 11px;
 }
 
 .side-item-right {
@@ -862,6 +1749,105 @@ onMounted(fetchSchedules)
 
 .dialog-item p { margin: 4px 0 0; font-size: 12px; }
 
+.screenshot-dialog-body {
+  display: grid;
+  gap: 14px;
+}
+
+.upload-icon {
+  font-size: 36px;
+  color: var(--accent);
+}
+
+.screenshot-capture-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.screenshot-form :deep(.el-date-editor.el-input) {
+  width: 100%;
+}
+
+.duration-input {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.duration-input span {
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.screenshot-swatches {
+  padding-top: 2px;
+}
+
+.screenshot-conflicts,
+.screenshot-preview {
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-light);
+  background: var(--bg-warm);
+  font-size: 13px;
+}
+
+.screenshot-conflicts {
+  display: grid;
+  gap: 6px;
+  color: var(--danger);
+  background: var(--danger-light);
+  border-color: #edc8c6;
+}
+
+.screenshot-preview {
+  max-height: 160px;
+  overflow: auto;
+}
+
+.screenshot-preview p {
+  margin: 8px 0 0;
+  white-space: pre-wrap;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.crop-stage {
+  display: grid;
+  gap: 10px;
+}
+
+.crop-canvas {
+  position: relative;
+  width: 100%;
+  max-height: 68vh;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-warm);
+  cursor: crosshair;
+  user-select: none;
+  touch-action: none;
+}
+
+.crop-canvas img {
+  display: block;
+  width: 100%;
+  height: auto;
+  pointer-events: none;
+}
+
+.crop-selection {
+  position: absolute;
+  border: 2px solid var(--accent);
+  background: rgba(96, 141, 193, 0.18);
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.28);
+  pointer-events: none;
+}
+
 .dialog-title {
   display: flex;
   align-items: center;
@@ -874,6 +1860,13 @@ onMounted(fetchSchedules)
   overflow-wrap: anywhere;
 }
 
+.dialog-marker {
+  width: 22px;
+  height: 22px;
+  flex-basis: 22px;
+  font-size: 12px;
+}
+
 .event-detail {
   display: grid;
   gap: 16px;
@@ -884,33 +1877,53 @@ onMounted(fetchSchedules)
   gap: 10px;
 }
 
-.course-delete-panel h4 {
+.event-edit-panel {
+  display: grid;
+  gap: 10px;
+}
+
+.course-delete-panel h4,
+.event-edit-panel h4 {
   margin: 0;
 }
 
-.delete-scope-group {
+.delete-scope-group,
+.color-swatch-grid {
   display: flex;
   flex-wrap: wrap;
+}
+
+.marker-input {
+  max-width: 120px;
+}
+
+.remark-input {
+  max-width: 100%;
+}
+
+.color-swatch-grid {
+  gap: 8px;
+}
+
+.color-swatch {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid var(--swatch-border);
+  background: var(--swatch-bg);
+  cursor: pointer;
+  padding: 0;
+  box-shadow: inset 0 0 0 3px var(--bg-surface);
+}
+
+.color-swatch.active {
+  outline: 2px solid var(--swatch-border);
+  outline-offset: 2px;
 }
 
 [data-theme="dark"] .course-dot   { background: #7a9ed3; }
 [data-theme="dark"] .activity-dot { background: #8bc4a0; }
 [data-theme="dark"] .exam-dot     { background: #a08ec8; }
-
-[data-theme="dark"] .timeline-event.course {
-  background: #1e222d;
-  border-left-color: #6a8cbf;
-}
-
-[data-theme="dark"] .timeline-event.activity {
-  background: #1e2822;
-  border-left-color: #7aaa8a;
-}
-
-[data-theme="dark"] .timeline-event.exam {
-  background: #24202d;
-  border-left-color: #8b7ab8;
-}
 
 [data-theme="dark"] .conflict-box {
   border-color: #5a3a38;

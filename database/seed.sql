@@ -123,4 +123,4 @@ INSERT INTO schedule_event (
   user_id, title, type, activity_id, start_time, end_time, location, color_type
 )
 VALUES
-  (1, '机器学习课程', 'course', NULL, '2026-05-10 13:00:00', '2026-05-10 15:00:00', '紫金港东1A-101', 'course');
+  (1, '机器学习课程', 'course', NULL, '2026-05-10 13:00:00', '2026-05-10 15:00:00', '紫金港东1A-101', 'blue');

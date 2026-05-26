@@ -68,6 +68,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { getRecommendedActivities } from '../api/recommendations'
 import { getActivities } from '../api/activities'
+import { defaultRecommendedActivities } from '../utils/constants'
 
 const loading = ref(false)
 const error = ref('')
@@ -96,10 +97,16 @@ const fetchRecommendations = async () => {
   error.value = ''
   try {
     const res = await getRecommendedActivities({ limit: 6 })
-    recommendations.value = res.data?.items || res.data?.activities || res.data || []
-    if (res.data?.total !== undefined) heroStats[1].value = res.data.total
+    const items = res.data?.items || res.data?.activities || res.data || []
+    recommendations.value = items.length ? items : defaultRecommendedActivities
+    if (res.data?.total !== undefined) {
+      heroStats[1].value = res.data.total
+    } else {
+      heroStats[1].value = recommendations.value.length
+    }
   } catch {
-    error.value = '推荐数据加载失败'
+    recommendations.value = defaultRecommendedActivities
+    heroStats[1].value = defaultRecommendedActivities.length
   } finally {
     loading.value = false
   }

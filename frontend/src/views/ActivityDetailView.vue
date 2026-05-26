@@ -25,7 +25,7 @@
             </div>
             <span class="faint">{{ activity.campus }} &middot; {{ activity.location }}</span>
           </div>
-          <el-button class="action-btn" type="primary" size="large" :loading="adding" @click="addToSchedule">
+          <el-button class="action-btn" type="primary" size="large" :loading="adding" @click="addToSchedule()">
             加入日程
           </el-button>
           <p class="faint" v-if="checking">正在检测冲突...</p>
@@ -98,12 +98,12 @@
     <div class="dialog-list">
       <div class="dialog-item" v-for="item in conflicts" :key="item.title">
         <strong>{{ item.title }}</strong>
-        <p class="faint">{{ item.time || fmtShort(item.start_time) }} &middot; {{ item.location || '--' }}</p>
+        <p class="faint">{{ fmtRange(item.start_time, item.end_time) }} &middot; {{ item.location || '--' }}</p>
       </div>
     </div>
     <template #footer>
       <el-button @click="conflictVisible = false">取消</el-button>
-      <el-button type="primary" :loading="adding" @click="addToSchedule">仍要加入</el-button>
+      <el-button type="primary" :loading="adding" @click="addToSchedule(true)">仍要加入</el-button>
     </template>
   </el-dialog>
 </template>
@@ -149,6 +149,13 @@ const fmtFull = (t) => {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
+const fmtRange = (start, end) => {
+  if (!start) return ''
+  return end
+    ? `${fmtShort(start)} ${fmtTime(start)}-${fmtTime(end)}`
+    : fmtFull(start)
+}
+
 const fetchDetail = async () => {
   loading.value = true
   error.value = ''
@@ -184,8 +191,9 @@ const checkConflict = async () => {
   }
 }
 
-const addToSchedule = async () => {
-  if (conflicts.value.length > 0 && !conflictVisible.value) {
+const addToSchedule = async (forceAdd = false) => {
+  const confirmed = forceAdd === true
+  if (conflicts.value.length > 0 && !confirmed) {
     conflictVisible.value = true
     return
   }
@@ -193,7 +201,7 @@ const addToSchedule = async () => {
   try {
     await addActivityToSchedule({
       activity_id: Number(route.params.id),
-      force_add: conflicts.value.length > 0
+      force_add: confirmed
     })
     await recordInteraction('add_schedule')
     ElMessage.success('已加入日程')

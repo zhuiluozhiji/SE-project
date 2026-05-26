@@ -11,7 +11,11 @@
 | TC-007 | 日程 | 冲突活动强制加入 | 已存在冲突课程 | 调用 `POST /api/v1/schedules/add-activity` 且 `force_add=true` | 写入活动日程并保留冲突明细 | 已自动化 |
 | TC-008 | 日程 | ICS 导出 | 已存在课程或活动日程 | 调用 `GET /api/v1/schedules/export-ics` 和 `/file` | 返回下载地址和 `text/calendar` ICS 文件 | 已自动化 |
 | TC-009 | 课程 | 删除课程 | 已存在课程及对应日程 | 调用 `DELETE /api/v1/courses/{id}` | 删除当前课程并同步删除课程日程 | 已自动化 |
-| TC-010 | 课程 | 按范围删除课程 | 已存在同一门课的多个时段 | 调用 `DELETE /api/v1/courses/{id}?scope=day/all` | 可删除当天这门课或全部这门课，并保留无关课程 | 已自动化 |
+| TC-010 | 课程 | 按范围删除课程 | 已存在同一门课的多个时段 | 调用 `DELETE /api/v1/courses/{id}?scope=one&occurrence_start=...` 或 `scope=day/all` | `one` 只移除当前日期实例并保留其他周，`day/all` 可批量删除对应课程规则，并保留无关课程 | 已自动化 |
+| TC-011 | 日程 | 日程标识与备注更新 | 已存在课程或活动日程 | 调用 `PATCH /api/v1/schedules/{event_id}/appearance` | 更新日程 `color_type`、`marker_label` 和 `remark`，类型不随颜色变化 | 已自动化 |
+| TC-012 | 日程 | 删除活动日程 | 已加入活动日程 | 调用 `DELETE /api/v1/schedules/{event_id}` | 仅移除个人日程，不删除活动本身 | 已自动化 |
+| TC-013 | 后台 | 活动截图识别解析 | 已准备包含标题、时间、地点的活动截图或 OCR 文本，单个活动最多 5 张截图 | 调用 `POST /api/v1/admin/activities/recognize-image`，或直接测试解析服务 | 返回识别文本，并提取活动标题、地点、开始时间；结束时间缺失时返回提醒，由前端预计时长补全 | 已自动化 |
+| TC-014 | 日程 | 普通用户截图加入日程 | OCR 已提取活动标题、时间、地点且与课程冲突；前端支持上传或 `Option/Alt + Shift + S` 快捷截屏，并可补充备注 | 调用 `POST /api/v1/schedules/check-custom-event` 后再用 `force_add=true` 调用 `/add-custom-event` | 先返回冲突明细，确认后写入带备注的个人活动日程 | 已自动化 |
 
 ## mxy 接口测试补充
 

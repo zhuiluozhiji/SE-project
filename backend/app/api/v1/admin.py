@@ -1,10 +1,11 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, File, Query, UploadFile
 from sqlalchemy.orm import Session
 
 from app.core.deps import require_admin_user
 from app.core.response import fail, success
 from app.db.session import get_db
 from app.schemas.activity import ActivityCreate, ActivityUpdate
+from app.services.activity_ocr_service import ActivityOcrError, recognize_activity_images
 from app.services.admin_service import create_activity as create_activity_in_db
 from app.services.admin_service import get_admin_stats as get_admin_stats_from_db
 from app.services.admin_service import offline_activity as offline_activity_in_db
@@ -37,6 +38,26 @@ def offline_activity(activity_id: int, db: Session = Depends(get_db)):
     if activity is None:
         return fail(code=1003, message="活动不存在")
     return success(activity)
+
+
+@router.post("/activities/recognize-image")
+async def recognize_activity_from_image(
+    files: list[UploadFile] | None = File(None),
+    file: UploadFile | None = File(None),
+):
+    try:
+        uploads = files or ([file] if file else [])
+        result = recognize_activity_images(
+            [
+                (upload.filename or f"activity-{index + 1}.png", await upload.read())
+                for index, upload in enumerate(uploads)
+            ]
+        )
+    except ActivityOcrError as exc:
+        return fail(code=4001, message=str(exc))
+    except ValueError as exc:
+        return fail(code=4002, message=str(exc))
+    return success(result)
 
 
 @router.get("/stats")
