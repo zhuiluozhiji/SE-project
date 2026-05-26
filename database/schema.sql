@@ -84,7 +84,9 @@ CREATE TABLE IF NOT EXISTS schedule_event (
   start_time DATETIME NOT NULL,
   end_time DATETIME NOT NULL,
   location VARCHAR(255),
-  color_type VARCHAR(32) NOT NULL DEFAULT 'activity',
+  color_type VARCHAR(32) NOT NULL DEFAULT 'green',
+  marker_label VARCHAR(8),
+  remark VARCHAR(500),
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   INDEX idx_schedule_user_time (user_id, start_time, end_time),
   CONSTRAINT fk_schedule_user

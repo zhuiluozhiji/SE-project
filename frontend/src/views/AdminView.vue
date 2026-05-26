@@ -7,6 +7,7 @@
       </div>
       <div class="admin-actions">
         <el-button type="primary" @click="openActivityDialog()">新增活动</el-button>
+        <el-button @click="openOcrDialog">识别截图</el-button>
         <el-button :loading="crawlerRunning" @click="runCrawler">触发爬虫</el-button>
         <el-button @click="showCrawlerLogs = true">查看日志</el-button>
       </div>
@@ -77,11 +78,43 @@
       <el-form-item label="地点">
         <el-input v-model="activityForm.location" placeholder="具体地点" />
       </el-form-item>
-      <el-form-item label="开始时间">
-        <el-date-picker v-model="activityForm.start_time" type="datetime" placeholder="选择开始时间" />
-      </el-form-item>
+      <el-row :gutter="16">
+        <el-col :span="12">
+          <el-form-item label="开始时间">
+            <el-date-picker
+              v-model="activityForm.start_time"
+              type="datetime"
+              format="YYYY-MM-DD HH:mm"
+              value-format="YYYY-MM-DDTHH:mm:ss"
+              placeholder="选择开始时间"
+              @change="fillActivityEstimatedEndTime(false)"
+            />
+          </el-form-item>
+        </el-col>
+        <el-col :span="12">
+          <el-form-item label="预计时长">
+            <div class="duration-input">
+              <el-input-number
+                v-model="activityForm.estimated_duration_minutes"
+                :min="15"
+                :max="720"
+                :step="15"
+                controls-position="right"
+                @change="fillActivityEstimatedEndTime(true)"
+              />
+              <span>min</span>
+            </div>
+          </el-form-item>
+        </el-col>
+      </el-row>
       <el-form-item label="结束时间">
-        <el-date-picker v-model="activityForm.end_time" type="datetime" placeholder="选择结束时间" />
+        <el-date-picker
+          v-model="activityForm.end_time"
+          type="datetime"
+          format="YYYY-MM-DD HH:mm"
+          value-format="YYYY-MM-DDTHH:mm:ss"
+          placeholder="选择结束时间"
+        />
       </el-form-item>
       <el-form-item label="活动简介">
         <el-input v-model="activityForm.description" type="textarea" :rows="3" placeholder="活动描述" />
@@ -91,6 +124,46 @@
       <el-button @click="activityDialogVisible = false">取消</el-button>
       <el-button type="primary" :loading="savingActivity" @click="submitActivity">
         {{ editingActivity ? '保存修改' : '创建活动' }}
+      </el-button>
+    </template>
+  </el-dialog>
+
+  <!-- 活动截图识别弹窗 -->
+  <el-dialog v-model="ocrDialogVisible" title="识别活动截图" width="560px" append-to-body align-center>
+    <div class="ocr-dialog-body">
+      <el-upload
+        ref="ocrUploadRef"
+        drag
+        action="#"
+        :auto-upload="false"
+        multiple
+        :limit="MAX_SCREENSHOT_FILES"
+        accept=".png,.jpg,.jpeg,.webp,.bmp,.tif,.tiff"
+        :on-change="handleOcrFileChange"
+        :on-remove="handleOcrFileRemove"
+        :on-exceed="handleOcrFileExceed"
+      >
+        <el-icon class="upload-icon"><UploadFilled /></el-icon>
+        <p>拖拽活动截图到这里</p>
+        <small class="faint">支持 PNG / JPG / WEBP / BMP / TIFF</small>
+      </el-upload>
+
+      <div class="ocr-capture-actions">
+        <el-button size="small" @click="captureOcrScreenshot" :disabled="ocrFiles.length >= MAX_SCREENSHOT_FILES">
+          快捷截屏
+        </el-button>
+        <span class="faint">{{ ocrFiles.length }}/{{ MAX_SCREENSHOT_FILES }} · {{ SCREENSHOT_SHORTCUT_LABEL }}</span>
+      </div>
+
+      <div v-if="recognizedText" class="ocr-preview">
+        <strong>识别文本</strong>
+        <p>{{ recognizedText }}</p>
+      </div>
+    </div>
+    <template #footer>
+      <el-button @click="ocrDialogVisible = false">取消</el-button>
+      <el-button type="primary" :loading="recognizing" :disabled="!ocrFileReady" @click="submitOcrFile">
+        识别并填入
       </el-button>
     </template>
   </el-dialog>
@@ -109,11 +182,25 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue'
 import { ElMessage } from 'element-plus'
+import { UploadFilled } from '@element-plus/icons-vue'
 import { getActivities } from '../api/activities'
-import { createActivity, updateActivity, offlineActivity, runCrawler as runCrawlerApi } from '../api/admin'
+import {
+  createActivity,
+  updateActivity,
+  offlineActivity,
+  recognizeActivityImage,
+  runCrawler as runCrawlerApi
+} from '../api/admin'
 import StatusTag from '../components/StatusTag.vue'
+import {
+  captureScreenImage,
+  isAllowedScreenshotFile,
+  isScreenshotShortcut,
+  MAX_SCREENSHOT_FILES,
+  SCREENSHOT_SHORTCUT_LABEL
+} from '../utils/screenCapture'
 
 const loading = ref(false)
 const activities = ref([])
@@ -126,6 +213,13 @@ const crawlerRecords = ref([])
 
 const activityDialogVisible = ref(false)
 const editingActivity = ref(null)
+const ocrDialogVisible = ref(false)
+const ocrUploadRef = ref(null)
+const ocrFiles = ref([])
+const ocrFileReady = ref(false)
+const recognizing = ref(false)
+const recognizedText = ref('')
+const DEFAULT_ESTIMATED_DURATION_MINUTES = 120
 
 const defaultForm = () => ({
   title: '',
@@ -136,6 +230,7 @@ const defaultForm = () => ({
   location: '',
   start_time: null,
   end_time: null,
+  estimated_duration_minutes: DEFAULT_ESTIMATED_DURATION_MINUTES,
   description: ''
 })
 
@@ -151,6 +246,60 @@ const formatTime = (t) => {
   const d = new Date(t)
   const pad = (n) => String(n).padStart(2, '0')
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+const toLocalIso = (value) => {
+  if (!value) return null
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(value)) {
+    return value.length === 16 ? `${value}:00` : value
+  }
+  const d = new Date(value)
+  if (Number.isNaN(d.getTime())) return null
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:00`
+}
+
+const normalizeDurationMinutes = (value) => {
+  const minutes = Number(value)
+  return Number.isFinite(minutes) && minutes > 0 ? minutes : DEFAULT_ESTIMATED_DURATION_MINUTES
+}
+
+const addMinutesToLocalIso = (value, minutes) => {
+  if (!value) return null
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return null
+  date.setMinutes(date.getMinutes() + normalizeDurationMinutes(minutes))
+  return toLocalIso(date)
+}
+
+const shouldReplaceEstimatedEnd = (start, end) => {
+  if (!start) return false
+  if (!end) return true
+  const startDate = new Date(start)
+  const endDate = new Date(end)
+  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) return true
+  return endDate <= startDate
+}
+
+const getDurationFromRange = (start, end) => {
+  if (!start || !end) return DEFAULT_ESTIMATED_DURATION_MINUTES
+  const startDate = new Date(start)
+  const endDate = new Date(end)
+  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+    return DEFAULT_ESTIMATED_DURATION_MINUTES
+  }
+  const minutes = Math.round((endDate - startDate) / 60000)
+  return minutes > 0 ? minutes : DEFAULT_ESTIMATED_DURATION_MINUTES
+}
+
+const fillActivityEstimatedEndTime = (force = false) => {
+  if (!activityForm.start_time) return
+  if (!force && !shouldReplaceEstimatedEnd(activityForm.start_time, activityForm.end_time)) return
+  const endTime = addMinutesToLocalIso(
+    activityForm.start_time,
+    activityForm.estimated_duration_minutes
+  )
+  if (endTime) activityForm.end_time = endTime
 }
 
 const displayedRows = computed(() => {
@@ -181,6 +330,7 @@ const openActivityDialog = (row = null) => {
       location: row.location || '',
       start_time: row.start_time || null,
       end_time: row.end_time || null,
+      estimated_duration_minutes: getDurationFromRange(row.start_time, row.end_time),
       description: row.description || ''
     })
   } else {
@@ -189,10 +339,120 @@ const openActivityDialog = (row = null) => {
   activityDialogVisible.value = true
 }
 
+const resetOcrState = () => {
+  ocrFiles.value = []
+  ocrFileReady.value = false
+  recognizedText.value = ''
+  ocrUploadRef.value?.clearFiles()
+}
+
+const openOcrDialog = () => {
+  resetOcrState()
+  ocrDialogVisible.value = true
+}
+
+const syncOcrFiles = (uploadFiles = []) => {
+  const rawFiles = uploadFiles
+    .map((item) => item.raw || item)
+    .filter(Boolean)
+
+  if (rawFiles.some((file) => !isAllowedScreenshotFile(file))) {
+    ocrFiles.value = []
+    ocrFileReady.value = false
+    ocrUploadRef.value?.clearFiles()
+    ElMessage.warning('请上传 PNG、JPG、WEBP、BMP 或 TIFF 格式的图片。')
+    return
+  }
+
+  ocrFiles.value = rawFiles.slice(0, MAX_SCREENSHOT_FILES)
+  ocrFileReady.value = ocrFiles.value.length > 0
+}
+
+const handleOcrFileChange = (_file, uploadFiles = []) => {
+  recognizedText.value = ''
+  syncOcrFiles(uploadFiles)
+}
+
+const handleOcrFileRemove = (_file, uploadFiles = []) => {
+  recognizedText.value = ''
+  syncOcrFiles(uploadFiles)
+}
+
+const handleOcrFileExceed = (files) => {
+  const nextFiles = [...ocrFiles.value, ...(files || [])].slice(0, MAX_SCREENSHOT_FILES)
+  ocrUploadRef.value?.clearFiles()
+  nextFiles.forEach((file) => ocrUploadRef.value?.handleStart(file))
+  syncOcrFiles(nextFiles)
+  ElMessage.warning(`一个活动最多支持 ${MAX_SCREENSHOT_FILES} 张截图。`)
+}
+
+const captureOcrScreenshot = async () => {
+  if (!ocrDialogVisible.value) openOcrDialog()
+  if (ocrFiles.value.length >= MAX_SCREENSHOT_FILES) {
+    ElMessage.warning(`一个活动最多支持 ${MAX_SCREENSHOT_FILES} 张截图。`)
+    return
+  }
+  try {
+    const file = await captureScreenImage('activity-admin')
+    ocrUploadRef.value?.handleStart(file)
+    syncOcrFiles([...ocrFiles.value, file])
+  } catch (err) {
+    ElMessage.warning(err?.message || '截屏已取消')
+  }
+}
+
+const handleOcrShortcut = (event) => {
+  if (!isScreenshotShortcut(event)) return
+  event.preventDefault()
+  captureOcrScreenshot()
+}
+
+const submitOcrFile = async () => {
+  if (!ocrFiles.value.length) {
+    ElMessage.warning('请先选择活动截图。')
+    return
+  }
+  recognizing.value = true
+  recognizedText.value = ''
+  try {
+    const formData = new FormData()
+    ocrFiles.value.forEach((file) => formData.append('files', file))
+    const res = await recognizeActivityImage(formData)
+    const data = res.data || {}
+    const recognized = data.activity || {}
+    recognizedText.value = data.raw_text || ''
+    editingActivity.value = null
+    Object.assign(activityForm, {
+      ...defaultForm(),
+      title: recognized.title || '',
+      speaker: recognized.speaker || '',
+      organizer: recognized.organizer || '',
+      campus: recognized.campus || '',
+      category: recognized.category || '',
+      location: recognized.location || '',
+      start_time: recognized.start_time || null,
+      end_time: recognized.end_time || null,
+      description: recognized.description || ''
+    })
+    fillActivityEstimatedEndTime(false)
+    ocrDialogVisible.value = false
+    activityDialogVisible.value = true
+
+    const warnings = data.warnings || []
+    if (warnings.length) {
+      ElMessage.warning(`已填入表单，仍需补充：${warnings.join('、')}`)
+    } else {
+      ElMessage.success('已识别并填入活动表单')
+    }
+  } catch { /* 拦截器已处理 */ } finally {
+    recognizing.value = false
+  }
+}
+
 const submitActivity = async () => {
   savingActivity.value = true
   try {
-    const data = { ...activityForm }
+    const { estimated_duration_minutes, ...data } = activityForm
     if (data.start_time) data.start_time = new Date(data.start_time).toISOString()
     if (data.end_time) data.end_time = new Date(data.end_time).toISOString()
 
@@ -228,7 +488,14 @@ const runCrawler = async () => {
   }
 }
 
-onMounted(fetchActivities)
+onMounted(() => {
+  fetchActivities()
+  window.addEventListener('keydown', handleOcrShortcut)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', handleOcrShortcut)
+})
 </script>
 
 <style scoped>
@@ -248,6 +515,51 @@ onMounted(fetchActivities)
 .admin-actions {
   display: flex;
   gap: 10px;
+}
+
+.ocr-dialog-body {
+  display: grid;
+  gap: 14px;
+}
+
+.upload-icon {
+  font-size: 36px;
+  color: var(--accent);
+}
+
+.ocr-capture-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.ocr-preview {
+  max-height: 180px;
+  overflow: auto;
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-muted);
+  border: 1px solid var(--border);
+}
+
+.ocr-preview p {
+  margin: 8px 0 0;
+  white-space: pre-wrap;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.duration-input {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.duration-input span {
+  color: var(--text-secondary);
+  font-size: 13px;
 }
 
 .admin-table {

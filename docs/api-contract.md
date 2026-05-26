@@ -29,6 +29,11 @@ GET    /api/v1/recommendations/activities
 GET    /api/v1/schedules
 POST   /api/v1/schedules/check-conflict
 POST   /api/v1/schedules/add-activity
+POST   /api/v1/schedules/check-custom-event
+POST   /api/v1/schedules/add-custom-event
+POST   /api/v1/schedules/recognize-image
+DELETE /api/v1/schedules/{event_id}
+PATCH  /api/v1/schedules/{event_id}/appearance
 GET    /api/v1/schedules/export-ics
 GET    /api/v1/schedules/export-ics/file
 GET    /api/v1/courses
@@ -38,6 +43,7 @@ POST   /api/v1/courses/import
 POST   /api/v1/courses/ocr
 DELETE /api/v1/courses/{id}
 POST   /api/v1/admin/activities
+POST   /api/v1/admin/activities/recognize-image
 PUT    /api/v1/admin/activities/{id}
 DELETE /api/v1/admin/activities/{id}
 GET    /api/v1/admin/stats
@@ -196,6 +202,8 @@ Authorization: Bearer <token>
 | `start_date` | string | 开始日期，格式 `YYYY-MM-DD` 或 ISO datetime |
 | `end_date` | string | 结束日期，格式 `YYYY-MM-DD` 或 ISO datetime |
 
+课程日程由 `course_schedule` 按请求周动态展开；当前学期按 `2026-03-02` 为第 1 周周一计算，因此 `2026-05-25` 所在周为第 13 周。`weeks` 中的 `1-16`、`单周`、`双周` 会用于过滤对应周次。
+
 返回 `data.items`：
 
 | 字段 | 类型 | 说明 |
@@ -208,8 +216,11 @@ Authorization: Bearer <token>
 | `start_time` | datetime | 开始时间 |
 | `end_time` | datetime | 结束时间 |
 | `location` | string/null | 地点 |
+| `remark` | string/null | 用户编辑的日程备注，日历块中最多显示一行 |
 | `status` | string | `open` 或 `closed` |
-| `color_type` | string | `course` / `activity` / `conflict` |
+| `color_type` | string | 颜色 key：`blue` / `green` / `teal` / `amber` / `orange` / `red` / `purple` / `pink` / `gray` |
+| `marker_label` | string | 日历块标题前显示的单字标识 |
+| `is_conflict` | bool | 是否与其他日程时间重叠，独立于颜色 |
 
 ### `POST /api/v1/schedules/check-conflict`
 
@@ -247,7 +258,134 @@ Authorization: Bearer <token>
 
 - 若无冲突，直接写入 `schedule_event`。
 - 若有冲突且 `force_add=false`，返回失败响应，提示用户确认。
-- 若有冲突且 `force_add=true`，仍写入日程，并将新事件 `color_type` 标记为 `conflict`。
+- 若有冲突且 `force_add=true`，仍写入日程，并默认使用红色标识；冲突状态通过 `is_conflict` 返回，不与颜色绑定。
+
+### `POST /api/v1/schedules/recognize-image`
+
+普通用户从活动截图中识别日程信息。接口只解析并返回预览，不直接写入日程。
+
+请求类型：`multipart/form-data`
+
+| 字段 | 说明 |
+| --- | --- |
+| `files` | 活动截图，可重复提交，最多 5 张，支持 PNG、JPG、WEBP、BMP、TIFF |
+| `file` | 兼容旧版单张截图上传 |
+
+若截图只识别到开始时间，`end_time` 返回 `null`，并在 `warnings` 中提示填写预计时长；前端根据用户填写的预计时长自动生成结束时间。
+
+成功响应 `data`：
+
+```json
+{
+  "filenames": ["activity-1.png", "activity-2.png"],
+  "raw_text": "人工智能前沿讲座\n时间:2026年5月10日 14:00-16:00\n地点:紫金港东1A-101",
+  "screenshots": [
+    {
+      "filename": "activity-1.png",
+      "raw_text": "人工智能前沿讲座\n时间:2026年5月10日 14:00-16:00"
+    },
+    {
+      "filename": "activity-2.png",
+      "raw_text": "地点:紫金港东1A-101"
+    }
+  ],
+  "activity": {
+    "title": "人工智能前沿讲座",
+    "location": "紫金港东1A-101",
+    "start_time": "2026-05-10T14:00:00",
+    "end_time": "2026-05-10T16:00:00"
+  },
+  "event": {
+    "title": "人工智能前沿讲座",
+    "type": "activity",
+    "activity_id": null,
+    "start_time": "2026-05-10T14:00:00",
+    "end_time": "2026-05-10T16:00:00",
+    "location": "紫金港东1A-101",
+    "remark": null,
+    "color_type": "green",
+    "marker_label": "活",
+    "is_conflict": false
+  },
+  "has_conflict": false,
+  "conflicts": [],
+  "warnings": []
+}
+```
+
+### `POST /api/v1/schedules/check-custom-event`
+
+检测一个未入库的自定义活动日程是否与已有课程/活动冲突。
+
+请求：
+
+```json
+{
+  "title": "人工智能前沿讲座",
+  "start_time": "2026-05-10T14:00:00",
+  "end_time": "2026-05-10T16:00:00",
+  "location": "紫金港东1A-101",
+  "remark": "请提前到场"
+}
+```
+
+成功响应 `data`：`has_conflict`、`event`、`conflicts`。
+
+### `POST /api/v1/schedules/add-custom-event`
+
+把截图识别或手动补全的自定义活动加入个人日程，不要求活动先进入活动库。
+
+请求：
+
+```json
+{
+  "title": "人工智能前沿讲座",
+  "start_time": "2026-05-10T14:00:00",
+  "end_time": "2026-05-10T16:00:00",
+  "location": "紫金港东1A-101",
+  "remark": "请提前到场",
+  "color_type": "green",
+  "marker_label": "讲",
+  "force_add": true
+}
+```
+
+若有冲突且 `force_add=false`，返回 `code=3007`；用户确认后用 `force_add=true` 可加入。
+
+### `DELETE /api/v1/schedules/{event_id}`
+
+删除当前用户的一条非课程日程。当前用于从个人日历中移除已加入活动，不会下架活动本身。
+
+成功响应：
+
+```json
+{
+  "id": 12,
+  "title": "人工智能前沿讲座",
+  "type": "activity",
+  "activity_id": 101
+}
+```
+
+课程日程需继续使用 `DELETE /api/v1/courses/{id}`，以保证课程记录和对应日程同步删除。
+
+### `PATCH /api/v1/schedules/{event_id}/appearance`
+
+更新课程或活动日程的展示标识。颜色和类型互不影响。
+
+请求：
+
+```json
+{
+  "color_type": "pink",
+  "marker_label": "讲",
+  "remark": "带学生证"
+}
+```
+
+`color_type` 可选值：`blue`、`green`、`teal`、`amber`、`orange`、`red`、`purple`、`pink`、`gray`。`marker_label` 必须是一个字；`remark` 可为空，最长 500 字。
+
+成功响应 `data` 为更新后的日程事件对象，字段同 `GET /api/v1/schedules` 的单条 `items`。
 
 ### `GET /api/v1/schedules/export-ics`
 
@@ -284,7 +422,7 @@ Authorization: Bearer <token>
 }
 ```
 
-写入 `course_schedule` 后，会同步生成一条 `schedule_event` 课程日程。
+写入 `course_schedule` 后，会同步生成一条 `schedule_event` 作为颜色/标识模板；日历查询时再按请求周和 `weeks` 动态展开课程日程。
 
 ### `DELETE /api/v1/courses/{id}`
 
@@ -330,7 +468,7 @@ Authorization: Bearer <token>
 数据行：CS3100M | 编译原理 | 刘老师 | 春夏 | 周一第3,4,5节;周三第1,2节 | 玉泉教4-310;玉泉曹光彪西-503
 ```
 
-导入时会自动把一个课程的多个上课时段拆成多条课程日程；地点按分号顺序与上课时段对应。`{单周}`、`{双周}` 等信息会写入 `weeks` 字段。
+导入时会自动把一个课程的多个上课时段拆成多条 `course_schedule` 规则；地点按分号顺序与上课时段对应。`{单周}`、`{双周}` 等信息会写入 `weeks` 字段，日历查询时再按周次动态展开。
 
 节次时间映射：
 
@@ -428,6 +566,63 @@ Authorization: Bearer <admin token>
 未登录返回 HTTP 401，非管理员用户返回 HTTP 403。
 
 ## 后台接口
+
+### `POST /api/v1/admin/activities/recognize-image`
+
+用于从活动截图中识别标题、时间、地点等字段，只返回识别结果，不直接创建活动。
+
+请求类型：`multipart/form-data`
+
+| 字段 | 说明 |
+| --- | --- |
+| `files` | 活动截图，可重复提交，最多 5 张，支持 PNG、JPG、WEBP、BMP、TIFF |
+| `file` | 兼容旧版单张截图上传 |
+
+若截图只识别到开始时间，`end_time` 返回 `null`，并在 `warnings` 中提示填写预计时长；前端根据用户填写的预计时长自动生成结束时间。
+
+成功响应 `data`：
+
+```json
+{
+  "filename": "activity.png",
+  "filenames": ["activity-1.png", "activity-2.png"],
+  "raw_text": "人工智能前沿讲座\n时间:2026年5月10日 14:00-16:00\n地点:紫金港东1A-101",
+  "screenshots": [
+    {
+      "filename": "activity-1.png",
+      "raw_text": "人工智能前沿讲座\n时间:2026年5月10日 14:00-16:00"
+    },
+    {
+      "filename": "activity-2.png",
+      "raw_text": "地点:紫金港东1A-101"
+    }
+  ],
+  "activity": {
+    "title": "人工智能前沿讲座",
+    "description": "时间:2026年5月10日 14:00-16:00\n地点:紫金港东1A-101",
+    "speaker": null,
+    "organizer": null,
+    "college": null,
+    "category": "学术讲座",
+    "campus": "紫金港",
+    "location": "紫金港东1A-101",
+    "start_time": "2026-05-10T14:00:00",
+    "end_time": "2026-05-10T16:00:00",
+    "source_url": null
+  },
+  "warnings": []
+}
+```
+
+失败响应：
+
+```json
+{
+  "code": 4001,
+  "message": "OCR 引擎未安装，请重新构建 backend 镜像后再试。",
+  "data": null
+}
+```
 
 ### `GET /api/v1/admin/stats`
 

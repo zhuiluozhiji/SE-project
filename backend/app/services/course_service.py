@@ -459,7 +459,7 @@ def build_course_event(course: CourseSchedule) -> ScheduleEvent:
         start_time=start_time,
         end_time=end_time,
         location=course.location,
-        color_type="course",
+        color_type="blue",
     )
 
 
@@ -481,26 +481,34 @@ def course_event_title_candidates(course_name: str) -> list[str]:
 
 
 def delete_matching_course_events(db: Session, course: CourseSchedule) -> int:
-    start_time, end_time = section_range_to_datetime(
-        course.weekday,
-        course.start_section,
-        course.end_section,
-    )
     events = db.scalars(
         select(ScheduleEvent).where(
             ScheduleEvent.user_id == course.user_id,
             ScheduleEvent.type == "course",
             ScheduleEvent.title.in_(course_event_title_candidates(course.course_name)),
-            ScheduleEvent.start_time == start_time,
-            ScheduleEvent.end_time == end_time,
             ScheduleEvent.location.is_(None)
             if course.location is None
             else ScheduleEvent.location == course.location,
         )
     ).all()
-    for event in events:
+
+    matched_events = [event for event in events if course_event_matches_course(event, course)]
+    if not matched_events:
+        matched_events = events
+
+    for event in matched_events:
         db.delete(event)
-    return len(events)
+    return len(matched_events)
+
+
+def course_event_matches_course(event: ScheduleEvent, course: CourseSchedule) -> bool:
+    if event.start_time.isoweekday() != course.weekday:
+        return False
+    start_clock = event.start_time.time().replace(second=0, microsecond=0)
+    end_clock = event.end_time.time().replace(second=0, microsecond=0)
+    expected_start = SECTION_TIMES.get(course.start_section, SECTION_TIMES[1])[0]
+    expected_end = SECTION_TIMES.get(course.end_section, SECTION_TIMES[13])[1]
+    return start_clock == expected_start and end_clock == expected_end
 
 
 def section_range_to_datetime(weekday: int, start_section: int, end_section: int) -> tuple[datetime, datetime]:
