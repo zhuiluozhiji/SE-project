@@ -11,3 +11,7 @@ export function getActivityFilterOptions() {
 export function getActivityDetail(id) {
   return http.get(`/activities/${id}`)
 }
+
+export function recordActivityInteraction(id, data) {
+  return http.post(`/activities/${id}/interactions`, data)
+}

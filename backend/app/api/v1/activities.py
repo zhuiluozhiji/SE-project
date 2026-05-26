@@ -1,15 +1,32 @@
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, Query
+from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 
 from app.core.response import fail, success
+from app.core.security import bearer_scheme, decode_access_token
 from app.db.session import get_db
+from app.schemas.activity import ActivityInteractionCreate
 from app.services.activity_service import get_filter_options
 from app.services.activity_service import get_activity as get_activity_by_id
 from app.services.activity_service import list_activities as list_activities_from_db
+from app.services.activity_service import record_activity_interaction
 
 router = APIRouter(prefix="/activities", tags=["activities"])
+
+
+def _optional_user_id(
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
+) -> int | None:
+    if credentials is None or credentials.scheme.lower() != "bearer":
+        return None
+    try:
+        payload = decode_access_token(credentials.credentials)
+        subject = payload.get("sub")
+        return int(subject) if subject is not None else None
+    except Exception:
+        return None
 
 
 @router.get("")
@@ -63,3 +80,21 @@ def get_activity(activity_id: int, db: Session = Depends(get_db)):
     if activity is None:
         return fail(code=1003, message="活动不存在")
     return success(activity)
+
+
+@router.post("/{activity_id}/interactions")
+def create_activity_interaction(
+    activity_id: int,
+    payload: ActivityInteractionCreate,
+    user_id: int | None = Depends(_optional_user_id),
+    db: Session = Depends(get_db),
+):
+    result = record_activity_interaction(
+        db=db,
+        activity_id=activity_id,
+        payload=payload,
+        user_id=user_id,
+    )
+    if result is None:
+        return fail(code=1003, message="活动不存在")
+    return success(result)
