@@ -25,6 +25,7 @@ GET    /api/v1/users/me
 GET    /api/v1/activities
 GET    /api/v1/activities/filter-options
 GET    /api/v1/activities/{id}
+POST   /api/v1/activities/{id}/interactions
 GET    /api/v1/recommendations/activities
 GET    /api/v1/schedules
 POST   /api/v1/schedules/check-conflict
@@ -162,6 +163,50 @@ Authorization: Bearer <token>
 }
 ```
 
+### `POST /api/v1/activities/{id}/interactions`
+
+记录当前用户对活动的行为，用于个性化推荐画像。认证为可选：携带合法 `Authorization: Bearer <token>` 时写入行为日志；未登录或 token 无效时返回成功但不写入，避免影响活动详情浏览。
+
+请求体：
+
+```json
+{
+  "action_type": "view",
+  "source": "activity_detail"
+}
+```
+
+字段说明：
+
+| 字段 | 说明 |
+| --- | --- |
+| `action_type` | `view` / `add_schedule` |
+| `source` | 可选。行为来源，例如 `activity_detail` |
+
+成功响应 `data`：
+
+```json
+{
+  "recorded": true,
+  "id": 1,
+  "activity_id": 101,
+  "action_type": "view",
+  "source": "activity_detail",
+  "created_at": "2026-05-26T10:00:00"
+}
+```
+
+未登录时：
+
+```json
+{
+  "recorded": false,
+  "reason": "anonymous_user",
+  "activity_id": 101,
+  "action_type": "view"
+}
+```
+
 ## 推荐接口
 
 ### `GET /api/v1/recommendations/activities`
@@ -172,7 +217,21 @@ Authorization: Bearer <token>
 | --- | --- |
 | `limit` | 返回数量，范围 1-50，默认 10 |
 
-认证为可选。请求头包含 `Authorization: Bearer <token>` 时，按当前用户兴趣标签、学院和日程冲突计算个性化推荐；不包含 token 时，按热度和时间临近度返回通用推荐。
+认证为可选。请求头包含 `Authorization: Bearer <token>` 时，按当前用户兴趣标签、最近 60 天活动行为、学院和日程冲突计算个性化推荐；不包含 token 时，按热度和时间临近度返回通用推荐。
+
+推荐流程采用“候选生成 → 打分排序 → 多样性重排”：
+
+```text
+recommend_score =
+  显式兴趣匹配分
+  + 历史行为标签分
+  + 热度分
+  + 时间临近分
+  + 学院相关分
+  - 时间冲突惩罚
+```
+
+候选集只包含 `status=open` 且未结束的活动；登录用户已加入日程的活动会被排除。历史行为只统计 `view` 和 `add_schedule`，其中 `add_schedule` 权重高于普通浏览。
 
 成功响应 `data`：
 
@@ -190,6 +249,7 @@ Authorization: Bearer <token>
 | `reason` | 推荐理由 |
 | `matched_tags` | 命中的用户兴趣标签 |
 | `has_conflict` | 是否与当前用户已有日程冲突 |
+| `score_breakdown` | 推荐分明细：`explicit_interest`、`behavior_history`、`hot`、`time`、`college`、`conflict_penalty`、`total` |
 
 ## 日程与课表接口
 
@@ -567,6 +627,10 @@ Authorization: Bearer <admin token>
 
 ## 后台接口
 
+### `POST /api/v1/admin/activities`
+
+管理员新增活动，要求携带管理员 token。活动写入 `activity` 表，默认 `source_type=manual`、`hot_score=0`、`status=open`；成功后可在活动列表查询到。
+
 ### `POST /api/v1/admin/activities/recognize-image`
 
 用于从活动截图中识别标题、时间、地点等字段，只返回识别结果，不直接创建活动。
@@ -623,6 +687,14 @@ Authorization: Bearer <admin token>
   "data": null
 }
 ```
+
+### `PUT /api/v1/admin/activities/{id}`
+
+管理员编辑已存在活动并持久化到 `activity` 表。活动不存在时返回 `code=1003`。
+
+### `DELETE /api/v1/admin/activities/{id}`
+
+管理员下架活动，将 `activity.status` 更新为 `offline`；下架后普通活动列表和详情不再展示该活动。
 
 ### `GET /api/v1/admin/stats`
 

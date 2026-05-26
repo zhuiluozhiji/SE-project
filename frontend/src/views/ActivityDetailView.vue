@@ -112,7 +112,7 @@
 import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { getActivityDetail } from '../api/activities'
+import { getActivityDetail, recordActivityInteraction } from '../api/activities'
 import { checkConflict as checkConflictApi, addActivityToSchedule } from '../api/schedules'
 
 const route = useRoute()
@@ -162,12 +162,22 @@ const fetchDetail = async () => {
   try {
     const res = await getActivityDetail(Number(route.params.id))
     activity.value = res.data
+    recordInteraction('view')
     await checkConflict()
   } catch (e) {
     error.value = e.message || '加载失败'
   } finally {
     loading.value = false
   }
+}
+
+const recordInteraction = async (actionType) => {
+  try {
+    await recordActivityInteraction(Number(route.params.id), {
+      action_type: actionType,
+      source: 'activity_detail'
+    })
+  } catch { /* 行为上报不阻塞详情和日程主流程 */ }
 }
 
 const checkConflict = async () => {
@@ -193,6 +203,7 @@ const addToSchedule = async (forceAdd = false) => {
       activity_id: Number(route.params.id),
       force_add: confirmed
     })
+    await recordInteraction('add_schedule')
     ElMessage.success('已加入日程')
     conflictVisible.value = false
   } catch { /* 拦截器已处理 */ } finally {
