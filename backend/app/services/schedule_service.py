@@ -11,6 +11,7 @@ from app.models.course_schedule import CourseSchedule
 from app.models.schedule_event import ScheduleEvent
 from app.utils.time import overlaps
 from app.services.course_service import (
+    COURSE_CANCELLED_TYPE,
     COURSE_TITLE_SUFFIX,
     SECTION_TIMES,
     course_event_title,
@@ -20,7 +21,9 @@ from app.services.course_service import (
 DEFAULT_USER_ID = 1
 LOCAL_TZ = ZoneInfo("Asia/Shanghai")
 SEMESTER_WEEK_ONE_MONDAY = date(2026, 3, 2)
-DEFAULT_SEMESTER_WEEKS = 20
+DEFAULT_SEMESTER_WEEKS = 16
+SPRING_TERM_WEEKS = (1, 8)
+SUMMER_TERM_WEEKS = (9, 16)
 SCHEDULE_COLOR_TYPES = {
     "blue",
     "green",
@@ -71,7 +74,14 @@ def list_schedule_events(
     events = db.scalars(stmt).all()
     course_lookup = build_course_lookup(db, user_id)
     course_template_lookup = build_course_template_lookup(db, user_id, course_lookup)
-    expanded_courses = build_course_events_for_week(db, user_id, request_monday, course_template_lookup)
+    cancelled_keys = cancelled_course_occurrence_keys(events)
+    expanded_courses = build_course_events_for_week(
+        db,
+        user_id,
+        request_monday,
+        course_template_lookup,
+        cancelled_keys=cancelled_keys,
+    )
     display_events = filter_template_course_events(events, course_template_lookup) + expanded_courses
     display_events.sort(key=lambda event: (event.start_time, event.id))
     conflict_ids = build_conflict_ids(display_events)
@@ -412,7 +422,6 @@ def find_conflicting_events(
     course_lookup = build_course_lookup(db, user_id)
     course_template_lookup = build_course_template_lookup(db, user_id, course_lookup)
     week_monday = requested_week_monday(start_time, end_time)
-    expanded_courses = build_course_events_for_week(db, user_id, week_monday, course_template_lookup)
 
     stmt = select(ScheduleEvent).where(
         ScheduleEvent.user_id == user_id,
@@ -428,6 +437,14 @@ def find_conflicting_events(
         stmt = stmt.where(ScheduleEvent.id != exclude_event_id)
 
     events = db.scalars(stmt.order_by(ScheduleEvent.start_time.asc())).all()
+    cancelled_keys = cancelled_course_occurrence_keys(events)
+    expanded_courses = build_course_events_for_week(
+        db,
+        user_id,
+        week_monday,
+        course_template_lookup,
+        cancelled_keys=cancelled_keys,
+    )
     events = filter_template_course_events(events, course_template_lookup) + expanded_courses
     return [
         event
@@ -551,6 +568,7 @@ def build_course_events_for_week(
     user_id: int,
     week_monday: date,
     template_lookup: dict[int, ScheduleEvent],
+    cancelled_keys: set[tuple[str, datetime, datetime, str | None]] | None = None,
 ) -> list[ScheduleEvent]:
     week_number = semester_week_number(week_monday)
     courses = db.scalars(
@@ -563,7 +581,10 @@ def build_course_events_for_week(
         if not course_occurs_in_week(course.weeks, week_number):
             continue
         template = template_lookup.get(course.id)
-        events.append(course_to_week_event(course, week_monday, template))
+        event = course_to_week_event(course, week_monday, template)
+        if cancelled_keys and course_occurrence_key(event) in cancelled_keys:
+            continue
+        events.append(event)
     return events
 
 
@@ -616,15 +637,49 @@ def course_occurs_in_week(weeks: str | None, week_number: int) -> bool:
     text = (weeks or "").strip()
     if not text:
         return week_number <= DEFAULT_SEMESTER_WEEKS
+
+    term_range = term_week_range(text)
+    if term_range and not (term_range[0] <= week_number <= term_range[1]):
+        return False
+
     if "单周" in text and week_number % 2 == 0:
         return False
     if "双周" in text and week_number % 2 == 1:
         return False
 
-    ranges = parse_week_ranges(text)
+    ranges = normalize_week_ranges_for_term(parse_week_ranges(text), text)
     if not ranges:
+        if term_range:
+            return term_range[0] <= week_number <= term_range[1]
         return week_number <= DEFAULT_SEMESTER_WEEKS
     return any(start <= week_number <= end for start, end in ranges)
+
+
+def term_week_range(text: str) -> tuple[int, int] | None:
+    has_spring = "春" in text
+    has_summer = "夏" in text
+    if has_spring and has_summer:
+        return 1, DEFAULT_SEMESTER_WEEKS
+    if has_spring:
+        return SPRING_TERM_WEEKS
+    if has_summer:
+        return SUMMER_TERM_WEEKS
+    return None
+
+
+def normalize_week_ranges_for_term(
+    ranges: list[tuple[int, int]],
+    text: str,
+) -> list[tuple[int, int]]:
+    if not ranges:
+        return []
+    term_range = term_week_range(text)
+    if term_range != SUMMER_TERM_WEEKS:
+        return ranges
+    if max(end for _, end in ranges) > (SUMMER_TERM_WEEKS[1] - SUMMER_TERM_WEEKS[0] + 1):
+        return ranges
+    offset = SUMMER_TERM_WEEKS[0] - 1
+    return [(start + offset, end + offset) for start, end in ranges]
 
 
 def parse_week_ranges(text: str) -> list[tuple[int, int]]:
@@ -649,8 +704,28 @@ def filter_template_course_events(
     return [
         event
         for event in stored_events
-        if event.type != "course" or event.id not in template_ids
+        if event.type != COURSE_CANCELLED_TYPE
+        and (event.type != "course" or event.id not in template_ids)
     ]
+
+
+def cancelled_course_occurrence_keys(
+    stored_events: list[ScheduleEvent],
+) -> set[tuple[str, datetime, datetime, str | None]]:
+    return {
+        course_occurrence_key(event)
+        for event in stored_events
+        if event.type == COURSE_CANCELLED_TYPE
+    }
+
+
+def course_occurrence_key(event: ScheduleEvent) -> tuple[str, datetime, datetime, str | None]:
+    return (
+        strip_course_title_suffix(event.title),
+        event.start_time.replace(second=0, microsecond=0),
+        event.end_time.replace(second=0, microsecond=0),
+        event.location,
+    )
 
 
 def resolve_course_for_event(

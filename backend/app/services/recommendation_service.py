@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 
 from sqlalchemy import or_, select
+from sqlalchemy.exc import OperationalError, ProgrammingError
 from sqlalchemy.orm import Session
 
 from app.models.activity import Activity
@@ -81,19 +82,23 @@ def _load_behavior_tag_weights(
         return {}
 
     cutoff = now - timedelta(days=BEHAVIOR_LOOKBACK_DAYS)
-    rows = db.execute(
-        select(
-            ActivityTag.tag_name,
-            ActivityInteraction.action_type,
-            ActivityInteraction.created_at,
-        )
-        .join(ActivityTag, ActivityTag.activity_id == ActivityInteraction.activity_id)
-        .where(
-            ActivityInteraction.user_id == user_id,
-            ActivityInteraction.created_at >= cutoff,
-            ActivityInteraction.action_type.in_(tuple(ACTION_WEIGHTS)),
-        )
-    ).all()
+    try:
+        rows = db.execute(
+            select(
+                ActivityTag.tag_name,
+                ActivityInteraction.action_type,
+                ActivityInteraction.created_at,
+            )
+            .join(ActivityTag, ActivityTag.activity_id == ActivityInteraction.activity_id)
+            .where(
+                ActivityInteraction.user_id == user_id,
+                ActivityInteraction.created_at >= cutoff,
+                ActivityInteraction.action_type.in_(tuple(ACTION_WEIGHTS)),
+            )
+        ).all()
+    except (OperationalError, ProgrammingError):
+        db.rollback()
+        return {}
 
     weights: dict[str, float] = {}
     for tag_name, action_type, created_at in rows:

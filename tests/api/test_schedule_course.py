@@ -280,6 +280,97 @@ def test_schedule_list_respects_course_week_range_and_parity():
     assert "自然语言处理导论" not in out_of_range_titles
 
 
+def test_schedule_list_stops_default_courses_after_week_16():
+    client.post(
+        "/api/v1/courses",
+        json={
+            "course_name": "默认周次专题",
+            "weekday": 1,
+            "start_section": 3,
+            "end_section": 4,
+            "location": "玉泉曹楼",
+            "teacher": "李老师",
+        },
+    )
+
+    week_16_response = client.get(
+        "/api/v1/schedules",
+        params={"start_date": "2026-06-15", "end_date": "2026-06-21"},
+    )
+    week_16_titles = [item["title"] for item in week_16_response.json()["data"]["items"]]
+    assert "默认周次专题" in week_16_titles
+
+    week_17_response = client.get(
+        "/api/v1/schedules",
+        params={"start_date": "2026-06-22", "end_date": "2026-06-28"},
+    )
+    week_17_titles = [item["title"] for item in week_17_response.json()["data"]["items"]]
+    assert "默认周次专题" not in week_17_titles
+
+
+def test_schedule_list_respects_spring_summer_terms():
+    for payload in [
+        {
+            "course_name": "春学期专题",
+            "weekday": 1,
+            "start_section": 3,
+            "end_section": 4,
+            "location": "玉泉曹楼",
+            "teacher": "李老师",
+            "weeks": "春",
+        },
+        {
+            "course_name": "夏学期专题",
+            "weekday": 1,
+            "start_section": 3,
+            "end_section": 4,
+            "location": "玉泉曹楼",
+            "teacher": "李老师",
+            "weeks": "夏",
+        },
+        {
+            "course_name": "春夏学期专题",
+            "weekday": 1,
+            "start_section": 3,
+            "end_section": 4,
+            "location": "玉泉曹楼",
+            "teacher": "李老师",
+            "weeks": "春夏",
+        },
+        {
+            "course_name": "夏学期相对周次专题",
+            "weekday": 1,
+            "start_section": 6,
+            "end_section": 7,
+            "location": "玉泉曹楼",
+            "teacher": "李老师",
+            "weeks": "夏 1-8",
+        },
+    ]:
+        response = client.post("/api/v1/courses", json=payload)
+        assert response.status_code == 200
+
+    week_8_response = client.get(
+        "/api/v1/schedules",
+        params={"start_date": "2026-04-20", "end_date": "2026-04-26"},
+    )
+    week_8_titles = [item["title"] for item in week_8_response.json()["data"]["items"]]
+    assert "春学期专题" in week_8_titles
+    assert "夏学期专题" not in week_8_titles
+    assert "春夏学期专题" in week_8_titles
+    assert "夏学期相对周次专题" not in week_8_titles
+
+    week_9_response = client.get(
+        "/api/v1/schedules",
+        params={"start_date": "2026-04-27", "end_date": "2026-05-03"},
+    )
+    week_9_titles = [item["title"] for item in week_9_response.json()["data"]["items"]]
+    assert "春学期专题" not in week_9_titles
+    assert "夏学期专题" in week_9_titles
+    assert "春夏学期专题" in week_9_titles
+    assert "夏学期相对周次专题" in week_9_titles
+
+
 def test_delete_course_removes_matching_schedule_event():
     create_response = client.post(
         "/api/v1/courses",
@@ -339,6 +430,62 @@ def test_delete_course_removes_legacy_course_event_by_title_location():
     try:
         assert db.get(CourseSchedule, course_id) is None
         assert db.query(ScheduleEvent).filter_by(title="机器学习课程").count() == 0
+    finally:
+        db.close()
+
+
+def test_delete_course_one_scope_with_occurrence_start_keeps_other_weeks():
+    create_response = client.post(
+        "/api/v1/courses",
+        json={
+            "course_name": "软件工程",
+            "weekday": 2,
+            "start_section": 3,
+            "end_section": 4,
+            "location": "玉泉曹楼",
+            "teacher": "李老师",
+            "weeks": "1-16",
+        },
+    )
+    course_id = create_response.json()["data"]["id"]
+
+    before_response = client.get(
+        "/api/v1/schedules",
+        params={"start_date": "2026-05-25", "end_date": "2026-05-31"},
+    )
+    before_titles = [item["title"] for item in before_response.json()["data"]["items"]]
+    assert "软件工程" in before_titles
+
+    delete_response = client.delete(
+        f"/api/v1/courses/{course_id}",
+        params={"scope": "one", "occurrence_start": "2026-05-26T10:00:00"},
+    )
+    assert delete_response.status_code == 200
+    delete_data = delete_response.json()
+    assert delete_data["code"] == 0
+    assert delete_data["data"]["scope"] == "one"
+    assert delete_data["data"]["deleted_courses"] == 0
+    assert delete_data["data"]["cancelled_occurrences"] == 1
+
+    current_week_response = client.get(
+        "/api/v1/schedules",
+        params={"start_date": "2026-05-25", "end_date": "2026-05-31"},
+    )
+    current_week_titles = [item["title"] for item in current_week_response.json()["data"]["items"]]
+    assert "软件工程" not in current_week_titles
+
+    next_week_response = client.get(
+        "/api/v1/schedules",
+        params={"start_date": "2026-06-01", "end_date": "2026-06-07"},
+    )
+    next_week_items = next_week_response.json()["data"]["items"]
+    next_course = next(item for item in next_week_items if item["title"] == "软件工程")
+    assert next_course["start_time"] == "2026-06-02T10:00:00"
+
+    db = TestingSessionLocal()
+    try:
+        assert db.get(CourseSchedule, course_id) is not None
+        assert db.query(ScheduleEvent).filter_by(type="course_cancelled").count() == 1
     finally:
         db.close()
 

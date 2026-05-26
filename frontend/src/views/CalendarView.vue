@@ -1110,7 +1110,7 @@ const addScreenshotEvent = async () => {
 const deleteScopeHint = computed(() => {
   if (deleteScope.value === 'day') return '删除当前星期中这门课的所有时段。'
   if (deleteScope.value === 'all') return '删除课表中同名同教师课程的全部时段。'
-  return '只删除当前点击的这一条课程时段。'
+  return '只移除当前日期的这一节课，其他周的重复课程会保留。'
 })
 
 const deleteScopeConfirmText = computed(() => {
@@ -1142,10 +1142,17 @@ const removeSelectedCourse = async () => {
 
   deletingCourse.value = true
   try {
-    const res = await deleteCourse(event.course_id, deleteScope.value)
+    const res = await deleteCourse(event.course_id, deleteScope.value, {
+      occurrenceStart: deleteScope.value === 'one' ? toLocalIso(event.start_time) : null
+    })
     const deletedCourses = res.data?.deleted_courses || 0
     const deletedEvents = res.data?.deleted_events || 0
-    ElMessage.success(`已删除 ${deletedCourses} 条课程记录，移除 ${deletedEvents} 条日程。`)
+    const cancelledOccurrences = res.data?.cancelled_occurrences || 0
+    if (deleteScope.value === 'one' && cancelledOccurrences > 0) {
+      ElMessage.success('已移除本次课程，其他周的重复课程已保留。')
+    } else {
+      ElMessage.success(`已删除 ${deletedCourses} 条课程记录，移除 ${deletedEvents} 条日程。`)
+    }
     eventDialogVisible.value = false
     await fetchSchedules()
   } catch (err) {

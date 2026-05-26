@@ -8,8 +8,12 @@ export function getCourses() {
   return http.get('/courses')
 }
 
-export function deleteCourse(id, scope = 'one') {
-  return http.delete(`/courses/${id}`, { params: { scope } })
+export function deleteCourse(id, scope = 'one', options = {}) {
+  const params = { scope }
+  if (options.occurrenceStart) {
+    params.occurrence_start = options.occurrenceStart
+  }
+  return http.delete(`/courses/${id}`, { params })
 }
 
 export function getCourseTemplate() {

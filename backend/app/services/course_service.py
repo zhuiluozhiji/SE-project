@@ -15,6 +15,7 @@ from app.schemas.course import CourseCreate
 
 DEFAULT_USER_ID = 1
 COURSE_TITLE_SUFFIX = "课程"
+COURSE_CANCELLED_TYPE = "course_cancelled"
 
 SECTION_TIMES: dict[int, tuple[time, time]] = {
     1: (time(8, 0), time(8, 45)),
@@ -134,12 +135,16 @@ def delete_course(
     course_id: int,
     user_id: int = DEFAULT_USER_ID,
     scope: str = "one",
+    occurrence_start: datetime | None = None,
 ) -> dict:
     course = db.get(CourseSchedule, course_id)
     if not course or course.user_id != user_id:
         raise ValueError("课程不存在")
 
     normalized_scope = normalize_delete_scope(scope)
+    if normalized_scope == "one" and occurrence_start is not None:
+        return cancel_course_occurrence(db, course, occurrence_start)
+
     courses = courses_for_delete_scope(db, course, normalized_scope)
     course_ids = [item.id for item in courses]
     course_name = course.course_name
@@ -157,6 +162,74 @@ def delete_course(
         "deleted_course_ids": course_ids,
         "deleted_events": deleted_events,
     }
+
+
+def cancel_course_occurrence(
+    db: Session,
+    course: CourseSchedule,
+    occurrence_start: datetime,
+) -> dict:
+    start_time, end_time = course_occurrence_datetime(course, occurrence_start)
+    existing = db.scalar(
+        select(ScheduleEvent).where(
+            ScheduleEvent.user_id == course.user_id,
+            ScheduleEvent.type == COURSE_CANCELLED_TYPE,
+            ScheduleEvent.title.in_(course_event_title_candidates(course.course_name)),
+            ScheduleEvent.start_time == start_time,
+            ScheduleEvent.end_time == end_time,
+            ScheduleEvent.location.is_(None)
+            if course.location is None
+            else ScheduleEvent.location == course.location,
+        )
+    )
+    if existing is None:
+        db.add(
+            ScheduleEvent(
+                user_id=course.user_id,
+                title=course_event_title(course.course_name),
+                type=COURSE_CANCELLED_TYPE,
+                activity_id=None,
+                start_time=start_time,
+                end_time=end_time,
+                location=course.location,
+                color_type="gray",
+                marker_label="删",
+            )
+        )
+        db.commit()
+
+    return {
+        "id": course.id,
+        "scope": "one",
+        "course_name": course.course_name,
+        "deleted_courses": 0,
+        "deleted_course_ids": [],
+        "deleted_events": 0,
+        "cancelled_occurrences": 1,
+        "occurrence_start": start_time.isoformat(),
+        "occurrence_end": end_time.isoformat(),
+    }
+
+
+def course_occurrence_datetime(
+    course: CourseSchedule,
+    occurrence_start: datetime,
+) -> tuple[datetime, datetime]:
+    normalized_start = occurrence_start.replace(tzinfo=None)
+    occurrence_date = normalized_start.date()
+    if occurrence_date.isoweekday() != course.weekday:
+        raise ValueError("所选课程实例与课程星期不匹配，请刷新日历后重试。")
+
+    expected_start = SECTION_TIMES.get(course.start_section, SECTION_TIMES[1])[0]
+    actual_start = normalized_start.time().replace(second=0, microsecond=0)
+    if actual_start != expected_start:
+        raise ValueError("所选课程实例与课程节次不匹配，请刷新日历后重试。")
+
+    expected_end = SECTION_TIMES.get(course.end_section, SECTION_TIMES[13])[1]
+    return (
+        datetime.combine(occurrence_date, expected_start),
+        datetime.combine(occurrence_date, expected_end),
+    )
 
 
 def normalize_delete_scope(scope: str) -> str:
@@ -484,7 +557,7 @@ def delete_matching_course_events(db: Session, course: CourseSchedule) -> int:
     events = db.scalars(
         select(ScheduleEvent).where(
             ScheduleEvent.user_id == course.user_id,
-            ScheduleEvent.type == "course",
+            ScheduleEvent.type.in_(("course", COURSE_CANCELLED_TYPE)),
             ScheduleEvent.title.in_(course_event_title_candidates(course.course_name)),
             ScheduleEvent.location.is_(None)
             if course.location is None

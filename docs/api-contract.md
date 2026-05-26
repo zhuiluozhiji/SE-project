@@ -262,7 +262,7 @@ recommend_score =
 | `start_date` | string | 开始日期，格式 `YYYY-MM-DD` 或 ISO datetime |
 | `end_date` | string | 结束日期，格式 `YYYY-MM-DD` 或 ISO datetime |
 
-课程日程由 `course_schedule` 按请求周动态展开；当前学期按 `2026-03-02` 为第 1 周周一计算，因此 `2026-05-25` 所在周为第 13 周。`weeks` 中的 `1-16`、`单周`、`双周` 会用于过滤对应周次。
+课程日程由 `course_schedule` 按请求周动态展开；当前学期按 `2026-03-02` 为第 1 周周一计算，因此 `2026-05-25` 所在周为第 13 周，`2026-06-15` 所在周为第 16 周。未填写 `weeks` 时默认按 16 周展开。`weeks` 中的 `春` 表示第 1-8 周，`夏` 表示第 9-16 周，`春夏` 表示第 1-16 周；`1-16`、`单周`、`双周` 会继续用于过滤对应周次。若写作 `夏 1-8`，其中 `1-8` 按夏学期内部周次映射为总第 9-16 周。
 
 返回 `data.items`：
 
@@ -490,9 +490,15 @@ recommend_score =
 
 | 参数值 | 说明 |
 | --- | --- |
-| `one` | 默认值，仅删除当前点击的这一条课程时段 |
+| `one` | 默认值。传 `occurrence_start` 时仅移除当前日期的这一节课，其他周重复课程保留；未传时兼容旧逻辑，删除当前课程规则 |
 | `day` | 删除同一门课在同一星期的所有课程时段 |
 | `all` | 删除同一门课的全部课程时段 |
+
+可选查询参数：
+
+| 参数 | 说明 |
+| --- | --- |
+| `occurrence_start` | `scope=one` 时传当前日历块的开始时间，例如 `2026-05-26T10:00:00` |
 
 ```json
 {
@@ -501,7 +507,8 @@ recommend_score =
   "course_name": "软件工程",
   "deleted_courses": 1,
   "deleted_course_ids": [1],
-  "deleted_events": 1
+  "deleted_events": 1,
+  "cancelled_occurrences": 0
 }
 ```
 
