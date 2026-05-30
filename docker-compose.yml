@@ -32,7 +32,7 @@ services:
     environment:
       MYSQL_HOST: mysql
       DATABASE_URL: mysql+pymysql://${MYSQL_USER}:${MYSQL_PASSWORD}@mysql:3306/${MYSQL_DATABASE}?charset=utf8mb4
-      PYTHONPATH: /workspace/backend
+      PYTHONPATH: /workspace/backend:/workspace
     ports:
       - "${BACKEND_PORT:-8000}:8000"
     volumes:

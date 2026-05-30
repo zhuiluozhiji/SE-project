@@ -9,7 +9,7 @@
         <el-button type="primary" @click="openActivityDialog()">新增活动</el-button>
         <el-button @click="openOcrDialog">识别截图</el-button>
         <el-button :loading="crawlerRunning" @click="runCrawler">触发爬虫</el-button>
-        <el-button @click="showCrawlerLogs = true">查看日志</el-button>
+        <el-button @click="showCrawlerLogs = true; fetchCrawlerRecords()">查看日志</el-button>
       </div>
     </div>
 
@@ -191,7 +191,8 @@ import {
   updateActivity,
   offlineActivity,
   recognizeActivityImage,
-  runCrawler as runCrawlerApi
+  runCrawler as runCrawlerApi,
+  getCrawlerRecords
 } from '../api/admin'
 import StatusTag from '../components/StatusTag.vue'
 import {
@@ -481,10 +482,26 @@ const handleOffline = async (id) => {
 const runCrawler = async () => {
   crawlerRunning.value = true
   try {
-    await runCrawlerApi({ source: 'cs_zju' })
-    ElMessage.success('爬虫任务已触发')
+    const res = await runCrawlerApi({ source: 'cs_zju' })
+    const data = res.data || res || {}
+    ElMessage.success(
+      `爬取完成：抓取 ${data.fetched || 0} 条，新增 ${data.created || 0} 条，`
+      + `去重跳过 ${data.skipped || 0} 条，内容过滤 ${data.filtered || 0} 条，`
+      + `年份过滤 ${data.year_filtered || 0} 条`
+    )
+    fetchActivities()
   } catch { /* 拦截器已处理 */ } finally {
     crawlerRunning.value = false
+  }
+}
+
+const fetchCrawlerRecords = async () => {
+  crawlerLogsLoading.value = true
+  try {
+    const res = await getCrawlerRecords()
+    crawlerRecords.value = res.data?.items || res.data || []
+  } catch { /* 拦截器已处理 */ } finally {
+    crawlerLogsLoading.value = false
   }
 }
 
