@@ -13,7 +13,9 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 COPY backend/requirements.txt /tmp/requirements.txt
-RUN pip install --no-cache-dir -r /tmp/requirements.txt
+RUN pip install --no-cache-dir --default-timeout=120 \
+    -i https://pypi.tuna.tsinghua.edu.cn/simple \
+    -r /tmp/requirements.txt
 
 COPY backend /workspace/backend
 COPY tests /workspace/tests

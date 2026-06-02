@@ -1,4 +1,4 @@
-\chapter{I. 最新文献回顾}\label{i.-ux6700ux65b0ux6587ux732eux56deux987e}
+\section{I. 最新文献回顾}\label{i.-ux6700ux65b0ux6587ux732eux56deux987e}
 
 设计模式的研究已经从早期的``总结可复用经验''扩展到``自动识别、质量分析与架构演化支持''
 {[}1{]}{[}2{]}{[}3{]}。经典的 GoF
@@ -19,10 +19,10 @@ API
 
 \begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
 
-\chapter{II.
+\section{II.
 系统体系分析}\label{ii.-ux7cfbux7edfux4f53ux7cfbux5206ux6790}
 
-\section{2.1 系统特点}\label{ux7cfbux7edfux7279ux70b9}
+\subsection{2.1 系统特点}\label{ux7cfbux7edfux7279ux70b9}
 
 我们小组的项目是一个典型的前后端分离 Web
 系统，目标是围绕校园学术活动形成 采集 - 检索 - 推荐 - 日程管理 -
@@ -45,7 +45,7 @@ MySQL，并预留了爬虫采集与课表导入能力。系统的核心问题并
   多人协作开发：团队并行开发前端、后端、数据库和爬虫时，如果缺少统一模式，接口和对象协作容易发散。
 \end{enumerate}
 
-\section{2.2
+\subsection{2.2
 设计模式落点总览}\label{ux8bbeux8ba1ux6a21ux5f0fux843dux70b9ux603bux89c8}
 
 {\def\LTcaptype{none} % do not increment counter
@@ -57,9 +57,11 @@ MySQL，并预留了爬虫采集与课表导入能力。系统的核心问题并
 \bottomrule\noalign{}
 \endlastfoot
 工厂方法 & 日程事件统一创建 \\
-单件 & \texttt{settings}、数据库会话工厂、Axios 实例、Pinia store \\
+单件 & \passthrough{\lstinline!settings!}、数据库会话工厂、Axios
+实例、Pinia store \\
 适配器 & CSV / Excel / OCR 课表导入 \\
-外观 & \texttt{frontend/src/api/*.js} 对页面提供统一 API \\
+外观 & \passthrough{\lstinline!frontend/src/api/*.js!} 对页面提供统一
+API \\
 代理 & 管理员后台的鉴权与拦截 \\
 观察者 & Pinia 登录态与页面联动 \\
 策略 & 推荐打分模型 \\
@@ -71,27 +73,28 @@ MySQL，并预留了爬虫采集与课表导入能力。系统的核心问题并
 
 \begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
 
-\chapter{III. 经典 GOF
+\section{III. 经典 GOF
 设计模式应用}\label{iii.-ux7ecfux5178-gof-ux8bbeux8ba1ux6a21ux5f0fux5e94ux7528}
 
 我们按照 GoF
 的分类方式，从创建型、结构型和行为型三个角度说明本项目中最有代表性的设计模式应用。需要说明的是：由于撰写设计模式报告时候我们同时也处在核心业务逐步实现阶段，以下内容有一部分是对\textbf{现有代码实现的归纳}，另一部分是对\textbf{后续实现方案的模式化设计}。
 
-\section{1. 创建型模式}\label{ux521bux5efaux578bux6a21ux5f0f}
+\subsection{1. 创建型模式}\label{ux521bux5efaux578bux6a21ux5f0f}
 
-\subsection{a. 工厂方法（Factory
+\subsubsection{a. 工厂方法（Factory
 Method）}\label{a.-ux5de5ux5382ux65b9ux6cd5factory-method}
 
 工厂方法的核心意图是把对象创建延迟到具体子类或具体创建器中，使调用方只依赖统一创建接口，而不直接依赖某个具体类的构造过程。
 
 在本项目中，这一模式非很适合落在\textbf{日程事件创建}上。系统中的日程事件并不只有一种来源：课程导入会生成课程事件，活动详情页``加入日程''会生成活动事件，后续还可能支持用户手工创建个人事件。虽然这些对象最后都落到
-\texttt{schedule\_event}
+\passthrough{\lstinline!schedule\_event!}
 或统一的日历展示结构上，但字段填充规则、类型映射和颜色标识并不完全相同。
 
-如果在 \texttt{schedule\_service} 中直接用大量 \texttt{if/else}
+如果在 \passthrough{\lstinline!schedule\_service!} 中直接用大量
+\passthrough{\lstinline!if/else!}
 拼接不同类型事件，逻辑会快速膨胀。因此，更合理的做法是为不同事件来源提供各自的创建器，例如
-\texttt{CourseEventCreator}、\texttt{ActivityEventCreator} 和
-\texttt{PersonalEventCreator}，再由 service
+\passthrough{\lstinline!CourseEventCreator!}、\passthrough{\lstinline!ActivityEventCreator!}
+和 \passthrough{\lstinline!PersonalEventCreator!}，再由 service
 根据类型选择具体创建器。这样一来，活动加入日程、课表导入和手工新增都能共享统一创建入口，而不必在同一个函数里硬编码所有构造细节。
 
 \begin{figure}
@@ -102,10 +105,11 @@ Method）}\label{a.-ux5de5ux5382ux65b9ux6cd5factory-method}
 
 这一模式的直接收益是：新增事件类型时只需要增加新的创建器，而不必破坏已有逻辑；同时单元测试可以针对单个创建器展开，降低后续维护成本。
 
-\subsection{b. 单件（Singleton）}\label{b.-ux5355ux4ef6singleton}
+\subsubsection{b. 单件（Singleton）}\label{b.-ux5355ux4ef6singleton}
 
 单件模式要求某类在系统生命周期中只保留一个全局可访问实例。在 Python
-与前端模块化开发中，单件模式经常不以传统 \texttt{getInstance()}
+与前端模块化开发中，单件模式经常不以传统
+\passthrough{\lstinline!getInstance()!}
 写法出现，而是通过模块级唯一对象体现。
 他们的特点都是全局共享、重复创建没有意义、配置应保持一致。
 
@@ -118,23 +122,24 @@ Method）}\label{a.-ux5de5ux5382ux65b9ux6cd5factory-method}
 对于我们项目而言，单件模式的价值主要体现在一致性和可控性上：HTTP
 基础地址、认证头注入、数据库连接配置和登录态都应该只有一个权威来源。
 
-\section{2. 结构型模式}\label{ux7ed3ux6784ux578bux6a21ux5f0f}
+\subsection{2. 结构型模式}\label{ux7ed3ux6784ux578bux6a21ux5f0f}
 
-\subsection{a. 适配器（Adapter）}\label{a.-ux9002ux914dux5668adapter}
+\subsubsection{a. 适配器（Adapter）}\label{a.-ux9002ux914dux5668adapter}
 
 适配器模式用于把原本接口不兼容的对象转换成调用方期望的统一接口。在本项目中，最典型的适配器落点是\textbf{课表导入}。
 
-当前我们的系统已经预留了 \texttt{POST\ /api/v1/courses/import} 和
-\texttt{POST\ /api/v1/courses/ocr}
+当前我们的系统已经预留了
+\passthrough{\lstinline!POST /api/v1/courses/import!} 和
+\passthrough{\lstinline!POST /api/v1/courses/ocr!}
 两类入口，前端的课表导入页也明确支持文件上传，并为 OCR
 预留了扩展位。这意味着系统后续很可能同时接收
 CSV、Excel、截图识别结果等不同形态的数据源。它们原始结构差异很大，但在业务层最终都必须转化为统一的课程结构，如课程名、星期、节次、周次、地点和教师等字段。
 
 因此，适合为每类输入实现一个适配器，例如
-\texttt{CsvCourseAdapter}、\texttt{ExcelCourseAdapter} 和
-\texttt{OcrCourseAdapter}，统一对外暴露
-\texttt{parse(file):\ list\textless{}CourseDTO\textgreater{}}。上层导入服务不再关心原始输入的细节，而只处理标准化后的
-\texttt{CourseDTO} 列表。
+\passthrough{\lstinline!CsvCourseAdapter!}、\passthrough{\lstinline!ExcelCourseAdapter!}
+和 \passthrough{\lstinline!OcrCourseAdapter!}，统一对外暴露
+\passthrough{\lstinline!parse(file): list<CourseDTO>!}。上层导入服务不再关心原始输入的细节，而只处理标准化后的
+\passthrough{\lstinline!CourseDTO!} 列表。
 
 \begin{figure}
 \centering
@@ -144,19 +149,19 @@ CSV、Excel、截图识别结果等不同形态的数据源。它们原始结构
 
 采用适配器模式后，系统可以持续扩展新的导入来源，同时保证冲突检测、课程入库和日历展示只依赖统一的数据模型。
 
-\subsection{b. 外观（Facade）}\label{b.-ux5916ux89c2facade}
+\subsubsection{b. 外观（Facade）}\label{b.-ux5916ux89c2facade}
 
 外观模式通过提供更高层、更一致的访问入口，隐藏底层子系统的复杂度
 {[}8{]}。在本项目中，这一模式已经清晰体现在前端 API 封装中。
 
-当前前端不会在页面组件里直接使用 Axios，而是由 \texttt{src/api/http.js}
-统一创建客户端实例，再由
-\texttt{activities.js}、\texttt{recommendations.js}、\texttt{schedules.js}
+当前前端不会在页面组件里直接使用 Axios，而是由
+\passthrough{\lstinline!src/api/http.js!} 统一创建客户端实例，再由
+\passthrough{\lstinline!activities.js!}、\passthrough{\lstinline!recommendations.js!}、\passthrough{\lstinline!schedules.js!}
 等文件分别向页面暴露面向业务的请求函数。页面只需要调用
-\texttt{getActivities()}、\texttt{getRecommendedActivities()} 或
-\texttt{checkConflict()} 之类的接口，而不必关心
-\texttt{baseURL}、\texttt{Authorization} 请求头和 \texttt{response.data}
-解包等细节。
+\passthrough{\lstinline!getActivities()!}、\passthrough{\lstinline!getRecommendedActivities()!}
+或 \passthrough{\lstinline!checkConflict()!} 之类的接口，而不必关心
+\passthrough{\lstinline!baseURL!}、\passthrough{\lstinline!Authorization!}
+请求头和 \passthrough{\lstinline!response.data!} 解包等细节。
 
 这种结构本质上就是一层门面：它把复杂的网络访问细节折叠到少量统一函数中，页面层面对外只看到稳定的业务接口。
 
@@ -166,7 +171,7 @@ CSV、Excel、截图识别结果等不同形态的数据源。它们原始结构
 \caption{图 3-4 外观模式：前端 API 封装对页面提供统一访问入口}
 \end{figure}
 
-\subsection{c.~代理（Proxy）}\label{c.-ux4ee3ux7406proxy}
+\subsubsection{c.~代理（Proxy）}\label{c.-ux4ee3ux7406proxy}
 
 代理模式通过一个代理对象控制对真实对象的访问，常见用途包括权限控制、延迟加载、日志审计和附加行为织入
 {[}8{]}{[}9{]}。在本项目中，最典型的场景是\textbf{后台管理操作的鉴权代理}。
@@ -187,14 +192,15 @@ token、判断 role、决定是否放行''收敛为一层代理逻辑。
 
 该模式能够明显降低权限逻辑和业务逻辑的耦合度，并为未来的管理员审计、统一错误提示和请求拦截器扩展留下空间。
 
-\section{3. 行为型模式}\label{ux884cux4e3aux578bux6a21ux5f0f}
+\subsection{3. 行为型模式}\label{ux884cux4e3aux578bux6a21ux5f0f}
 
-\subsection{a. 观察者（Observer）}\label{a.-ux89c2ux5bdfux8005observer}
+\subsubsection{a.
+观察者（Observer）}\label{a.-ux89c2ux5bdfux8005observer}
 
 观察者模式定义一种一对多依赖关系：当主题对象状态变化时，所有依赖它的观察者都会收到通知并更新。在前端响应式框架中，这种模式非常常见。
 
-本项目当前最典型的观察者落点就是 \textbf{Pinia 登录态}。\texttt{auth}
-store 维护 token
+本项目当前最典型的观察者落点就是 \textbf{Pinia
+登录态}。\passthrough{\lstinline!auth!} store 维护 token
 和用户信息，当登录成功或退出登录时，导航栏、个人中心、路由守卫和登录页等界面都需要感知状态变化并同步更新。这种关系非常符合``主题
 - 观察者''的结构：store 是被观察对象，多个页面或组件是观察者。
 
@@ -207,19 +213,20 @@ store 维护 token
 在后续开发中，如果继续引入日历数据 store、推荐结果 store 或后台统计
 store，观察者模式也是适用的。
 
-\subsection{b. 策略（Strategy）}\label{b.-ux7b56ux7565strategy}
+\subsubsection{b. 策略（Strategy）}\label{b.-ux7b56ux7565strategy}
 
 策略模式通过封装一组可互换算法，并让调用方依赖统一接口，从而实现算法层面的可替换与可扩展。我们项目中\textbf{个性化推荐引擎}就明显运用到了。
 
 在总体设计中已经明确给出了推荐分公式：
 
-\begin{verbatim}
+\begin{lstlisting}
 推荐分 = 兴趣标签匹配分 + 热度分 + 时间临近分 + 学院相关分 - 冲突惩罚分
-\end{verbatim}
+\end{lstlisting}
 
 推荐本质上不是一个单一算法。若把所有计算直接写进一个长函数中，后续想调整权重、增加新规则或移除某项规则都会很痛苦。更合理的做法是为每一项评分因素定义独立策略，例如
-\texttt{InterestMatchStrategy}、\texttt{HotScoreStrategy}、\texttt{TimeProximityStrategy}、\texttt{CollegeRelatedStrategy}
-与 \texttt{ConflictPenaltyStrategy}，再由推荐引擎统一组合和累加。
+\passthrough{\lstinline!InterestMatchStrategy!}、\passthrough{\lstinline!HotScoreStrategy!}、\passthrough{\lstinline!TimeProximityStrategy!}、\passthrough{\lstinline!CollegeRelatedStrategy!}
+与
+\passthrough{\lstinline!ConflictPenaltyStrategy!}，再由推荐引擎统一组合和累加。
 
 \begin{figure}
 \centering
@@ -229,7 +236,7 @@ store，观察者模式也是适用的。
 
 采用策略模式后，本项目的推荐服务将具备更好的可解释性和可测试性：每种策略都可以单独验证，推荐理由也可以直接回溯到具体的得分来源。
 
-\subsection{c.~状态（State）}\label{c.-ux72b6ux6001state}
+\subsubsection{c.~状态（State）}\label{c.-ux72b6ux6001state}
 
 状态模式把对象在不同状态下的行为差异显式建模，使状态切换不再依赖分散的条件分支。最适合使用状态模式的场景是\textbf{课表导入任务}。
 
@@ -244,7 +251,7 @@ OCR、错误定位和重试逻辑后会很难维护。
 
 状态模式的优势在于：流程更清晰，错误恢复路径更明确，前端与后端也更容易围绕统一流程语义协作。
 
-\subsection{d.~模板方法（Template
+\subsubsection{d.~模板方法（Template
 Method）}\label{d.-ux6a21ux677fux65b9ux6cd5template-method}
 
 模板方法模式通过在父类中定义稳定的算法骨架，把可变步骤留给子类覆写。在本项目中，最合适的落点是\textbf{导入与采集流水线}。
@@ -252,14 +259,14 @@ Method）}\label{d.-ux6a21ux677fux65b9ux6cd5template-method}
 无论是课表文件导入、OCR
 识别导入，还是后续爬虫采集活动并写入数据库，它们都共享一个相似的处理骨架：
 
-\begin{verbatim}
+\begin{lstlisting}
 读取源数据 -> 校验 -> 解析 -> 规范化 -> 持久化 -> 返回结果
-\end{verbatim}
+\end{lstlisting}
 
 差异主要出现在``如何读取''\,``如何解析''和``持久化到哪张表''这些局部步骤上。因此，完全可以定义一个抽象的
-\texttt{AbstractImportPipeline}，固定流程顺序，再让
-\texttt{CourseFileImportPipeline}、\texttt{OcrCourseImportPipeline} 和
-\texttt{CrawlerImportPipeline} 分别实现特定步骤。
+\passthrough{\lstinline!AbstractImportPipeline!}，固定流程顺序，再让
+\passthrough{\lstinline!CourseFileImportPipeline!}、\passthrough{\lstinline!OcrCourseImportPipeline!}
+和 \passthrough{\lstinline!CrawlerImportPipeline!} 分别实现特定步骤。
 
 \begin{figure}
 \centering
@@ -269,14 +276,15 @@ Method）}\label{d.-ux6a21ux677fux65b9ux6cd5template-method}
 
 这样做能显著减少重复代码，也能保证不同导入路径遵循一致的错误处理和结果汇报机制。
 
-\subsection{e. 中介者（Mediator）}\label{e.-ux4e2dux4ecbux8005mediator}
+\subsubsection{e.
+中介者（Mediator）}\label{e.-ux4e2dux4ecbux8005mediator}
 
 中介者模式通过引入一个中介对象，把原本对象之间复杂的多对多交互收敛为``一对多''关系。在本项目中，最自然的落点是\textbf{活动列表筛选面板}。
 
 当前活动列表页已经有关键词、校区、类别和分页等多个控件。随着后续真实搜索逻辑落地，这些控件之间会出现大量联动关系：关键词变化后要重置分页，筛选条件变化后要刷新列表，重置按钮需要同时清空多个控件状态。如果让控件彼此直接通信，页面很快会变得难以维护。
 
 因此，更合理的做法是引入
-\texttt{ActivityFilterMediator}，由它统一协调关键词输入、校区选择、类别选择和分页器的联动逻辑，并最终触发列表刷新。
+\passthrough{\lstinline!ActivityFilterMediator!}，由它统一协调关键词输入、校区选择、类别选择和分页器的联动逻辑，并最终触发列表刷新。
 
 \begin{figure}
 \centering
@@ -288,7 +296,7 @@ Method）}\label{d.-ux6a21ux677fux65b9ux6cd5template-method}
 
 \begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
 
-\chapter{IV. 参考文献}\label{iv.-ux53c2ux8003ux6587ux732e}
+\section{IV. 参考文献}\label{iv.-ux53c2ux8003ux6587ux732e}
 
 {[}1{]} ``Design pattern detection based on the graph theory.''
 \emph{Knowledge-Based Systems}, Vol. 120, 2017, pp.~211-225.

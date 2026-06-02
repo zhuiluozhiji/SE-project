@@ -13,6 +13,7 @@
 \usepackage{titlesec}
 \usepackage{setspace}
 \usepackage{xcolor}
+\usepackage{colortbl}
 \usepackage{fancyhdr}
 \usepackage{lastpage}
 \usepackage{etoolbox}
@@ -20,6 +21,7 @@
 \usepackage{listings}
 
 \providecommand{\pandocbounded}[1]{#1}
+\providecommand{\passthrough}[1]{#1}
 \providecommand{\tightlist}{}
 \newcounter{none}
 \renewcommand{\pandocbounded}[1]{\maxsizebox{\linewidth}{0.82\textheight}{#1}}
@@ -33,7 +35,7 @@
   linkcolor=black,
   urlcolor=black,
   citecolor=black,
-  pdftitle={校园学术活动智能推荐平台设计模式报告}
+  pdftitle={校园学术活动智能推荐平台软件工程测试报告}
 }
 
 \setmainfont{Times New Roman}
@@ -63,8 +65,13 @@
 \urlstyle{same}
 
 \captionsetup{font=small,labelfont=bf,labelsep=quad}
-\captionsetup[figure]{labelformat=empty,justification=centering}
+\DeclareCaptionLabelSeparator{zhcolon}{：}
+\DeclareCaptionLabelFormat{zhfigure}{{\xeCJKsetup{CJKecglue={}}图\thefigure}}
+\renewcommand{\thefigure}{\arabic{figure}}
+\captionsetup[figure]{labelformat=zhfigure,labelsep=zhcolon,justification=centering}
 \floatplacement{figure}{H}
+\arrayrulecolor{gray!55}
+\setlength{\arrayrulewidth}{0.4pt}
 \lstset{
   basicstyle=\ttfamily\small,
   breaklines=true,
@@ -76,7 +83,7 @@
   xrightmargin=1em
 }
 
-\graphicspath{{../}{../../总体设计报告/figures/}{../../总体设计报告/figures/exported/}}
+\graphicspath{{../}{../screenshots/}{../../总体设计报告/figures/}{../../总体设计报告/figures/exported/}}
 
 \ctexset{
   chapter = {
@@ -103,16 +110,16 @@
 
 \pagestyle{fancy}
 \fancyhf{}
-\fancyhead[L]{设计模式报告}
-\fancyhead[R]{\nouppercase{\leftmark}}
+\fancyhead[L]{软件工程测试报告}
+\fancyhead[R]{校园学术活动智能推荐平台}
 \fancyfoot[C]{第 \thepage 页\ /\ 共 \pageref*{LastPage} 页}
 \renewcommand{\headrulewidth}{0.6pt}
 \renewcommand{\footrulewidth}{0.4pt}
 
 \fancypagestyle{plain}{
   \fancyhf{}
-  \fancyhead[L]{设计模式报告}
-  \fancyhead[R]{\nouppercase{\leftmark}}
+  \fancyhead[L]{软件工程测试报告}
+  \fancyhead[R]{校园学术活动智能推荐平台}
   \fancyfoot[C]{第 \thepage 页\ /\ 共 \pageref*{LastPage} 页}
   \renewcommand{\headrulewidth}{0.6pt}
   \renewcommand{\footrulewidth}{0.4pt}
@@ -131,7 +138,7 @@
     \vspace*{1.0cm}
     \includegraphics[width=0.42\textwidth]{zju_title.png}\par
     \vspace{1.4cm}
-    {\songti\zihao{2} 设计模式报告 \par}
+    {\songti\zihao{2} 软件工程测试报告 \par}
     \vspace{1.6cm}
     \includegraphics[width=0.30\textwidth]{zju_logo.png}\par
     \vspace{1.5cm}
@@ -154,13 +161,22 @@
   \end{titlepage}
 }
 
+\newcommand{\makereporttoc}{
+  \begingroup
+    \small
+    \setstretch{1.22}
+    \setlength{\parskip}{0pt}
+    \tableofcontents
+  \endgroup
+}
+
 \begin{document}
 \pagenumbering{gobble}
 \makecover
 \clearpage
 
 \pagenumbering{Roman}
-\tableofcontents
+\makereporttoc
 \clearpage
 
 \pagenumbering{arabic}

@@ -106,6 +106,19 @@ def test_login_and_get_current_user(client):
     assert me_response.json()["data"]["id"] == 1
 
 
+def test_login_rejects_wrong_password_and_missing_token(client):
+    wrong_password = client.post(
+        "/api/v1/auth/login",
+        json={"username": "student001", "password": "wrong-password"},
+    )
+    assert wrong_password.status_code == 200
+    assert wrong_password.json()["code"] == 1001
+
+    missing_token = client.get("/api/v1/users/me")
+    assert missing_token.status_code == 401
+    assert missing_token.json()["message"] == "未登录或登录已过期"
+
+
 def test_register_creates_student_user(client):
     response = client.post(
         "/api/v1/auth/register",
@@ -211,6 +224,27 @@ def test_admin_activity_create_update_and_offline_persist_to_database(client):
 
     hidden_response = client.get(f"/api/v1/activities/{created['id']}")
     assert hidden_response.json()["code"] == 1003
+
+
+def test_admin_activity_missing_update_and_offline_return_business_error(client):
+    admin_login = client.post(
+        "/api/v1/auth/login",
+        json={"username": "admin001", "password": "123456"},
+    )
+    admin_token = admin_login.json()["data"]["token"]
+    headers = {"Authorization": f"Bearer {admin_token}"}
+
+    update_response = client.put(
+        "/api/v1/admin/activities/999",
+        headers=headers,
+        json={"title": "Missing Activity"},
+    )
+    assert update_response.status_code == 200
+    assert update_response.json()["code"] == 1003
+
+    offline_response = client.delete("/api/v1/admin/activities/999", headers=headers)
+    assert offline_response.status_code == 200
+    assert offline_response.json()["code"] == 1003
 
 
 def test_list_and_get_activity_from_database(client):

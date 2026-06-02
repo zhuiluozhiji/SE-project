@@ -172,6 +172,28 @@ def test_create_course_writes_course_and_schedule_event():
         db.close()
 
 
+def test_list_courses_returns_created_courses():
+    client.post(
+        "/api/v1/courses",
+        json={
+            "course_name": "软件工程",
+            "weekday": 2,
+            "start_section": 3,
+            "end_section": 4,
+            "location": "玉泉曹楼",
+            "teacher": "李老师",
+            "weeks": "1-16",
+        },
+    )
+
+    response = client.get("/api/v1/courses")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["code"] == 0
+    assert data["data"]["items"][0]["course_name"] == "软件工程"
+
+
 def test_schedule_list_removes_legacy_course_title_suffix():
     response = client.get("/api/v1/schedules")
 
@@ -892,6 +914,31 @@ def test_import_courses_reports_empty_file():
     data = response.json()
     assert data["code"] == 2002
     assert "至少一行课程数据" in data["message"]
+
+
+def test_import_courses_rejects_legacy_xls_file():
+    response = client.post(
+        "/api/v1/courses/import",
+        files={"file": ("legacy.xls", b"legacy-content", "application/vnd.ms-excel")},
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["code"] == 2002
+    assert "暂不支持旧版 .xls 文件" in data["message"]
+
+
+def test_course_ocr_reserved_endpoint_returns_message():
+    response = client.post(
+        "/api/v1/courses/ocr",
+        files={"file": ("schedule.png", b"fake-image", "image/png")},
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["code"] == 0
+    assert data["data"]["status"] == "reserved"
+    assert "OCR 接口已预留" in data["data"]["message"]
 
 
 def test_import_zju_export_xlsx_style_csv_rows():

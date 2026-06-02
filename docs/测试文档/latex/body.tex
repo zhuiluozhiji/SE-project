@@ -1,0 +1,1645 @@
+\section{1 引言}\label{ux5f15ux8a00}
+
+\subsection{1.1 编写目的}\label{ux7f16ux5199ux76eeux7684}
+
+本文档旨在对《校园学术活动智能推荐平台》当前实现版本的功能正确性、运行稳定性、界面可用性和课程验收可演示性进行说明和评价。
+
+报告中的测试结论均以当前项目代码、自动化测试执行结果、Docker Compose
+运行环境和手工页面检查结果为依据。
+
+\subsection{1.2 项目背景}\label{ux9879ux76eeux80ccux666f}
+
+校园内学术活动数量较多，活动信息分散在学院官网、通知页面和人工发布渠道中。学生在选择讲座、报告或学术交流活动时，往往需要同时考虑个人兴趣、活动时间、所在校区以及已有课程安排。若缺乏统一管理工具，容易出现活动信息遗漏、时间冲突和日程维护困难等问题。
+
+本项目面向上述场景，构建一个校园学术活动智能推荐平台。系统围绕``活动聚合
+- 浏览检索 - 个性化推荐 - 课表导入 - 冲突检测 - 日程管理 -
+后台维护''形成闭环。用户可以浏览和搜索活动，导入课表，查看推荐活动，将活动加入个人日程；管理员可以维护活动信息、查看爬虫记录，并通过
+OCR 辅助录入活动内容。
+
+系统采用前后端分离架构。前端基于 Vue 3、Vite 和 Element Plus
+实现页面展示与交互；后端基于 FastAPI、SQLAlchemy 和 MySQL
+提供接口服务；开发、联调和测试统一使用 Docker Compose 环境。
+
+\subsection{1.3 术语定义}\label{ux672fux8bedux5b9aux4e49}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 2\tabcolsep) * \real{0.5000}}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 2\tabcolsep) * \real{0.5000}}|@{}}
+\hline
+\rowcolor{gray!12}
+\begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 术语
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 说明
+\end{minipage} \\
+\hline
+\endhead
+\hline
+\endlastfoot
+功能测试 & 根据系统需求和用户操作场景，验证各功能模块是否能够正常运行 \\
+\hline
+功能验证测试 &
+通过输入指定数据并比较预期输出与实际输出，判断系统功能是否符合设计 \\
+\hline
+边界测试 &
+验证系统在错误输入、空输入、非法权限、异常文件等边界情况下的处理能力 \\
+\hline
+接口测试 & 直接调用后端 HTTP
+API，检查响应状态、统一响应格式和业务数据 \\
+\hline
+压力测试 & 本报告中指课程项目尺度下的轻量重复请求稳定性测试 \\
+\hline
+用户接口测试 & 对前端页面布局、操作入口、提示信息和页面跳转进行检查 \\
+\hline
+个性化推荐 &
+根据用户兴趣标签、活动热度、历史行为、时间和冲突情况计算推荐活动 \\
+\hline
+冲突检测 & 判断课程、活动和自定义日程之间是否存在时间重叠 \\
+\hline
+OCR 识别 &
+从活动海报或日程截图中提取文本，并尝试解析标题、时间、地点等字段 \\
+\hline
+爬虫 & 从学院官网抓取学术活动信息并写入系统数据库 \\
+\hline
+ICS 导出 & 将用户日程导出为标准日历文件，便于导入其他日历工具 \\
+\hline
+\end{longtable}
+}
+
+\subsection{1.4 参考资料}\label{ux53c2ux8003ux8d44ux6599}
+
+\begin{itemize}
+\tightlist
+\item
+  《软件设计文档国家标准》
+\item
+  《软件工程项目开发文档范例》
+\item
+  《Software Requirements edition2》Karl E. Wiegers
+\item
+  《软件需求》刘伟琴、刘洪涛 译
+\end{itemize}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\section{2 测试概要}\label{ux6d4bux8bd5ux6982ux8981}
+
+结合前期总体设计报告、接口文档和当前系统实现情况，本轮测试从功能测试、功能验证测试、边界测试、轻量压力测试和用户接口测试几个方面进行。
+
+\subsection{2.1 测试目标}\label{ux6d4bux8bd5ux76eeux6807}
+
+本轮测试目标如下：
+
+\begin{itemize}
+\tightlist
+\item
+  验证登录注册、权限控制、活动浏览、个性化推荐、课表导入、日程管理、后台维护、OCR
+  和爬虫等核心功能是否可用。
+\item
+  验证后端接口是否满足统一响应格式，关键数据是否能够正确写入和读取。
+\item
+  验证课程和活动时间冲突检测、强制加入、ICS 导出等闭环流程是否正确。
+\item
+  验证典型边界场景下系统是否能返回合理错误提示或业务错误码。
+\item
+  验证前端项目能够正常构建，关键页面能够打开并支持基本操作。
+\item
+  记录已发现问题和外部依赖风险，为后续修复和报告答辩提供依据。
+\end{itemize}
+
+\subsection{2.2 测试范围}\label{ux6d4bux8bd5ux8303ux56f4}
+
+本报告覆盖的测试范围如下：
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.3333}}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.3333}}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.3333}}|@{}}
+\hline
+\rowcolor{gray!12}
+\begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 测试项目名称
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 测试目的
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 测试内容
+\end{minipage} \\
+\hline
+\endhead
+\hline
+\endlastfoot
+功能测试 & 针对具体实现测试各模块功能是否正常 &
+用户与权限、活动、推荐、课程、日程、后台、OCR、爬虫 \\
+\hline
+功能验证测试 & 利用黑盒测试方式验证系统功能是否按预期执行 &
+登录、注册、搜索筛选、活动详情、推荐、课表导入、冲突检测、后台管理 \\
+\hline
+边界测试 & 测试程序对异常输入和边界条件是否正确处理 &
+错误密码、重复用户名、非法分页、空文件、缺失表头、冲突日程、OCR
+缺失文件 \\
+\hline
+压力测试 & 在课程项目尺度下验证关键接口连续调用时的稳定性 &
+登录、活动查询、推荐查询、日程查询、ICS 导出、后台统计 \\
+\hline
+用户接口测试 & 测试用户能否通过网页界面完成主要操作 &
+登录界面、首页推荐、活动列表、活动详情、课表导入、日历、后台管理 \\
+\hline
+\end{longtable}
+}
+
+本轮测试不覆盖生产级大规模并发压测、跨浏览器兼容性全面测试、长期真实用户推荐效果评估和部署到公网后的安全扫描。
+
+\subsection{2.3 测试方法}\label{ux6d4bux8bd5ux65b9ux6cd5}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 2\tabcolsep) * \real{0.5000}}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 2\tabcolsep) * \real{0.5000}}|@{}}
+\hline
+\rowcolor{gray!12}
+\begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 测试方法
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 使用方式
+\end{minipage} \\
+\hline
+\endhead
+\hline
+\endlastfoot
+自动化接口测试 & 使用 pytest 和 FastAPI TestClient
+调用后端接口，检查状态码、响应结构和业务数据 \\
+\hline
+服务层测试 & 对 OCR
+解析、课程时间展开、推荐规则、冲突检测等核心逻辑进行直接验证 \\
+\hline
+前后端联调测试 & 在 Docker Compose
+环境中启动前端、后端和数据库，检查页面与接口可访问性 \\
+\hline
+真实联网测试 & 运行 CS ZJU
+爬虫，验证当前网络环境下能否访问官网并写入抓取记录 \\
+\hline
+前端构建验证 & 执行
+\passthrough{\lstinline!npm run build!}，验证前端项目能够完成生产构建 \\
+\hline
+用户接口测试 & 打开关键页面，记录页面截图和基本操作结果 \\
+\hline
+\end{longtable}
+}
+
+\subsection{2.4
+测试环境与工具}\label{ux6d4bux8bd5ux73afux5883ux4e0eux5de5ux5177}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 2\tabcolsep) * \real{0.5000}}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 2\tabcolsep) * \real{0.5000}}|@{}}
+\hline
+\rowcolor{gray!12}
+\begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 项目
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 内容
+\end{minipage} \\
+\hline
+\endhead
+\hline
+\endlastfoot
+操作环境 & 本地开发机，Docker Compose 统一启动服务 \\
+\hline
+后端框架 & FastAPI、Pydantic、SQLAlchemy、PyMySQL \\
+\hline
+前端框架 & Vue 3、Vite、Element Plus、Vue Router、Pinia、Axios \\
+\hline
+数据库 & MySQL 8.0；自动化测试中使用独立测试数据库环境 \\
+\hline
+测试框架 & pytest、FastAPI TestClient \\
+\hline
+构建工具 & Vite、npm \\
+\hline
+爬虫工具 & requests、BeautifulSoup4 \\
+\hline
+OCR 相关 & Tesseract OCR / ImageMagick 环境，接口测试中使用 mock
+方式稳定验证 \\
+\hline
+页面证据 & 关键页面截图，保存在
+\passthrough{\lstinline!docs/测试文档/screenshots/!} \\
+\hline
+\end{longtable}
+}
+
+本轮后端自动化测试执行结果为：
+
+\begin{lstlisting}
+69 passed, 318 warnings in 13.47s
+\end{lstlisting}
+
+其中 \passthrough{\lstinline!69 passed!} 表示 pytest 收集到的 69
+个测试用例全部通过；\passthrough{\lstinline!318 warnings!}
+为框架或依赖库运行时警告，不表示测试失败，未影响本轮功能验证结论。
+
+\subsection{2.5 测试数据}\label{ux6d4bux8bd5ux6570ux636e}
+
+测试数据主要来自三部分：
+
+\begin{itemize}
+\tightlist
+\item
+  \passthrough{\lstinline!database/seed.sql!}
+  中的初始化用户、活动、兴趣标签和课程数据。
+\item
+  自动化测试脚本中构造的课程、活动、日程、OCR 文本和爬虫记录数据。
+\item
+  真实联网爬虫从
+  \passthrough{\lstinline!http://cspo.zju.edu.cn/27181/list.htm!}
+  抓取的活动信息。
+\end{itemize}
+
+当前登录功能只要用户数据已经存在于数据库中，并且密码哈希能够通过校验，就可以正常登录。系统也提供注册接口，可以新增普通学生账号，新增账号注册后同样可以用于普通用户侧功能测试。管理员账号目前主要依赖预置数据或后台数据准备，不通过普通注册接口创建。
+
+\subsection{2.6
+测试覆盖概览}\label{ux6d4bux8bd5ux8986ux76d6ux6982ux89c8}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.2000}}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.2000}}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.2000}}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.2000}}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.2000}}|@{}}
+\hline
+\rowcolor{gray!12}
+\begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 模块
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 主要接口/功能
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 自动化测试
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 页面/联调测试
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 结论
+\end{minipage} \\
+\hline
+\endhead
+\hline
+\endlastfoot
+登录注册与权限 & 登录、注册、当前用户、后台权限 & 已覆盖 & 登录页已截图
+& 通过 \\
+\hline
+活动浏览与交互 & 活动列表、详情、筛选、交互记录 & 已覆盖 &
+活动列表和详情页已截图 & 通过 \\
+\hline
+个性化推荐 & 通用推荐、登录推荐、后台预览 & 已覆盖 & 首页推荐已截图 &
+通过 \\
+\hline
+课表与课程 & 新增课程、课程查询、CSV/XLSX 导入、删除 & 已覆盖 &
+课表导入页已截图 & 通过 \\
+\hline
+日程与冲突 & 日程查询、冲突检测、强制加入、ICS 导出 & 已覆盖 &
+日历页已截图 & 通过 \\
+\hline
+后台管理 & 新增、编辑、下架活动、统计 & 已覆盖 & 后台页已截图 & 通过 \\
+\hline
+OCR & 文本解析、接口预览、异常文件 & 已覆盖 & 后台入口已截图 &
+通过，有环境依赖 \\
+\hline
+爬虫 & mock 接口、真实联网抓取、记录查询 & 已覆盖/已联调 &
+后台入口已截图 & 功能通过，存在权限风险 \\
+\hline
+\end{longtable}
+}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\section{3 面向对象测试}\label{ux9762ux5411ux5bf9ux8c61ux6d4bux8bd5}
+
+\subsection{3.1
+系统整体架构}\label{ux7cfbux7edfux6574ux4f53ux67b6ux6784}
+
+系统主要由前端页面层、前端 API 封装层、后端路由层、业务服务层、ORM
+模型层、数据库层、OCR 服务和爬虫服务组成。
+
+\begin{figure}
+\centering
+\pandocbounded{\includegraphics[keepaspectratio,alt={需求分析整体类图}]{screenshots/需求分析整体类图1.png}}
+\caption{需求分析整体类图}
+\end{figure}
+
+前端页面负责用户交互，API
+封装层负责向后端发送请求；后端路由层接收参数并进行权限校验，Service
+层完成活动筛选、推荐计算、课程导入、冲突检测等核心逻辑；ORM
+模型负责与数据库表结构保持一致；OCR 和爬虫服务作为外部能力接入系统。
+
+面向对象测试重点检查各层之间的职责是否清晰、数据模型是否一致、接口返回是否符合约定，以及各业务对象在协作时能否完成用户预期操作。
+
+\subsection{3.2 具体类测试}\label{ux5177ux4f53ux7c7bux6d4bux8bd5}
+
+\subsection{3.2.1 单元测试}\label{ux5355ux5143ux6d4bux8bd5}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.3333}}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.3333}}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.3333}}|@{}}
+\hline
+\rowcolor{gray!12}
+\begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 测试对象
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 测试内容
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 测试结果
+\end{minipage} \\
+\hline
+\endhead
+\hline
+\endlastfoot
+用户与权限对象 & 登录后生成
+token，获取当前用户，普通用户访问后台接口被拒绝 & 通过 \\
+\hline
+活动对象 & 活动列表、活动详情、标签筛选、来源类型、状态字段读取 &
+通过 \\
+\hline
+推荐服务对象 & 兴趣标签、历史行为、活动热度、学院相关性、冲突惩罚计算 &
+通过 \\
+\hline
+课程服务对象 & 节次时间映射、周次展开、单双周、春夏学期、课程删除范围 &
+通过 \\
+\hline
+日程服务对象 & 日程查询、冲突检测、强制加入、颜色和备注更新、ICS 导出 &
+通过 \\
+\hline
+OCR 服务对象 &
+中文标签解析、日期时间解析、地点提取、竖排文本处理、多图合并 & 通过 \\
+\hline
+爬虫服务对象 & 指定来源抓取、活动过滤、记录写入、不支持来源处理 &
+通过 \\
+\hline
+数据库访问对象 & 活动、用户、课程、日程、爬虫记录等字段读写 & 通过 \\
+\hline
+\end{longtable}
+}
+
+\subsection{3.2.2
+类模型一致性测试}\label{ux7c7bux6a21ux578bux4e00ux81f4ux6027ux6d4bux8bd5}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.3333}}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.3333}}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.3333}}|@{}}
+\hline
+\rowcolor{gray!12}
+\begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 模型或服务
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 一致性检查内容
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 测试结果
+\end{minipage} \\
+\hline
+\endhead
+\hline
+\endlastfoot
+\passthrough{\lstinline!user!} &
+用户名、密码、角色、学院、专业等字段与登录和权限逻辑一致 & 通过 \\
+\hline
+\passthrough{\lstinline!activity!} &
+\passthrough{\lstinline!hot\_score!}、\passthrough{\lstinline!status!}、\passthrough{\lstinline!source\_type!}、时间、地点、校区等字段与接口返回一致
+& 通过 \\
+\hline
+\passthrough{\lstinline!activity\_tag!} &
+活动标签与活动筛选、推荐标签匹配逻辑一致 & 通过 \\
+\hline
+\passthrough{\lstinline!course\_schedule!} &
+星期、节次、周次、地点、教师等字段能够展开为日历事件 & 通过 \\
+\hline
+\passthrough{\lstinline!schedule\_event!} &
+活动日程、课程日程、自定义日程能够统一展示和导出 & 通过 \\
+\hline
+\passthrough{\lstinline!crawl\_record!} &
+爬虫来源、状态、抓取数量、成功数量、错误信息能够保存和查询 & 通过 \\
+\hline
+\end{longtable}
+}
+
+\subsection{3.2.3
+数据模型与接口一致性测试}\label{ux6570ux636eux6a21ux578bux4e0eux63a5ux53e3ux4e00ux81f4ux6027ux6d4bux8bd5}
+
+系统后端接口统一返回如下结构：
+
+\begin{lstlisting}
+{
+  "code": 0,
+  "message": "success",
+  "data": {}
+}
+\end{lstlisting}
+
+本轮测试对登录、活动、推荐、课程、日程、后台、OCR
+和爬虫接口进行了响应结构检查。结果表明，主要接口能够按照统一响应格式返回数据，分页接口能够返回
+\passthrough{\lstinline!items!}、\passthrough{\lstinline!total!}、\passthrough{\lstinline!page!}、\passthrough{\lstinline!page\_size!}
+等字段，活动和日程相关字段能够与数据库模型保持一致。
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\section{4 功能验证测试}\label{ux529fux80fdux9a8cux8bc1ux6d4bux8bd5}
+
+本章主要针对系统各项基本功能分模块进行测试。每个测试点均给出输入、预期输出和实际输出，用以判断当前实现是否符合设计目标。
+
+\subsection{4.1
+登录注册与权限模块}\label{ux767bux5f55ux6ce8ux518cux4e0eux6743ux9650ux6a21ux5757}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 6\tabcolsep) * \real{0.2500}}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 6\tabcolsep) * \real{0.2500}}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 6\tabcolsep) * \real{0.2500}}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 6\tabcolsep) * \real{0.2500}}|@{}}
+\hline
+\rowcolor{gray!12}
+\begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 功能名称
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 输入
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 预期输出
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 实际输出
+\end{minipage} \\
+\hline
+\endhead
+\hline
+\endlastfoot
+正常登录 & 输入 \passthrough{\lstinline!student001 / 123456!} &
+登录成功，返回 token 和用户信息 & 与预期输出相符 \\
+\hline
+错误密码登录 & 输入正确用户名和错误密码 & 返回登录失败提示 &
+与预期输出相符 \\
+\hline
+获取当前用户 & 携带学生 token 请求当前用户接口 &
+返回当前用户账号和角色信息 & 与预期输出相符 \\
+\hline
+用户注册 & 输入未被占用的用户名、密码和基础信息 &
+注册成功，数据库新增用户 & 与预期输出相符 \\
+\hline
+重复用户名注册 & 输入已存在用户名 & 返回注册失败提示 & 与预期输出相符 \\
+\hline
+管理员权限访问 & 管理员 token 请求后台统计或活动管理接口 &
+返回后台数据或操作成功 & 与预期输出相符 \\
+\hline
+普通用户访问后台 & 学生 token 请求后台接口 & 返回权限不足 &
+与预期输出相符 \\
+\hline
+\end{longtable}
+}
+
+经过测试，登录注册和主要权限控制功能正常，能够区分普通用户与管理员用户。
+
+\subsection{4.2
+活动浏览、筛选与交互模块}\label{ux6d3bux52a8ux6d4fux89c8ux7b5bux9009ux4e0eux4ea4ux4e92ux6a21ux5757}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 6\tabcolsep) * \real{0.2500}}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 6\tabcolsep) * \real{0.2500}}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 6\tabcolsep) * \real{0.2500}}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 6\tabcolsep) * \real{0.2500}}|@{}}
+\hline
+\rowcolor{gray!12}
+\begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 功能名称
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 输入
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 预期输出
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 实际输出
+\end{minipage} \\
+\hline
+\endhead
+\hline
+\endlastfoot
+活动列表查询 & 请求活动列表第一页 & 返回活动分页数据 & 与预期输出相符 \\
+\hline
+活动详情查询 & 输入存在的活动 ID &
+返回该活动的标题、时间、地点、标签等信息 & 与预期输出相符 \\
+\hline
+关键词搜索 & 输入活动标题或相关关键词 & 返回匹配活动 & 与预期输出相符 \\
+\hline
+分类、校区、标签筛选 & 输入分类、校区和标签条件 & 返回符合条件的活动列表
+& 与预期输出相符 \\
+\hline
+筛选项查询 & 请求活动筛选选项 & 返回可用分类、校区、标签等字段 &
+与预期输出相符 \\
+\hline
+匿名交互记录 & 未登录状态下访问活动交互接口 &
+接口正常返回，不写入用户行为 & 与预期输出相符 \\
+\hline
+登录用户交互记录 & 登录用户点击或查看活动 & 行为记录写入，后续可用于推荐
+& 与预期输出相符 \\
+\hline
+\end{longtable}
+}
+
+经过测试，活动列表、详情、筛选和交互记录能够正常工作，支持用户从活动列表进入活动详情页。
+
+\subsection{4.3
+个性化推荐模块}\label{ux4e2aux6027ux5316ux63a8ux8350ux6a21ux5757}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 6\tabcolsep) * \real{0.2500}}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 6\tabcolsep) * \real{0.2500}}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 6\tabcolsep) * \real{0.2500}}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 6\tabcolsep) * \real{0.2500}}|@{}}
+\hline
+\rowcolor{gray!12}
+\begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 功能名称
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 输入
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 预期输出
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 实际输出
+\end{minipage} \\
+\hline
+\endhead
+\hline
+\endlastfoot
+未登录推荐 & 未携带 token 请求推荐接口 & 返回通用排序活动 &
+与预期输出相符 \\
+\hline
+登录用户推荐 & 学生用户携带 token 请求推荐接口 &
+根据兴趣和行为返回推荐列表 & 与预期输出相符 \\
+\hline
+兴趣标签加权 & 用户兴趣标签与活动标签匹配 & 匹配活动推荐分提高 &
+与预期输出相符 \\
+\hline
+历史行为加权 & 用户曾浏览或点击相似活动 & 相关活动推荐分提高 &
+与预期输出相符 \\
+\hline
+冲突活动惩罚 & 活动与用户课程或日程冲突 &
+推荐结果中体现冲突提示或分数惩罚 & 与预期输出相符 \\
+\hline
+推荐数量边界 & 输入非法或过大的推荐数量参数 & 返回校验错误或限制后的结果
+& 与预期输出相符 \\
+\hline
+后台推荐预览 & 管理员请求指定用户推荐预览 & 返回该用户的推荐结果 &
+与预期输出相符 \\
+\hline
+\end{longtable}
+}
+
+经过测试，推荐模块能够根据规则生成可解释的推荐结果。但推荐质量仍依赖后续真实用户兴趣和行为数据积累。
+
+\subsection{4.4
+课表导入与课程管理模块}\label{ux8bfeux8868ux5bfcux5165ux4e0eux8bfeux7a0bux7ba1ux7406ux6a21ux5757}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 6\tabcolsep) * \real{0.2500}}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 6\tabcolsep) * \real{0.2500}}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 6\tabcolsep) * \real{0.2500}}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 6\tabcolsep) * \real{0.2500}}|@{}}
+\hline
+\rowcolor{gray!12}
+\begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 功能名称
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 输入
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 预期输出
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 实际输出
+\end{minipage} \\
+\hline
+\endhead
+\hline
+\endlastfoot
+手动新增课程 & 输入课程名称、星期、节次、周次、地点 &
+新增课程成功，并同步形成日程事件 & 与预期输出相符 \\
+\hline
+查询课程 & 请求当前用户课程列表 & 返回已创建或导入的课程 &
+与预期输出相符 \\
+\hline
+CSV 课表导入 & 上传符合字段要求的 CSV 文件 & 返回导入成功数量和课程数据
+& 与预期输出相符 \\
+\hline
+浙大教务格式导入 & 上传仿真教务导出格式文件 & 系统解析课程、周次和节次 &
+与预期输出相符 \\
+\hline
+XLSX 文件导入 & 上传符合格式的 XLSX 文件 & 成功导入课程 &
+与预期输出相符 \\
+\hline
+删除单次课程 & 指定课程和 occurrence\_start 删除 & 仅删除对应周次课程 &
+与预期输出相符 \\
+\hline
+按天或全部删除课程 & 使用 \passthrough{\lstinline!day!} 或
+\passthrough{\lstinline!all!} 范围删除 & 删除对应范围内课程事件 &
+与预期输出相符 \\
+\hline
+\end{longtable}
+}
+
+经过测试，课程新增、查询、导入和删除功能可用，能够支撑后续日程冲突检测。
+
+\subsection{4.5 日程管理、冲突检测与 ICS
+导出模块}\label{ux65e5ux7a0bux7ba1ux7406ux51b2ux7a81ux68c0ux6d4bux4e0e-ics-ux5bfcux51faux6a21ux5757}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 6\tabcolsep) * \real{0.2500}}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 6\tabcolsep) * \real{0.2500}}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 6\tabcolsep) * \real{0.2500}}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 6\tabcolsep) * \real{0.2500}}|@{}}
+\hline
+\rowcolor{gray!12}
+\begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 功能名称
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 输入
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 预期输出
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 实际输出
+\end{minipage} \\
+\hline
+\endhead
+\hline
+\endlastfoot
+日程查询 & 请求指定日期范围日程 & 返回课程、活动和自定义日程 &
+与预期输出相符 \\
+\hline
+课程展开 & 输入包含周次和单双周的课程 & 在对应教学周展开为日程事件 &
+与预期输出相符 \\
+\hline
+活动冲突检测 & 添加与课程时间重叠的活动 & 返回冲突提示 &
+与预期输出相符 \\
+\hline
+冲突活动未强制加入 & 不带 \passthrough{\lstinline!force\_add!}
+添加冲突活动 & 拒绝加入并返回冲突信息 & 与预期输出相符 \\
+\hline
+冲突活动强制加入 & 带 \passthrough{\lstinline!force\_add=true!}
+添加冲突活动 & 活动写入个人日程 & 与预期输出相符 \\
+\hline
+自定义日程添加 & 输入自定义活动文本或识别结果 & 写入日程或返回冲突预览 &
+与预期输出相符 \\
+\hline
+日程外观更新 & 修改颜色、标识或备注 & 日程显示属性更新 &
+与预期输出相符 \\
+\hline
+ICS 导出 & 请求导出个人日程 & 返回标准日历文件内容 & 与预期输出相符 \\
+\hline
+\end{longtable}
+}
+
+经过测试，课表、活动和日程之间已经形成完整闭环，冲突检测和强制加入逻辑能够正常运行。
+
+\subsection{4.6
+后台管理模块}\label{ux540eux53f0ux7ba1ux7406ux6a21ux5757}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 6\tabcolsep) * \real{0.2500}}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 6\tabcolsep) * \real{0.2500}}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 6\tabcolsep) * \real{0.2500}}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 6\tabcolsep) * \real{0.2500}}|@{}}
+\hline
+\rowcolor{gray!12}
+\begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 功能名称
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 输入
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 预期输出
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 实际输出
+\end{minipage} \\
+\hline
+\endhead
+\hline
+\endlastfoot
+新增活动 & 管理员输入活动标题、时间、地点、标签等信息 &
+新增活动成功，列表可查询 & 与预期输出相符 \\
+\hline
+编辑活动 & 管理员修改已有活动字段 & 更新后详情页显示新数据 &
+与预期输出相符 \\
+\hline
+下架活动 & 管理员下架指定活动 & 活动状态变为 offline & 与预期输出相符 \\
+\hline
+后台统计 & 管理员访问统计接口 & 返回活动、用户、课程等统计信息 &
+与预期输出相符 \\
+\hline
+非管理员访问后台 & 普通用户请求后台管理接口 & 返回 403 或权限错误 &
+与预期输出相符 \\
+\hline
+\end{longtable}
+}
+
+经过测试，后台活动维护功能能够满足基本管理需求。普通用户访问多数后台接口会被后端拒绝。
+
+\subsection{4.7 OCR
+识别与爬虫模块}\label{ocr-ux8bc6ux522bux4e0eux722cux866bux6a21ux5757}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 6\tabcolsep) * \real{0.2500}}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 6\tabcolsep) * \real{0.2500}}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 6\tabcolsep) * \real{0.2500}}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 6\tabcolsep) * \real{0.2500}}|@{}}
+\hline
+\rowcolor{gray!12}
+\begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 功能名称
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 输入
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 预期输出
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 实际输出
+\end{minipage} \\
+\hline
+\endhead
+\hline
+\endlastfoot
+管理员活动截图识别 & 上传活动海报或 mock 图片文件 &
+返回识别文本和活动字段预览 & 与预期输出相符 \\
+\hline
+日程截图识别 & 普通用户上传日程截图 & 返回预览事件和冲突信息 &
+与预期输出相符 \\
+\hline
+OCR 文本解析 & 输入包含标题、日期、时间、地点的文本 & 提取活动关键字段 &
+与预期输出相符 \\
+\hline
+OCR 缺失文件 & 不上传文件调用识别接口 & 返回缺失文件错误 &
+与预期输出相符 \\
+\hline
+mock 爬虫运行 & 使用 mock 方式运行爬虫接口 & 返回抓取成功和写入数量 &
+与预期输出相符 \\
+\hline
+不支持爬虫来源 & 输入未知 source & 返回不支持来源错误 &
+与预期输出相符 \\
+\hline
+查询爬虫记录 & 请求爬虫记录列表 & 返回历史抓取记录 & 与预期输出相符 \\
+\hline
+真实 CS ZJU 抓取 & 访问
+\passthrough{\lstinline!http://cspo.zju.edu.cn/27181/list.htm!} &
+抓取官网活动并写入数据库 & 与预期输出相符 \\
+\hline
+\end{longtable}
+}
+
+经过测试，OCR
+接口和解析逻辑基本符合设计需求，爬虫在当前网络环境下能够真实访问浙江大学计算机学院相关官网页面并抓取活动数据。但
+OCR 真实识别质量受图片清晰度影响，爬虫也受目标网站结构和网络状态影响。
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\section{5 边界测试}\label{ux8fb9ux754cux6d4bux8bd5}
+
+本章针对系统主要模块的异常输入和边界条件进行测试，以验证系统鲁棒性。
+
+\subsection{5.1
+登录注册与权限边界测试}\label{ux767bux5f55ux6ce8ux518cux4e0eux6743ux9650ux8fb9ux754cux6d4bux8bd5}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 6\tabcolsep) * \real{0.2500}}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 6\tabcolsep) * \real{0.2500}}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 6\tabcolsep) * \real{0.2500}}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 6\tabcolsep) * \real{0.2500}}|@{}}
+\hline
+\rowcolor{gray!12}
+\begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 功能名称
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 输入
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 预期输出
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 实际输出
+\end{minipage} \\
+\hline
+\endhead
+\hline
+\endlastfoot
+登录失败 & 错误密码 & 返回登录失败提示 & 与预期输出相符 \\
+\hline
+缺少 token & 未携带 token 请求当前用户接口 & 返回未认证错误 &
+与预期输出相符 \\
+\hline
+重复注册 & 使用已存在用户名注册 & 返回用户名重复或注册失败提示 &
+与预期输出相符 \\
+\hline
+权限不足 & 普通用户请求管理员接口 & 返回权限不足 & 与预期输出相符 \\
+\hline
+\end{longtable}
+}
+
+\subsection{5.2
+活动检索与筛选边界测试}\label{ux6d3bux52a8ux68c0ux7d22ux4e0eux7b5bux9009ux8fb9ux754cux6d4bux8bd5}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 6\tabcolsep) * \real{0.2500}}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 6\tabcolsep) * \real{0.2500}}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 6\tabcolsep) * \real{0.2500}}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 6\tabcolsep) * \real{0.2500}}|@{}}
+\hline
+\rowcolor{gray!12}
+\begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 功能名称
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 输入
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 预期输出
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 实际输出
+\end{minipage} \\
+\hline
+\endhead
+\hline
+\endlastfoot
+无结果搜索 & 输入不存在的关键词 & 返回空列表，接口成功 &
+与预期输出相符 \\
+\hline
+非法分页 & 输入非法 page 或 page\_size & 返回参数校验错误 &
+与预期输出相符 \\
+\hline
+不存在活动 & 查询不存在的活动 ID & 返回活动不存在或业务错误 &
+与预期输出相符 \\
+\hline
+组合筛选无结果 & 输入互相不匹配的筛选条件 & 返回空列表 &
+与预期输出相符 \\
+\hline
+\end{longtable}
+}
+
+\subsection{5.3
+课表导入边界测试}\label{ux8bfeux8868ux5bfcux5165ux8fb9ux754cux6d4bux8bd5}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 6\tabcolsep) * \real{0.2500}}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 6\tabcolsep) * \real{0.2500}}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 6\tabcolsep) * \real{0.2500}}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 6\tabcolsep) * \real{0.2500}}|@{}}
+\hline
+\rowcolor{gray!12}
+\begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 功能名称
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 输入
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 预期输出
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 实际输出
+\end{minipage} \\
+\hline
+\endhead
+\hline
+\endlastfoot
+空文件导入 & 上传空课表文件 & 返回文件为空或无有效课程提示 &
+与预期输出相符 \\
+\hline
+缺失表头 & 上传缺少必要字段的 CSV & 返回缺失字段说明和示例 &
+与预期输出相符 \\
+\hline
+旧版 xls 文件 & 上传不支持的旧版 \passthrough{\lstinline!.xls!} 文件 &
+返回不支持格式提示 & 与预期输出相符 \\
+\hline
+周次边界 & 输入单双周、春夏学期、默认 16 周数据 & 按规则正确展开 &
+与预期输出相符 \\
+\hline
+\end{longtable}
+}
+
+\subsection{5.4
+日程与冲突检测边界测试}\label{ux65e5ux7a0bux4e0eux51b2ux7a81ux68c0ux6d4bux8fb9ux754cux6d4bux8bd5}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 6\tabcolsep) * \real{0.2500}}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 6\tabcolsep) * \real{0.2500}}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 6\tabcolsep) * \real{0.2500}}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 6\tabcolsep) * \real{0.2500}}|@{}}
+\hline
+\rowcolor{gray!12}
+\begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 功能名称
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 输入
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 预期输出
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 实际输出
+\end{minipage} \\
+\hline
+\endhead
+\hline
+\endlastfoot
+冲突未强制加入 & 添加与课程冲突的活动且不带 force &
+返回冲突信息，不写入活动 & 与预期输出相符 \\
+\hline
+冲突强制加入 & 添加冲突活动并带
+\passthrough{\lstinline!force\_add=true!} & 写入活动日程 &
+与预期输出相符 \\
+\hline
+删除不存在范围 & 删除指定周次或范围外课程 & 不影响其他课程事件 &
+与预期输出相符 \\
+\hline
+课程标题兼容 & 旧版课程事件标题带后缀 & 系统仍可识别对应课程 &
+与预期输出相符 \\
+\hline
+\end{longtable}
+}
+
+\subsection{5.5 OCR
+识别边界测试}\label{ocr-ux8bc6ux522bux8fb9ux754cux6d4bux8bd5}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 6\tabcolsep) * \real{0.2500}}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 6\tabcolsep) * \real{0.2500}}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 6\tabcolsep) * \real{0.2500}}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 6\tabcolsep) * \real{0.2500}}|@{}}
+\hline
+\rowcolor{gray!12}
+\begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 功能名称
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 输入
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 预期输出
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 实际输出
+\end{minipage} \\
+\hline
+\endhead
+\hline
+\endlastfoot
+缺失文件 & 未上传图片调用 OCR 接口 & 返回文件缺失错误 &
+与预期输出相符 \\
+\hline
+多图数量限制 & 上传超过 5 张图片 & 返回数量限制错误 & 与预期输出相符 \\
+\hline
+缺失结束时间 & OCR 文本只有开始时间 & 保留可解析字段，不强行生成错误时间
+& 与预期输出相符 \\
+\hline
+竖排标题 & 输入竖排或分散标题文本 & 重建标题候选文本 & 与预期输出相符 \\
+\hline
+\end{longtable}
+}
+
+\subsection{5.6
+后台与爬虫边界测试}\label{ux540eux53f0ux4e0eux722cux866bux8fb9ux754cux6d4bux8bd5}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 6\tabcolsep) * \real{0.2500}}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 6\tabcolsep) * \real{0.2500}}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 6\tabcolsep) * \real{0.2500}}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 6\tabcolsep) * \real{0.2500}}|@{}}
+\hline
+\rowcolor{gray!12}
+\begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 功能名称
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 输入
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 预期输出
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 实际输出
+\end{minipage} \\
+\hline
+\endhead
+\hline
+\endlastfoot
+编辑不存在活动 & 管理员编辑不存在活动 ID & 返回业务错误 &
+与预期输出相符 \\
+\hline
+下架不存在活动 & 管理员下架不存在活动 ID & 返回业务错误 &
+与预期输出相符 \\
+\hline
+不支持爬虫来源 & 输入未知 source & 返回不支持来源错误 &
+与预期输出相符 \\
+\hline
+爬虫权限检查 & 未登录或普通用户访问
+\passthrough{\lstinline!/api/v1/admin/crawler/*!} & 理论上应拒绝访问 &
+与预期有差距，当前存在权限风险 \\
+\hline
+\end{longtable}
+}
+
+边界测试结果表明，绝大部分异常输入能够被系统正确处理。已确认的主要问题是爬虫相关接口位于
+\passthrough{\lstinline!/admin!}
+路径下，但当前权限保护不完整，需要后续修复。
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\section{6 压力测试}\label{ux538bux529bux6d4bux8bd5}
+
+\subsection{6.1
+测试目标与方法}\label{ux6d4bux8bd5ux76eeux6807ux4e0eux65b9ux6cd5}
+
+测试方法是在测试环境下对关键接口进行重复请求，观察接口返回结构和业务状态是否保持稳定。
+
+\subsection{6.2
+登录与活动查询压力测试}\label{ux767bux5f55ux4e0eux6d3bux52a8ux67e5ux8be2ux538bux529bux6d4bux8bd5}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}|l|l|l|@{}}
+\hline
+\rowcolor{gray!12}
+功能名称 & 输入 & 输出 \\
+\hline
+\endhead
+\hline
+\endlastfoot
+登录 & 连续使用测试账号正常登录 & 系统运行正常 \\
+\hline
+当前用户查询 & 连续携带 token 查询当前用户 & 系统运行正常 \\
+\hline
+活动列表查询 & 连续请求活动列表接口 & 系统运行正常 \\
+\hline
+活动详情查询 & 连续请求活动详情接口 & 系统运行正常 \\
+\hline
+\end{longtable}
+}
+
+\subsection{6.3
+推荐、日程与导出压力测试}\label{ux63a8ux8350ux65e5ux7a0bux4e0eux5bfcux51faux538bux529bux6d4bux8bd5}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}|l|l|l|@{}}
+\hline
+\rowcolor{gray!12}
+功能名称 & 输入 & 输出 \\
+\hline
+\endhead
+\hline
+\endlastfoot
+推荐查询 & 连续请求推荐接口 & 系统运行正常 \\
+\hline
+日程查询 & 连续请求个人日程接口 & 系统运行正常 \\
+\hline
+冲突检测 & 多次检查活动与课程冲突 & 系统运行正常 \\
+\hline
+ICS 导出 & 连续请求日程导出接口 & 系统运行正常 \\
+\hline
+\end{longtable}
+}
+
+\subsection{6.4
+后台与导入功能稳定性测试}\label{ux540eux53f0ux4e0eux5bfcux5165ux529fux80fdux7a33ux5b9aux6027ux6d4bux8bd5}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}|l|l|l|@{}}
+\hline
+\rowcolor{gray!12}
+功能名称 & 输入 & 输出 \\
+\hline
+\endhead
+\hline
+\endlastfoot
+后台统计 & 管理员连续请求统计接口 & 系统运行正常 \\
+\hline
+活动维护 & 管理员新增、编辑、下架测试活动 & 系统运行正常 \\
+\hline
+课表导入 & 上传符合格式的课表文件 & 系统运行正常 \\
+\hline
+爬虫记录查询 & 查询爬虫历史记录 & 系统运行正常 \\
+\hline
+\end{longtable}
+}
+
+\subsection{6.5
+压力测试结果分析}\label{ux538bux529bux6d4bux8bd5ux7ed3ux679cux5206ux6790}
+
+在本地 Docker Compose
+环境和课程验收规模下，登录、活动查询、推荐、日程查询、ICS
+导出和后台统计等关键接口表现稳定，未出现连续调用导致的接口结构异常或服务中断。
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\section{7 用户接口测试}\label{ux7528ux6237ux63a5ux53e3ux6d4bux8bd5}
+
+本章主要针对系统内的几个关键网页进行用户接口测试，用于检查用户能否通过页面顺利完成常见操作。测试方式为打开运行中的前端页面，结合已有截图和接口结果记录实际操作情况。
+
+\subsection{7.1 登录界面}\label{ux767bux5f55ux754cux9762}
+
+界面截图见附录 D``登录页''。
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.3333}}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.3333}}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.3333}}|@{}}
+\hline
+\rowcolor{gray!12}
+\begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 功能名称
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 预期操作
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 实际操作
+\end{minipage} \\
+\hline
+\endhead
+\hline
+\endlastfoot
+输入用户名和密码 & 用户能够方便地找到输入框并输入账号信息 &
+与预期相符 \\
+\hline
+登录成功提示 & 正确账号登录后进入系统首页 & 与预期相符 \\
+\hline
+登录失败提示 & 错误密码登录时显示失败提示 & 与预期相符 \\
+\hline
+\end{longtable}
+}
+
+\subsection{7.2
+首页推荐界面}\label{ux9996ux9875ux63a8ux8350ux754cux9762}
+
+界面截图见附录 D``首页推荐''。
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.3333}}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.3333}}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.3333}}|@{}}
+\hline
+\rowcolor{gray!12}
+\begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 功能名称
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 预期操作
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 实际操作
+\end{minipage} \\
+\hline
+\endhead
+\hline
+\endlastfoot
+查看推荐活动 & 用户能够在首页看到推荐活动列表 & 与预期相符 \\
+\hline
+查看活动摘要 & 用户能够看到活动标题、时间、地点等摘要信息 &
+与预期相符 \\
+\hline
+进入活动详情 & 点击推荐活动可进入详情页面 & 与预期相符 \\
+\hline
+\end{longtable}
+}
+
+\subsection{7.3
+活动列表界面}\label{ux6d3bux52a8ux5217ux8868ux754cux9762}
+
+界面截图见附录 D``活动列表''。
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}|l|l|l|@{}}
+\hline
+\rowcolor{gray!12}
+功能名称 & 预期操作 & 实际操作 \\
+\hline
+\endhead
+\hline
+\endlastfoot
+搜索活动 & 用户能够输入关键词并查看匹配结果 & 与预期相符 \\
+\hline
+筛选活动 & 用户能够按分类、校区或标签筛选活动 & 与预期相符 \\
+\hline
+进入详情 & 用户能够从列表点击进入活动详情 & 与预期相符 \\
+\hline
+\end{longtable}
+}
+
+\subsection{7.4
+活动详情界面}\label{ux6d3bux52a8ux8be6ux60c5ux754cux9762}
+
+界面截图和加入日程操作截图见附录
+D``活动详情''和``加入日程操作''。加入日程截图展示了用户在活动详情页执行``加入日程''操作后的界面状态，用于说明活动详情、日程写入和冲突检测流程之间的衔接。结合后端接口测试结果，可以验证活动能够从详情页进入个人日程管理流程；当活动与已有课程或日程冲突时，系统会返回冲突信息并要求用户确认是否强制加入。
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.3333}}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.3333}}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.3333}}|@{}}
+\hline
+\rowcolor{gray!12}
+\begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 功能名称
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 预期操作
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 实际操作
+\end{minipage} \\
+\hline
+\endhead
+\hline
+\endlastfoot
+查看活动信息 & 用户能够查看活动标题、时间、地点和简介 & 与预期相符 \\
+\hline
+加入个人日程 & 用户能够找到加入日程入口 & 与预期相符 \\
+\hline
+冲突提示 & 活动与课程冲突时应提示用户 &
+接口测试已验证，页面可继续补充人工截图 \\
+\hline
+\end{longtable}
+}
+
+\subsection{7.5
+课表导入界面}\label{ux8bfeux8868ux5bfcux5165ux754cux9762}
+
+界面截图见附录 D``课表导入''。
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}|l|l|l|@{}}
+\hline
+\rowcolor{gray!12}
+功能名称 & 预期操作 & 实际操作 \\
+\hline
+\endhead
+\hline
+\endlastfoot
+上传课表文件 & 用户能够找到文件上传入口 & 与预期相符 \\
+\hline
+查看导入结果 & 文件导入后显示导入成功或错误摘要 & 接口测试已验证 \\
+\hline
+手动录入课程 & 用户能够进入手动录入课程流程 & 与预期相符 \\
+\hline
+\end{longtable}
+}
+
+\subsection{7.6 日历界面}\label{ux65e5ux5386ux754cux9762}
+
+界面截图见附录 D``日历页面''。
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}|l|l|l|@{}}
+\hline
+\rowcolor{gray!12}
+功能名称 & 预期操作 & 实际操作 \\
+\hline
+\endhead
+\hline
+\endlastfoot
+查看课程和活动 & 用户能够在日历中查看课程和活动安排 & 与预期相符 \\
+\hline
+编辑或删除日程 & 用户能够找到日程编辑或删除入口 & 与预期相符 \\
+\hline
+导出日历 & 用户能够找到 ICS 导出入口 & 接口测试已验证 \\
+\hline
+\end{longtable}
+}
+
+\subsection{7.7
+后台管理界面}\label{ux540eux53f0ux7ba1ux7406ux754cux9762}
+
+界面截图见附录 D``后台管理''。
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.3333}}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.3333}}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.3333}}|@{}}
+\hline
+\rowcolor{gray!12}
+\begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 功能名称
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 预期操作
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 实际操作
+\end{minipage} \\
+\hline
+\endhead
+\hline
+\endlastfoot
+新增和编辑活动 & 管理员能够找到新增、编辑活动入口 & 与预期相符 \\
+\hline
+下架活动 & 管理员能够对活动进行下架操作 & 接口测试已验证 \\
+\hline
+查看爬虫记录 & 管理员能够查看爬虫运行记录入口 & 与预期相符 \\
+\hline
+普通用户访问后台 & 普通用户不应拥有后台操作权限 &
+后端多数接口会拒绝，但前端路由仍可进一步优化 \\
+\hline
+\end{longtable}
+}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\section{8
+对软件功能的结论}\label{ux5bf9ux8f6fux4ef6ux529fux80fdux7684ux7ed3ux8bba}
+
+\subsection{8.1
+登录注册与权限模块}\label{ux767bux5f55ux6ce8ux518cux4e0eux6743ux9650ux6a21ux5757-1}
+
+该模块实现了用户登录、注册、当前用户信息查询和管理员权限控制等功能。经过测试，普通用户和管理员能够被正确区分，大部分后台接口能够拒绝普通用户访问。该模块功能基本正常，在课程项目规模下具有较好的稳定性。
+
+\subsection{8.2
+活动与推荐模块}\label{ux6d3bux52a8ux4e0eux63a8ux8350ux6a21ux5757}
+
+该模块实现了活动列表、活动详情、关键词搜索、条件筛选、用户交互记录和个性化推荐功能。经过测试，活动信息能够正常展示，推荐结果能够根据兴趣标签、历史行为和时间冲突等规则生成。该模块功能正常，但推荐质量仍依赖后续真实用户行为数据积累。
+
+\subsection{8.3
+课表与日程模块}\label{ux8bfeux8868ux4e0eux65e5ux7a0bux6a21ux5757}
+
+该模块实现了课表导入、课程展开、日程查询、活动加入日程、冲突检测、强制加入、日程外观编辑和
+ICS
+导出功能。经过测试，该模块已经形成较完整的业务闭环，能够支撑学生在选择活动时避开课程冲突，也能够将活动安排纳入个人日程。
+
+\subsection{8.4 后台、OCR
+与爬虫模块}\label{ux540eux53f0ocr-ux4e0eux722cux866bux6a21ux5757}
+
+后台模块实现了活动新增、编辑、下架和统计等管理功能。OCR
+模块能够从图片或文本中提取活动信息并进行结构化解析，适合辅助录入。爬虫模块能够在当前环境下真实访问浙江大学计算机学院相关官网页面并写入抓取记录。经过测试，上述功能具备演示价值，但
+OCR 和爬虫均存在外部环境依赖，爬虫相关后台接口还存在权限保护不足的问题。
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\section{9 分析摘要}\label{ux5206ux6790ux6458ux8981}
+
+\subsection{9.1 能力}\label{ux80fdux529b}
+
+经过上述面向对象测试、功能验证测试、边界测试、轻量压力测试和用户接口测试，本系统的大部分预定功能已经得到实现，并能够围绕校园学术活动推荐场景形成完整主流程。
+
+系统当前具备以下能力：
+
+\begin{itemize}
+\tightlist
+\item
+  用户登录、注册和基础权限控制能力。
+\item
+  活动聚合、浏览、搜索、筛选和详情展示能力。
+\item
+  基于规则的个性化推荐能力。
+\item
+  课表导入、课程展开和个人日程管理能力。
+\item
+  活动与课程时间冲突检测能力。
+\item
+  管理员活动维护和后台统计能力。
+\item
+  OCR 辅助录入和真实官网爬虫抓取能力。
+\item
+  自动化测试、前端构建和 Docker Compose 联调能力。
+\end{itemize}
+
+\subsection{9.2 限制}\label{ux9650ux5236}
+
+本系统当前仍存在以下限制：
+
+\begin{itemize}
+\tightlist
+\item
+  OCR 识别效果受图片清晰度、文字方向和本地 OCR 环境影响。
+\item
+  爬虫运行依赖目标网站结构和网络环境，若官网结构变化，需要同步调整解析逻辑。
+\item
+  个性化推荐规则可验证，但缺少长期真实用户行为数据，因此无法充分评估推荐质量。
+\end{itemize}
+
+关于风险与改进建议我们汇总如下，用于项目最后阶段完善参照：
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 6\tabcolsep) * \real{0.2500}}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 6\tabcolsep) * \real{0.2500}}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 6\tabcolsep) * \real{0.2500}}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 6\tabcolsep) * \real{0.2500}}|@{}}
+\hline
+\rowcolor{gray!12}
+\begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 编号
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 风险或缺陷
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 当前状态
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 改进计划
+\end{minipage} \\
+\hline
+\endhead
+\hline
+\endlastfoot
+DEF-001 & \passthrough{\lstinline!/api/v1/admin/crawler/run!} 和
+\passthrough{\lstinline!/api/v1/admin/crawler/records!}
+缺少完整管理员权限保护 & 已确认，未修复 &
+将爬虫路由挂载管理员权限依赖，或并入 admin router 统一管理 \\
+\hline
+RISK-001 & OCR 识别受图片质量和环境影响 & 已记录 &
+演示时准备清晰样例，并保留人工校验 \\
+\hline
+RISK-002 & 爬虫受官网结构和网络影响 & 当前环境验证通过 & 保留 mock
+测试作为回归测试，真实爬虫作为环境相关测试 \\
+\hline
+RISK-003 & 推荐质量缺少长期评估 & 已记录 &
+后续积累真实用户行为数据后再进行推荐效果评估 \\
+\hline
+RISK-004 & 前端构建主包较大 & 构建通过但有警告 & 后续使用按需加载或
+manualChunks 优化 \\
+\hline
+\end{longtable}
+}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\section{10 测试资源消耗}\label{ux6d4bux8bd5ux8d44ux6e90ux6d88ux8017}
+
+本轮测试由小组成员围绕功能验证、边界情况、轻量稳定性和用户接口展示等方面展开，主要完成了测试用例整理、自动化测试执行、前端构建验证、运行态接口抽查、页面截图留存和测试报告撰写等工作。
+
+\subsection{10.1
+环境与工具资源}\label{ux73afux5883ux4e0eux5de5ux5177ux8d44ux6e90}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}|l|l|@{}}
+\hline
+\rowcolor{gray!12}
+类型 & 使用资源 \\
+\hline
+\endhead
+\hline
+\endlastfoot
+开发与测试环境 & Docker Compose、本地开发机 \\
+\hline
+后端运行环境 & FastAPI、Uvicorn、Python 3.10+ \\
+\hline
+前端运行环境 & Vue 3、Vite、npm \\
+\hline
+数据库 & MySQL 8.0 \\
+\hline
+测试工具 & pytest、FastAPI TestClient \\
+\hline
+爬虫工具 & requests、BeautifulSoup4 \\
+\hline
+OCR 相关 & Tesseract OCR / ImageMagick 环境 \\
+\hline
+文档材料 & 测试提纲、测试执行记录、测试用例矩阵、页面截图 \\
+\hline
+\end{longtable}
+}
+
+\subsection{10.2
+测试产出物清单}\label{ux6d4bux8bd5ux4ea7ux51faux7269ux6e05ux5355}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}|l|l|@{}}
+\hline
+\rowcolor{gray!12}
+产出物 & 路径 \\
+\hline
+\endhead
+\hline
+\endlastfoot
+测试用例矩阵 & \passthrough{\lstinline!docs/test-cases.md!} \\
+\hline
+测试执行记录 &
+\passthrough{\lstinline!docs/测试文档/测试执行记录.md!} \\
+\hline
+软件工程测试报告 &
+\passthrough{\lstinline!docs/测试文档/软件工程测试报告.md!} \\
+\hline
+页面截图目录 & \passthrough{\lstinline!docs/测试文档/screenshots/!} \\
+\hline
+活动特性测试脚本 &
+\passthrough{\lstinline!tests/api/test\_activity\_features.py!} \\
+\hline
+推荐测试脚本 &
+\passthrough{\lstinline!tests/api/test\_recommendations.py!} \\
+\hline
+OCR 与爬虫测试脚本 &
+\passthrough{\lstinline!tests/api/test\_ocr\_and\_crawler.py!} \\
+\hline
+稳定性测试脚本 &
+\passthrough{\lstinline!tests/api/test\_stability.py!} \\
+\hline
+\end{longtable}
+}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\section{附录 A
+自动化测试脚本与覆盖说明}\label{ux9644ux5f55-a-ux81eaux52a8ux5316ux6d4bux8bd5ux811aux672cux4e0eux8986ux76d6ux8bf4ux660e}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 6\tabcolsep) * \real{0.2500}}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 6\tabcolsep) * \real{0.2500}}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 6\tabcolsep) * \real{0.2500}}|
+  >{\raggedright\arraybackslash}p{(\linewidth - 6\tabcolsep) * \real{0.2500}}|@{}}
+\hline
+\rowcolor{gray!12}
+\begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 脚本文件
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 对应章节
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 覆盖内容
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\bfseries 状态
+\end{minipage} \\
+\hline
+\endhead
+\hline
+\endlastfoot
+\passthrough{\lstinline!tests/api/test\_health.py!} & 测试概要 &
+健康检查 & 通过 \\
+\hline
+\passthrough{\lstinline!tests/api/test\_auth\_activity.py!} &
+4.1、4.2、4.6、5.1 & 登录、注册、权限、活动、后台 & 通过 \\
+\hline
+\passthrough{\lstinline!tests/api/test\_activity\_features.py!} &
+4.2、5.2 & 活动筛选、筛选项、交互记录 & 通过 \\
+\hline
+\passthrough{\lstinline!tests/api/test\_recommendations.py!} & 4.3、6.3
+& 通用推荐、个性化推荐、后台预览 & 通过 \\
+\hline
+\passthrough{\lstinline!tests/api/test\_schedule\_course.py!} &
+4.4、4.5、5.3、5.4 & 课表、日程、冲突检测、ICS 导出 & 通过 \\
+\hline
+\passthrough{\lstinline!tests/api/test\_activity\_ocr\_service.py!} &
+3.2、4.7、5.5 & OCR 服务层解析 & 通过 \\
+\hline
+\passthrough{\lstinline!tests/api/test\_ocr\_and\_crawler.py!} &
+4.7、5.5、5.6 & OCR 接口、爬虫接口、爬虫记录 & 通过 \\
+\hline
+\passthrough{\lstinline!tests/api/test\_stability.py!} & 6 &
+轻量稳定性测试 & 通过 \\
+\hline
+\end{longtable}
+}
+
+\section{附录 B
+关键页面与测试结果截图}\label{ux9644ux5f55-b-ux5173ux952eux9875ux9762ux4e0eux6d4bux8bd5ux7ed3ux679cux622aux56fe}
+
+已保存的关键页面截图如下。
+
+登录页：
+
+\begin{figure}
+\centering
+\pandocbounded{\includegraphics[keepaspectratio,alt={登录页}]{screenshots/01-login.png}}
+\caption{登录页}
+\end{figure}
+
+首页推荐：
+
+\begin{figure}
+\centering
+\pandocbounded{\includegraphics[keepaspectratio,alt={首页推荐}]{screenshots/02-home-recommendations.png}}
+\caption{首页推荐}
+\end{figure}
+
+活动列表：
+
+\begin{figure}
+\centering
+\pandocbounded{\includegraphics[keepaspectratio,alt={活动列表}]{screenshots/03-activity-list.png}}
+\caption{活动列表}
+\end{figure}
+
+活动详情：
+
+\begin{figure}
+\centering
+\pandocbounded{\includegraphics[keepaspectratio,alt={活动详情}]{screenshots/04-activity-detail.png}}
+\caption{活动详情}
+\end{figure}
+
+加入日程操作：
+
+\begin{figure}
+\centering
+\pandocbounded{\includegraphics[keepaspectratio,alt={加入日程操作}]{screenshots/截图加入日程.png}}
+\caption{加入日程操作}
+\end{figure}
+
+课表导入：
+
+\begin{figure}
+\centering
+\pandocbounded{\includegraphics[keepaspectratio,alt={课表导入}]{screenshots/05-course-import.png}}
+\caption{课表导入}
+\end{figure}
+
+日历页面：
+
+\begin{figure}
+\centering
+\pandocbounded{\includegraphics[keepaspectratio,alt={日历页面}]{screenshots/06-calendar.png}}
+\caption{日历页面}
+\end{figure}
+
+后台管理：
+
+\begin{figure}
+\centering
+\pandocbounded{\includegraphics[keepaspectratio,alt={后台管理}]{screenshots/07-admin.png}}
+\caption{后台管理}
+\end{figure}
