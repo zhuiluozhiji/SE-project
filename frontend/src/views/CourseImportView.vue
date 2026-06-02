@@ -41,7 +41,7 @@
               <el-table-column prop="course_name" label="课程名" />
               <el-table-column prop="teacher" label="教师" width="100" />
               <el-table-column label="星期" width="60">
-                <template #default="{ row }">周{{ row.weekday }}</template>
+                <template #default="{ row }">{{ formatWeekday(row.weekday) }}</template>
               </el-table-column>
               <el-table-column label="节次" width="80">
                 <template #default="{ row }">{{ row.start_section }}-{{ row.end_section }}</template>
@@ -79,7 +79,12 @@
               <el-col :span="12">
                 <el-form-item label="星期">
                   <el-select v-model="manualForm.weekday" placeholder="选择">
-                    <el-option v-for="i in 7" :key="i" :label="'周' + i" :value="i" />
+                    <el-option
+                      v-for="item in weekdayOptions"
+                      :key="item.value"
+                      :label="item.label"
+                      :value="item.value"
+                    />
                   </el-select>
                 </el-form-item>
               </el-col>
@@ -130,6 +135,20 @@ const manualForm = reactive({
   end_section: 2,
   location: ''
 })
+
+const weekdayOptions = [
+  { value: 1, label: '周一' },
+  { value: 2, label: '周二' },
+  { value: 3, label: '周三' },
+  { value: 4, label: '周四' },
+  { value: 5, label: '周五' },
+  { value: 6, label: '周六' },
+  { value: 7, label: '周日' }
+]
+
+const formatWeekday = (value) => {
+  return weekdayOptions.find((item) => item.value === Number(value))?.label || `周${value}`
+}
 
 const isAllowedFile = (file) => {
   const name = file?.name?.toLowerCase() || ''
@@ -239,6 +258,32 @@ const addManualCourse = async () => {
   gap: 14px;
 }
 
+.import-page :deep(.el-upload-dragger) {
+  background: #f5efe6;
+  border-color: #d9cebf;
+}
+
+.import-page :deep(.el-upload-dragger:hover) {
+  background: #f1e8dc;
+  border-color: #cbbba7;
+}
+
+.import-page :deep(.el-upload-dragger p) {
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .import-page :deep(.el-upload-dragger p) {
+  color: #2b241d;
+}
+
+.import-page :deep(.el-input__wrapper),
+.import-page :deep(.el-textarea__wrapper),
+.import-page :deep(.el-select__wrapper),
+.import-page :deep(.el-input-number__decrease),
+.import-page :deep(.el-input-number__increase) {
+  background: #f8f4ed;
+}
+
 .upload-icon {
   font-size: 36px;
   color: var(--accent);
@@ -303,6 +348,14 @@ const addManualCourse = async () => {
 .range-sep {
   margin: 0 6px;
   color: var(--text-tertiary);
+}
+
+[data-theme="dark"] .manual-card :deep(.el-form-item__label) {
+  color: #d4d4d4;
+}
+
+[data-theme="dark"] .manual-card .range-sep {
+  color: #b8c0cc;
 }
 
 [data-theme="dark"] .parse-error {
