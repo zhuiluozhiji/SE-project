@@ -117,7 +117,12 @@
         />
       </el-form-item>
       <el-form-item label="活动简介">
-        <el-input v-model="activityForm.description" type="textarea" :rows="3" placeholder="活动描述" />
+        <el-input
+          v-model="activityForm.description"
+          type="textarea"
+          :autosize="{ minRows: 4, maxRows: 10 }"
+          placeholder="活动描述"
+        />
       </el-form-item>
     </el-form>
     <template #footer>

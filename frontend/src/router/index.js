@@ -48,7 +48,7 @@ const routes = [
     path: '/admin',
     name: 'admin',
     component: () => import('../views/AdminView.vue'),
-    meta: { title: '后台管理', requiresAuth: true }
+    meta: { title: '后台管理', requiresAuth: true, requiresAdmin: true }
   }
 ]
 
@@ -57,11 +57,23 @@ const router = createRouter({
   routes
 })
 
+const getStoredUser = () => {
+  try {
+    return JSON.parse(localStorage.getItem('user') || 'null')
+  } catch {
+    return null
+  }
+}
+
 router.beforeEach((to, from, next) => {
   const token = localStorage.getItem('token')
+  const user = getStoredUser()
   if (to.meta.requiresAuth && !token) {
     ElMessage.warning('请先登录')
     next('/login')
+  } else if (to.meta.requiresAdmin && user?.role !== 'admin') {
+    ElMessage.warning('仅管理员可访问后台管理')
+    next('/')
   } else if (to.path === '/login' && token) {
     next('/')
   } else {

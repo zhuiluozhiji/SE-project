@@ -30,7 +30,7 @@
           <el-icon><User /></el-icon>
           <span>个人中心</span>
         </el-menu-item>
-        <el-menu-item index="/admin">
+        <el-menu-item v-if="showAdminEntry" index="/admin">
           <el-icon><Setting /></el-icon>
           <span>后台管理</span>
         </el-menu-item>
@@ -101,6 +101,7 @@ const { isDark, init: initTheme, toggle: toggleTheme } = useDarkMode()
 
 const searchKeyword = ref('')
 const routeTitle = computed(() => route.meta.title || '校园学术活动智能推荐平台')
+const showAdminEntry = computed(() => auth.isLoggedIn && auth.user?.role === 'admin')
 
 const goSearch = () => {
   const kw = searchKeyword.value.trim()

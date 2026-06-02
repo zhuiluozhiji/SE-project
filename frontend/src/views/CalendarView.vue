@@ -4,23 +4,36 @@
       <div>
         <h2 class="page-title">个人日历</h2>
         <p class="muted">
-          第 {{ weekNumber }} 周（{{ weekParity }}）&nbsp;&middot;&nbsp;
-          课程与活动统一呈现，冲突清晰标识
+          第 {{ weekNumber }} 周（{{ weekParity }}）
         </p>
       </div>
       <div class="cal-toolbar">
-        <el-button-group size="small">
-          <el-button :type="showOdd ? 'primary' : 'default'" @click="showOdd = true">单周</el-button>
-          <el-button :type="!showOdd ? 'primary' : 'default'" @click="showOdd = false">双周</el-button>
+        <el-button-group class="toolbar-group parity-toggle-group">
+          <el-button
+            class="parity-toggle-button"
+            :class="{ 'is-selected-parity': showOdd }"
+            :type="showOdd ? 'primary' : 'default'"
+            @click="showOdd = true"
+          >
+            单周
+          </el-button>
+          <el-button
+            class="parity-toggle-button"
+            :class="{ 'is-selected-parity': !showOdd }"
+            :type="!showOdd ? 'primary' : 'default'"
+            @click="showOdd = false"
+          >
+            双周
+          </el-button>
         </el-button-group>
-        <el-button-group>
+        <el-button-group class="toolbar-group">
           <el-button @click="prevWeek">上一周</el-button>
-          <el-button type="primary" plain>{{ weekRangeText }}</el-button>
+          <el-button class="current-week-button" type="primary" plain>{{ weekRangeText }}</el-button>
           <el-button @click="nextWeek">下一周</el-button>
         </el-button-group>
-        <el-button type="primary" plain @click="openScreenshotDialog">截图加入</el-button>
+        <el-button class="screenshot-add-button" type="primary" plain @click="openScreenshotDialog">截图加入</el-button>
         <el-button @click="fetchSchedules">刷新</el-button>
-        <el-button type="primary" @click="exportIcs" :loading="exporting">导出 ICS</el-button>
+        <el-button class="export-ics-button" @click="exportIcs" :loading="exporting">导出 ICS</el-button>
       </div>
     </div>
 
@@ -64,40 +77,67 @@
                   :style="{ top: h.top + 'px' }"
                 ></div>
               </div>
-              <div
+              <el-tooltip
                 v-for="event in getTimelineEvents(di)"
                 :key="event.id || event.title"
-                class="timeline-event"
-                :class="[event.type || 'course', { 'has-conflict': event.conflict }]"
-                :style="{
-                  top: event._top + 'px',
-                  height: event._height + 'px',
-                  left: event._left + '%',
-                  width: event._width + '%',
-                  ...event.colorStyle
-                }"
-                role="button"
-                tabindex="0"
-                @click="openEventDialog(event)"
-                @keydown.enter.prevent="openEventDialog(event)"
-                @keydown.space.prevent="openEventDialog(event)"
+                placement="right-start"
+                effect="light"
+                :show-after="120"
+                :offset="10"
+                popper-class="timeline-event-tooltip"
               >
-                <div class="ev-title-row">
-                  <span class="ev-marker">{{ event.markerLabel }}</span>
-                  <div class="ev-name">{{ event.title }}</div>
+                <template #content>
+                  <div class="timeline-tooltip">
+                    <strong>{{ event.title }}</strong>
+                    <div class="tooltip-meta">{{ formatRange(event.start_time, event.end_time) }}</div>
+                    <div v-if="event.teacher" class="tooltip-meta">{{ event.teacher }}</div>
+                    <div v-if="event.location" class="tooltip-meta">{{ event.location }}</div>
+                    <div v-if="event.remark" class="tooltip-meta">备注：{{ event.remark }}</div>
+                    <div v-if="event.conflict" class="tooltip-warning">存在时间冲突</div>
+                  </div>
+                </template>
+                <div
+                  class="timeline-event"
+                  :class="[
+                    event.type || 'course',
+                    {
+                      'has-conflict': event.conflict,
+                      'is-compact': event._isCompact
+                    }
+                  ]"
+                  :style="{
+                    top: event._top + 'px',
+                    height: event._height + 'px',
+                    left: event._left + '%',
+                    width: event._width + '%',
+                    ...event.colorStyle
+                  }"
+                  :title="timelineEventSummary(event)"
+                  :aria-label="timelineEventSummary(event)"
+                  role="button"
+                  tabindex="0"
+                  @click="openEventDialog(event)"
+                  @keydown.enter.prevent="openEventDialog(event)"
+                  @keydown.space.prevent="openEventDialog(event)"
+                >
+                  <div class="ev-title-row">
+                    <span class="ev-marker">{{ event.markerLabel }}</span>
+                    <span v-if="event.conflict" class="ev-conflict-label">冲突</span>
+                    <div class="ev-name">{{ event.title }}</div>
+                  </div>
+                  <div v-if="event.remark && event._showRemark !== false" class="ev-remark">{{ event.remark }}</div>
+                  <div v-if="event._showTime !== false" class="ev-time">{{ event.startTime }}-{{ event.endTime }}</div>
+                  <div v-if="event.location && event._showLocation !== false" class="ev-location">{{ event.location }}</div>
+                  <span v-if="event.weekType && !event._isCompact" class="week-tag">{{ event.weekType }}</span>
                 </div>
-                <div v-if="event.remark" class="ev-remark">{{ event.remark }}</div>
-                <div class="ev-time">{{ event.startTime }}-{{ event.endTime }}</div>
-                <div class="ev-location">{{ event.location || '' }}</div>
-                <span v-if="event.weekType" class="week-tag">{{ event.weekType }}</span>
-              </div>
+              </el-tooltip>
             </div>
           </div>
         </div>
       </div>
 
       <div class="card side-panel">
-        <h3 class="section-title">课程一览</h3>
+        <h3 class="section-title">课程/活动一览</h3>
         <div v-if="weekCourses.length === 0" class="empty-hint">
           <p class="muted">本周暂无课程</p>
         </div>
@@ -537,15 +577,15 @@ const screenshotForm = reactive({
 })
 
 const scheduleColorOptions = [
-  { name: '蓝', value: 'blue', border: '#5f84c3', bg: '#e9f0fb' },
-  { name: '绿', value: 'green', border: '#62a374', bg: '#e8f4ec' },
-  { name: '青', value: 'teal', border: '#4c9d9b', bg: '#e5f4f3' },
-  { name: '黄', value: 'amber', border: '#d0a340', bg: '#fbf2d9' },
-  { name: '橙', value: 'orange', border: '#d78245', bg: '#faecdf' },
-  { name: '红', value: 'red', border: '#cf625b', bg: '#fae7e5' },
-  { name: '紫', value: 'purple', border: '#8772bd', bg: '#f0ebfa' },
-  { name: '粉', value: 'pink', border: '#ca6c9d', bg: '#fae9f1' },
-  { name: '灰', value: 'gray', border: '#7d8793', bg: '#eceff3' }
+  { name: '蓝', value: 'blue', border: '#5f84c3', bg: '#e9f0fb', darkBorder: '#6cb6ff', darkBg: '#24384d' },
+  { name: '绿', value: 'green', border: '#62a374', bg: '#e8f4ec', darkBorder: '#89d185', darkBg: '#263b2a' },
+  { name: '青', value: 'teal', border: '#4c9d9b', bg: '#e5f4f3', darkBorder: '#62d6c8', darkBg: '#203b3a' },
+  { name: '黄', value: 'amber', border: '#d0a340', bg: '#fbf2d9', darkBorder: '#e6db74', darkBg: '#3a3620' },
+  { name: '橙', value: 'orange', border: '#d78245', bg: '#faecdf', darkBorder: '#f2a97f', darkBg: '#402d26' },
+  { name: '红', value: 'red', border: '#cf625b', bg: '#fae7e5', darkBorder: '#ff7b72', darkBg: '#452b2d' },
+  { name: '紫', value: 'purple', border: '#8772bd', bg: '#f0ebfa', darkBorder: '#d2a8ff', darkBg: '#372c44' },
+  { name: '粉', value: 'pink', border: '#ca6c9d', bg: '#fae9f1', darkBorder: '#ff9bce', darkBg: '#412b38' },
+  { name: '灰', value: 'gray', border: '#7d8793', bg: '#eceff3', darkBorder: '#b1bac4', darkBg: '#2f343a' }
 ]
 
 const defaultColorByType = {
@@ -586,29 +626,61 @@ const timelineHeight = computed(() => (END_HOUR - START_HOUR) * PX_PER_HOUR)
 
 const layoutEvents = (events) => {
   if (!events.length) return events
-  const sorted = [...events].sort((a, b) => a._startMin - b._startMin)
-  const tracks = []
-  sorted.forEach((e) => {
-    let placed = false
-    for (let i = 0; i < tracks.length; i++) {
-      if (tracks[i] <= e._startMin) {
-        tracks[i] = e._endMin
-        e._track = i
-        placed = true
-        break
-      }
-    }
-    if (!placed) {
-      e._track = tracks.length
-      tracks.push(e._endMin)
-    }
-  })
-  const totalTracks = tracks.length || 1
+  const sorted = events
+    .map((event) => ({ ...event }))
+    .sort((a, b) => a._startMin - b._startMin)
   const gap = 2
-  sorted.forEach((e) => {
-    e._left = (e._track / totalTracks) * 100
-    e._width = (100 / totalTracks) - gap
+  const layoutParallelCluster = (cluster) => {
+    const tracks = []
+    cluster.forEach((event) => {
+      let placed = false
+      for (let i = 0; i < tracks.length; i++) {
+        if (tracks[i] <= event._startMin) {
+          tracks[i] = event._endMin
+          event._track = i
+          placed = true
+          break
+        }
+      }
+      if (!placed) {
+        event._track = tracks.length
+        tracks.push(event._endMin)
+      }
+    })
+    const totalTracks = tracks.length || 1
+    cluster.forEach((event) => {
+      event._left = (event._track / totalTracks) * 100
+      event._width = (100 / totalTracks) - gap
+      event._isCompact = totalTracks > 1
+      event._isStackedConflict = false
+      event._showTime = !event._isCompact && event._height >= 34
+      event._showLocation = !event._isCompact && event._height >= 48
+      event._showRemark = !event._isCompact && event._height >= 64
+    })
+  }
+  const flushCluster = (cluster) => {
+    if (!cluster.length) return
+    layoutParallelCluster(cluster)
+  }
+
+  let cluster = []
+  let clusterEnd = -1
+  sorted.forEach((event) => {
+    if (!cluster.length) {
+      cluster = [event]
+      clusterEnd = event._endMin
+      return
+    }
+    if (event._startMin < clusterEnd) {
+      cluster.push(event)
+      clusterEnd = Math.max(clusterEnd, event._endMin)
+      return
+    }
+    flushCluster(cluster)
+    cluster = [event]
+    clusterEnd = event._endMin
   })
+  flushCluster(cluster)
   return sorted
 }
 
@@ -715,6 +787,27 @@ const formatRange = (start, end) => {
   const d = new Date(end)
   const pad = (n) => String(n).padStart(2, '0')
   return `${startDate}-${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+const timelineEventSummary = (event) => {
+  return [
+    event.title,
+    formatRange(event.start_time, event.end_time),
+    event.teacher,
+    event.location,
+    event.remark ? `备注：${event.remark}` : '',
+    event.conflict ? '存在时间冲突' : ''
+  ]
+    .filter(Boolean)
+    .join('\n')
+}
+
+const resolveRequestErrorMessage = (err, fallback) => {
+  const responseMessage = err?.response?.data?.message
+  if (responseMessage) return responseMessage
+  const message = err?.message
+  if (!message || /^Request failed with status code \d+$/.test(message)) return fallback
+  return message
 }
 
 const toLocalIso = (value) => {
@@ -1264,8 +1357,10 @@ const fetchSchedules = async () => {
     allEvents.value = normalizeScheduleItems(res.data?.items || [])
   } catch (err) {
     allEvents.value = []
-    error.value = err?.message || '日程加载失败，请确认后端服务正在运行后重试。'
-    ElMessage.error(error.value)
+    error.value = resolveRequestErrorMessage(
+      err,
+      '日程加载失败，请确认后端服务正在运行后重试。'
+    )
   } finally {
     loading.value = false
   }
@@ -1310,7 +1405,9 @@ const getColorOption = (value, eventType) => {
 
 const colorStyle = (option) => ({
   '--event-bg': option.bg,
-  '--event-border': option.border
+  '--event-border': option.border,
+  '--event-bg-dark': option.darkBg || option.bg,
+  '--event-border-dark': option.darkBorder || option.border
 })
 
 const swatchStyle = (option) => ({
@@ -1409,6 +1506,70 @@ onBeforeUnmount(() => {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+  align-items: stretch;
+}
+
+.toolbar-group {
+  display: flex;
+}
+
+.cal-toolbar :deep(.el-button) {
+  min-width: 92px;
+  min-height: 32px;
+  justify-content: center;
+}
+
+.cal-toolbar :deep(.el-button + .el-button) {
+  margin-left: 0;
+}
+
+[data-theme="dark"] .parity-toggle-group :deep(.parity-toggle-button) {
+  --el-button-bg-color: #252526;
+  --el-button-border-color: #3e3e42;
+  --el-button-text-color: #d4d4d4;
+  --el-button-hover-bg-color: #313135;
+  --el-button-hover-border-color: #4f5257;
+  --el-button-hover-text-color: #f4f4f4;
+  --el-button-active-bg-color: #34343a;
+  --el-button-active-border-color: #5a5d63;
+  --el-button-active-text-color: #ffffff;
+}
+
+[data-theme="dark"] .parity-toggle-group :deep(.parity-toggle-button.is-selected-parity),
+[data-theme="dark"] :deep(.export-ics-button.el-button) {
+  --el-button-bg-color: var(--el-fill-color-blank);
+  --el-button-border-color: var(--el-border-color);
+  --el-button-text-color: var(--el-text-color-regular);
+  --el-button-hover-text-color: var(--el-color-primary);
+  --el-button-hover-bg-color: var(--el-color-primary-light-9);
+  --el-button-hover-border-color: var(--el-color-primary-light-7);
+  --el-button-active-text-color: var(--el-color-primary);
+  --el-button-active-bg-color: var(--el-color-primary-light-9);
+  --el-button-active-border-color: var(--el-color-primary);
+}
+
+[data-theme="dark"] :deep(.current-week-button.el-button) {
+  --el-button-bg-color: #1f5f87;
+  --el-button-border-color: #4fa6d6;
+  --el-button-text-color: #effbff;
+  --el-button-hover-text-color: #f3fbff;
+  --el-button-hover-bg-color: #2674a3;
+  --el-button-hover-border-color: #68c0f2;
+  --el-button-active-text-color: #ffffff;
+  --el-button-active-bg-color: #2c84b7;
+  --el-button-active-border-color: #7ad3ff;
+}
+
+[data-theme="dark"] :deep(.screenshot-add-button.el-button) {
+  --el-button-bg-color: #1689da;
+  --el-button-border-color: #48b5ff;
+  --el-button-text-color: #ffffff;
+  --el-button-hover-text-color: #ffffff;
+  --el-button-hover-bg-color: #24a0f2;
+  --el-button-hover-border-color: #6bc8ff;
+  --el-button-active-text-color: #ffffff;
+  --el-button-active-bg-color: #117bc6;
+  --el-button-active-border-color: #54beff;
 }
 
 /* ── Legend ── */
@@ -1452,6 +1613,14 @@ onBeforeUnmount(() => {
   overflow: hidden;
 }
 
+[data-theme="dark"] .page-panel.cal-header,
+[data-theme="dark"] .timetable-card,
+[data-theme="dark"] .side-panel {
+  background: #252526;
+  border-color: #3e3e42;
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.3);
+}
+
 .timeline-wrap {
   position: relative;
 }
@@ -1491,12 +1660,27 @@ onBeforeUnmount(() => {
   height: v-bind(timelineHeight + 'px');
 }
 
+[data-theme="dark"] .timeline-wrap,
+[data-theme="dark"] .timeline-body {
+  background: #1e1e1e;
+}
+
+[data-theme="dark"] .timeline-header {
+  background: #2d2d30;
+  border-bottom-color: #3e3e42;
+}
+
 .time-ruler {
   width: 56px;
   flex-shrink: 0;
   position: relative;
   border-right: 1px solid var(--border);
   background: var(--bg-warm);
+}
+
+[data-theme="dark"] .time-ruler {
+  background: #252526;
+  border-right-color: #3e3e42;
 }
 
 .ruler-tick {
@@ -1508,9 +1692,20 @@ onBeforeUnmount(() => {
   transform: translateY(-50%);
 }
 
+[data-theme="dark"] .ruler-tick,
+[data-theme="dark"] .day-head small,
+[data-theme="dark"] .legend-item {
+  color: #8b949e;
+}
+
 .day-col {
   flex: 1;
   position: relative;
+}
+
+[data-theme="dark"] .day-col {
+  background: #1e1e1e;
+  box-shadow: inset 1px 0 0 #252526;
 }
 
 .day-bg {
@@ -1522,6 +1717,14 @@ onBeforeUnmount(() => {
   position: absolute;
   width: 100%;
   border-top: 1px solid var(--border-light);
+}
+
+[data-theme="dark"] .day-head strong {
+  color: #d4d4d4;
+}
+
+[data-theme="dark"] .bg-line {
+  border-top-color: #2a2d2e;
 }
 
 /* ── Event blocks ── */
@@ -1545,7 +1748,78 @@ onBeforeUnmount(() => {
 }
 
 .timeline-event.has-conflict {
+  background: #fdeaea;
+  border-left-color: var(--danger);
   box-shadow: inset 0 0 0 1px var(--danger);
+}
+
+.timeline-event.has-conflict .ev-marker {
+  background: var(--danger);
+}
+
+.timeline-event.has-conflict .ev-remark {
+  color: var(--danger);
+}
+
+.timeline-event.has-conflict .ev-remark::before {
+  background: var(--danger);
+}
+
+[data-theme="dark"] .timeline-event {
+  background: var(--event-bg-dark, var(--event-bg));
+  border-left-color: var(--event-border-dark, var(--event-border));
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05), 0 6px 14px rgba(0, 0, 0, 0.28);
+}
+
+[data-theme="dark"] .timeline-event .ev-marker {
+  background: var(--event-border-dark, var(--event-border));
+}
+
+[data-theme="dark"] .timeline-event .ev-name {
+  color: #f4f6fb;
+}
+
+[data-theme="dark"] .timeline-event .ev-time,
+[data-theme="dark"] .timeline-event .ev-location {
+  color: rgba(244, 246, 251, 0.78);
+}
+
+[data-theme="dark"] .timeline-event .ev-remark {
+  color: var(--event-border-dark, var(--event-border));
+}
+
+[data-theme="dark"] .timeline-event .ev-remark::before {
+  background: var(--event-border-dark, var(--event-border));
+}
+
+[data-theme="dark"] .timeline-event.has-conflict {
+  background: #4a262c;
+  border-left-color: #ff7b72;
+  box-shadow: inset 0 0 0 1px rgba(255, 123, 114, 0.72), 0 6px 14px rgba(0, 0, 0, 0.32);
+}
+
+[data-theme="dark"] .timeline-event.has-conflict .ev-marker {
+  background: #ff7b72;
+}
+
+[data-theme="dark"] .timeline-event.has-conflict .ev-name,
+[data-theme="dark"] .timeline-event.has-conflict .ev-time,
+[data-theme="dark"] .timeline-event.has-conflict .ev-location {
+  color: #fff0ee;
+}
+
+[data-theme="dark"] .timeline-event.has-conflict .ev-conflict-label,
+[data-theme="dark"] .timeline-event.has-conflict .ev-remark {
+  color: #ffb2ab;
+}
+
+[data-theme="dark"] .timeline-event.has-conflict .ev-remark::before {
+  background: #ffb2ab;
+}
+
+.timeline-event.is-compact {
+  padding: 4px 4px 3px;
+  border-left-width: 2px;
 }
 
 .ev-title-row {
@@ -1572,6 +1846,41 @@ onBeforeUnmount(() => {
   font-weight: 700;
 }
 
+.ev-conflict-label {
+  color: var(--danger);
+  font-size: 10px;
+  line-height: 1.1;
+  font-weight: 700;
+  flex: 0 0 auto;
+  padding-top: 2px;
+}
+
+.timeline-event.is-compact .ev-title-row {
+  display: block;
+  min-height: 100%;
+  padding-right: 0;
+}
+
+.timeline-event.is-compact .ev-marker {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 14px;
+  height: 14px;
+  font-size: 9px;
+  flex: 0 0 14px;
+  z-index: 1;
+}
+
+.timeline-event.is-compact .ev-conflict-label {
+  position: absolute;
+  top: 6px;
+  left: 22px;
+  font-size: 8px;
+  padding-top: 0;
+  z-index: 1;
+}
+
 .ev-name {
   font-weight: 600;
   color: var(--text-primary);
@@ -1583,6 +1892,20 @@ onBeforeUnmount(() => {
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
+}
+
+.timeline-event.is-compact .ev-name {
+  display: block;
+  height: calc(100% - 18px);
+  padding-top: 18px;
+  font-size: 11px;
+  line-height: 1.12;
+  white-space: normal;
+  overflow: hidden;
+  text-overflow: clip;
+  display: block;
+  word-break: break-all;
+  overflow-wrap: anywhere;
 }
 
 .ev-remark,
@@ -1602,6 +1925,13 @@ onBeforeUnmount(() => {
   font-weight: 600;
   padding-left: 8px;
   position: relative;
+}
+
+.timeline-event.is-compact .ev-remark,
+.timeline-event.is-compact .ev-time,
+.timeline-event.is-compact .ev-location {
+  font-size: 8px;
+  display: none;
 }
 
 .ev-remark::before {
@@ -1638,6 +1968,33 @@ onBeforeUnmount(() => {
   border-radius: 2px;
 }
 
+.timeline-tooltip {
+  display: grid;
+  gap: 4px;
+  max-width: 248px;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.timeline-tooltip strong {
+  color: var(--text-primary);
+  font-size: 13px;
+}
+
+.tooltip-meta {
+  color: var(--text-secondary);
+  word-break: break-word;
+}
+
+.tooltip-warning {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+:deep(.timeline-event-tooltip) {
+  max-width: 280px;
+}
+
 /* ── Side panel ── */
 .side-panel {
   display: grid;
@@ -1660,6 +2017,24 @@ onBeforeUnmount(() => {
   border-radius: var(--radius-sm);
   background: var(--bg-warm);
   border: 1px solid var(--border-light);
+}
+
+[data-theme="dark"] .side-item,
+[data-theme="dark"] .dialog-item,
+[data-theme="dark"] .screenshot-preview,
+[data-theme="dark"] .crop-canvas {
+  background: #2d2d30;
+  border-color: #3e3e42;
+}
+
+[data-theme="dark"] .side-item:hover,
+[data-theme="dark"] .side-item.clickable:focus-visible {
+  background: #34343a;
+}
+
+[data-theme="dark"] .side-item-left strong,
+[data-theme="dark"] .section-title {
+  color: #d4d4d4;
 }
 
 .side-item.clickable {

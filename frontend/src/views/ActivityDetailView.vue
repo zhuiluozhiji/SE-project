@@ -305,6 +305,8 @@ onMounted(fetchDetail)
   color: var(--text-secondary);
   font-size: 14px;
   line-height: 1.75;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .speaker-row {
