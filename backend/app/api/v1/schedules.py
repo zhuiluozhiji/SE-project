@@ -3,8 +3,10 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, File, Response, UploadFile
 from sqlalchemy.orm import Session
 
+from app.core.deps import get_current_user
 from app.core.response import fail, success
 from app.db.session import get_db
+from app.models.user import User
 from app.schemas.schedule import (
     AddActivityRequest,
     AddCustomEventRequest,
@@ -32,30 +34,45 @@ def get_schedules(
     start_date: str | None = None,
     end_date: str | None = None,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     try:
-        items = list_schedule_events(db, start_date=start_date, end_date=end_date)
+        items = list_schedule_events(
+            db,
+            start_date=start_date,
+            end_date=end_date,
+            user_id=current_user.id,
+        )
     except ValueError as exc:
         return fail(code=3001, message=str(exc))
     return success({"items": items, "start_date": start_date, "end_date": end_date})
 
 
 @router.post("/check-conflict")
-def check_conflict(payload: ConflictCheckRequest, db: Session = Depends(get_db)):
+def check_conflict(
+    payload: ConflictCheckRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     try:
-        result = check_activity_conflict(db, payload.activity_id)
+        result = check_activity_conflict(db, payload.activity_id, user_id=current_user.id)
     except ValueError as exc:
         return fail(code=3002, message=str(exc))
     return success(result)
 
 
 @router.post("/add-activity")
-def add_activity(payload: AddActivityRequest, db: Session = Depends(get_db)):
+def add_activity(
+    payload: AddActivityRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     try:
         result = add_activity_to_schedule(
             db,
             activity_id=payload.activity_id,
             force_add=payload.force_add,
+            user_id=current_user.id,
         )
     except ValueError as exc:
         return fail(code=3003, message=str(exc))
@@ -63,7 +80,11 @@ def add_activity(payload: AddActivityRequest, db: Session = Depends(get_db)):
 
 
 @router.post("/check-custom-event")
-def check_custom_event(payload: CustomEventConflictCheckRequest, db: Session = Depends(get_db)):
+def check_custom_event(
+    payload: CustomEventConflictCheckRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     try:
         result = check_custom_event_conflict(
             db,
@@ -72,6 +93,7 @@ def check_custom_event(payload: CustomEventConflictCheckRequest, db: Session = D
             end_time=payload.end_time,
             location=payload.location,
             remark=payload.remark,
+            user_id=current_user.id,
         )
     except ValueError as exc:
         return fail(code=3006, message=str(exc))
@@ -79,7 +101,11 @@ def check_custom_event(payload: CustomEventConflictCheckRequest, db: Session = D
 
 
 @router.post("/add-custom-event")
-def add_custom_event(payload: AddCustomEventRequest, db: Session = Depends(get_db)):
+def add_custom_event(
+    payload: AddCustomEventRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     try:
         result = add_custom_event_to_schedule(
             db,
@@ -91,6 +117,7 @@ def add_custom_event(payload: AddCustomEventRequest, db: Session = Depends(get_d
             force_add=payload.force_add,
             color_type=payload.color_type,
             marker_label=payload.marker_label,
+            user_id=current_user.id,
         )
     except ValueError as exc:
         return fail(code=3007, message=str(exc))
@@ -102,6 +129,7 @@ async def recognize_schedule_image(
     files: list[UploadFile] | None = File(None),
     file: UploadFile | None = File(None),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     try:
         uploads = files or ([file] if file else [])
@@ -116,14 +144,18 @@ async def recognize_schedule_image(
     except ValueError as exc:
         return fail(code=3009, message=str(exc))
 
-    result.update(build_recognized_schedule_preview(db, result.get("activity") or {}))
+    result.update(build_recognized_schedule_preview(db, result.get("activity") or {}, current_user.id))
     return success(result)
 
 
 @router.delete("/{event_id}")
-def delete_event(event_id: int, db: Session = Depends(get_db)):
+def delete_event(
+    event_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     try:
-        result = delete_schedule_event(db, event_id=event_id)
+        result = delete_schedule_event(db, event_id=event_id, user_id=current_user.id)
     except ValueError as exc:
         return fail(code=3004, message=str(exc))
     return success(result)
@@ -134,6 +166,7 @@ def update_event_appearance(
     event_id: int,
     payload: ScheduleAppearanceUpdate,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     try:
         result = update_schedule_event_appearance(
@@ -143,6 +176,7 @@ def update_event_appearance(
             marker_label=payload.marker_label,
             remark=payload.remark,
             update_remark="remark" in payload.model_fields_set,
+            user_id=current_user.id,
         )
     except ValueError as exc:
         return fail(code=3005, message=str(exc))
@@ -154,13 +188,22 @@ def update_event_color(
     event_id: int,
     payload: ScheduleAppearanceUpdate,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
-    return update_event_appearance(event_id=event_id, payload=payload, db=db)
+    return update_event_appearance(
+        event_id=event_id,
+        payload=payload,
+        db=db,
+        current_user=current_user,
+    )
 
 
 @router.get("/export-ics")
-def export_ics(db: Session = Depends(get_db)):
-    items = list_schedule_events(db)
+def export_ics(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    items = list_schedule_events(db, user_id=current_user.id)
     return success(
         {
             "download_url": "/api/v1/schedules/export-ics/file",
@@ -169,7 +212,7 @@ def export_ics(db: Session = Depends(get_db)):
     )
 
 
-def build_recognized_schedule_preview(db: Session, activity: dict) -> dict:
+def build_recognized_schedule_preview(db: Session, activity: dict, user_id: int) -> dict:
     event = {
         "title": activity.get("title") or "",
         "type": "activity",
@@ -193,6 +236,7 @@ def build_recognized_schedule_preview(db: Session, activity: dict) -> dict:
             start_time=datetime.fromisoformat(event["start_time"]),
             end_time=datetime.fromisoformat(event["end_time"]),
             location=event["location"],
+            user_id=user_id,
         )
     except ValueError:
         return preview
@@ -205,8 +249,11 @@ def build_recognized_schedule_preview(db: Session, activity: dict) -> dict:
 
 
 @router.get("/export-ics/file")
-def export_ics_file(db: Session = Depends(get_db)):
-    content = export_schedule_ics(db)
+def export_ics_file(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    content = export_schedule_ics(db, user_id=current_user.id)
     return Response(
         content=content,
         media_type="text/calendar; charset=utf-8",

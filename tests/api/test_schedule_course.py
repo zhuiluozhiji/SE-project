@@ -9,6 +9,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.db.session import get_db
+from app.core.deps import get_current_user
 from app.main import app
 from app.models.activity import Activity
 from app.models.base import Base
@@ -24,6 +25,7 @@ engine = create_engine(
     poolclass=StaticPool,
 )
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+current_test_user_id = 1
 
 
 def override_get_db():
@@ -34,12 +36,24 @@ def override_get_db():
         db.close()
 
 
+def override_current_user():
+    db = TestingSessionLocal()
+    try:
+        return db.get(User, current_test_user_id)
+    finally:
+        db.close()
+
+
 app.dependency_overrides[get_db] = override_get_db
+app.dependency_overrides[get_current_user] = override_current_user
 client = TestClient(app)
 
 
 def setup_function():
+    global current_test_user_id
+    current_test_user_id = 1
     app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_current_user] = override_current_user
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
     db = TestingSessionLocal()
@@ -48,6 +62,14 @@ def setup_function():
             User(
                 id=1,
                 username="student001",
+                password_hash="dev-password-hash",
+                role="student",
+            )
+        )
+        db.add(
+            User(
+                id=2,
+                username="student002",
                 password_hash="dev-password-hash",
                 role="student",
             )
@@ -82,6 +104,43 @@ def setup_function():
         db.commit()
     finally:
         db.close()
+
+
+def test_course_and_schedule_use_current_login_user():
+    global current_test_user_id
+
+    current_test_user_id = 2
+    create_response = client.post(
+        "/api/v1/courses",
+        json={
+            "course_name": "数据持久化专题",
+            "weekday": 2,
+            "start_section": 3,
+            "end_section": 4,
+            "location": "紫金港东2",
+            "teacher": "王老师",
+            "weeks": "1-16",
+        },
+    )
+    assert create_response.status_code == 200
+    assert create_response.json()["code"] == 0
+
+    second_user_courses = client.get("/api/v1/courses").json()["data"]["items"]
+    assert [course["course_name"] for course in second_user_courses] == ["数据持久化专题"]
+
+    current_test_user_id = 1
+    first_user_courses = client.get("/api/v1/courses").json()["data"]["items"]
+    assert first_user_courses == []
+
+    current_test_user_id = 2
+    persisted_titles = [
+        item["title"]
+        for item in client.get(
+            "/api/v1/schedules",
+            params={"start_date": "2026-05-25", "end_date": "2026-05-31"},
+        ).json()["data"]["items"]
+    ]
+    assert "数据持久化专题" in persisted_titles
 
 
 def test_create_course_writes_course_and_schedule_event():

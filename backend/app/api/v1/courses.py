@@ -4,8 +4,10 @@ from fastapi import APIRouter, Depends, File, Query, UploadFile
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.core.deps import get_current_user
 from app.core.response import fail, success
 from app.db.session import get_db
+from app.models.user import User
 from app.schemas.course import CourseCreate
 from app.services.course_service import build_course_template_example
 from app.services.course_service import create_course as create_course_service
@@ -17,14 +19,21 @@ router = APIRouter(prefix="/courses", tags=["courses"])
 
 
 @router.get("")
-def get_courses(db: Session = Depends(get_db)):
-    return success({"items": list_courses_service(db)})
+def get_courses(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return success({"items": list_courses_service(db, user_id=current_user.id)})
 
 
 @router.post("")
-def create_course(payload: CourseCreate, db: Session = Depends(get_db)):
+def create_course(
+    payload: CourseCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     try:
-        course = create_course_service(db, payload)
+        course = create_course_service(db, payload, user_id=current_user.id)
     except ValueError as exc:
         return fail(code=2001, message=str(exc))
     except IntegrityError:
@@ -39,12 +48,17 @@ def get_course_template():
 
 
 @router.post("/import")
-def import_courses(file: UploadFile = File(...), db: Session = Depends(get_db)):
+def import_courses(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     try:
         result = import_courses_from_upload(
             db,
             filename=file.filename or "courses.csv",
             content=file.file.read(),
+            user_id=current_user.id,
         )
     except ValueError as exc:
         return fail(code=2002, message=str(exc))
@@ -78,11 +92,13 @@ def delete_course(
         description="scope=one 时可传当前课程实例开始时间，仅移除这一周的这一次课程",
     ),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     try:
         result = delete_course_service(
             db,
             course_id,
+            user_id=current_user.id,
             scope=scope,
             occurrence_start=occurrence_start,
         )

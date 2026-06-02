@@ -281,6 +281,8 @@ recommend_score =
 
 ## 日程与课表接口
 
+课程与日程数据接口需要登录后携带 `Authorization: Bearer <token>`。数据按当前 JWT 对应的 `user.id` 写入和查询，确保同一用户退出后再次登录仍能看到自己的课表与日程，不同用户之间互相隔离。
+
 ### `GET /api/v1/schedules`
 
 查询当前用户的课程和已加入活动日程。可选参数：

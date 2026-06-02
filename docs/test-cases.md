@@ -16,6 +16,7 @@
 | TC-012 | 日程 | 删除活动日程 | 已加入活动日程 | 调用 `DELETE /api/v1/schedules/{event_id}` | 仅移除个人日程，不删除活动本身 | 已自动化 |
 | TC-013 | 后台 | 活动截图识别解析 | 已准备包含标题、时间、地点的活动截图或 OCR 文本，单个活动最多 5 张截图 | 调用 `POST /api/v1/admin/activities/recognize-image`，或直接测试解析服务 | 返回识别文本，并提取活动标题、地点、开始时间；结束时间缺失时返回提醒，由前端预计时长补全 | 已自动化 |
 | TC-014 | 日程 | 普通用户截图加入日程 | OCR 已提取活动标题、时间、地点且与课程冲突；前端支持上传或 `Option/Alt + Shift + S` 快捷截屏，并可补充备注 | 调用 `POST /api/v1/schedules/check-custom-event` 后再用 `force_add=true` 调用 `/add-custom-event` | 先返回冲突明细，确认后写入带备注的个人活动日程 | 已自动化 |
+| TC-015 | 课程/日程 | 登录用户个人数据持久化与隔离 | 已存在 `student001`、`student002` 两个普通用户 | 以 `student002` 身份新增/导入课程后查询课程和日程，再切换为 `student001` 查询 | `student002` 重新查询仍能看到自己的课程日程，`student001` 看不到 `student002` 的个人数据 | 已自动化 |
 
 ## mxy 接口测试补充
 
