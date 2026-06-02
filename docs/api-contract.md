@@ -99,7 +99,35 @@ GET    /api/v1/admin/crawler/records
 Authorization: Bearer <token>
 ```
 
-成功响应 `data` 为当前用户公开信息，字段同登录响应中的 `user`。
+成功响应 `data` 为当前用户公开信息和个人中心汇总：
+
+```json
+{
+  "id": 1,
+  "username": "student001",
+  "role": "student",
+  "major": "计算机科学与技术",
+  "college": "计算机科学与技术学院",
+  "interests": ["人工智能", "数据库"],
+  "tags": ["人工智能", "数据库"],
+  "tag_count": 2,
+  "joined_count": 0,
+  "conflict_count": 0,
+  "timeline": [
+    {
+      "id": 1,
+      "activity_id": 101,
+      "title": "人工智能前沿讲座",
+      "action": "浏览",
+      "action_type": "view",
+      "source": "activity-detail",
+      "campus": "紫金港",
+      "location": "紫金港校区西区报告厅",
+      "created_at": "2026-06-02T04:16:55"
+    }
+  ]
+}
+```
 
 ## 活动接口
 
