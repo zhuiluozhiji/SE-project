@@ -109,22 +109,27 @@ def recognize_activity_images(files: list[tuple[str, bytes]]) -> dict:
         raise ValueError(f"一个活动最多支持 {MAX_ACTIVITY_SCREENSHOTS} 张截图。")
 
     screenshot_results = []
+    all_candidates: list[str] = []
     for filename, content in files:
-        raw_text = run_tesseract_image(filename=filename, content=content)
+        candidates = run_tesseract_image(filename=filename, content=content)
+        if isinstance(candidates, str):
+            candidates = [candidates]
+        all_candidates.extend(candidates)
         screenshot_results.append(
             {
                 "filename": filename,
-                "raw_text": raw_text,
+                "raw_text": choose_display_text(candidates),
             }
         )
+
+    all_candidates = dedupe_text_candidates(all_candidates)
+    if not all_candidates:
+        raise ValueError("未识别到可用文字，请换一张更清晰的截图。")
 
     combined_text = normalize_ocr_text(
         "\n".join(item["raw_text"] for item in screenshot_results if item["raw_text"])
     )
-    if not combined_text:
-        raise ValueError("未识别到可用文字，请换一张更清晰的截图。")
-
-    activity = parse_activity_text(combined_text)
+    activity = parse_activity_from_candidates(all_candidates)
     return {
         "filename": screenshot_results[0]["filename"],
         "filenames": [item["filename"] for item in screenshot_results],
@@ -135,7 +140,7 @@ def recognize_activity_images(files: list[tuple[str, bytes]]) -> dict:
     }
 
 
-def run_tesseract_image(filename: str, content: bytes) -> str:
+def run_tesseract_image(filename: str, content: bytes) -> list[str]:
     if not content:
         raise ValueError("图片内容为空，请重新上传。")
 
@@ -195,7 +200,7 @@ def run_tesseract_image(filename: str, content: bytes) -> str:
             message = f"{message}错误信息：{detail[:120]}"
         raise OcrRecognitionError(message)
 
-    return choose_best_ocr_text(dedupe_text_candidates(results))
+    return dedupe_text_candidates(results)
 
 
 def build_ocr_image_variants(source_path: str, tmp_dir: str) -> list[tuple[str, str]]:
@@ -453,19 +458,49 @@ def dedupe_text_candidates(candidates: list[str]) -> list[str]:
     return deduped
 
 
-def parse_activity_text(text: str, default_year: int | None = None) -> dict:
+SPEAKER_LABELS = ("主讲人", "报告人", "嘉宾", "讲者", "主讲")
+ORGANIZER_LABELS = ("主办方", "主办单位", "主办", "承办单位", "承办", "组织单位", "组织方")
+
+
+def parse_single_candidate(text: str, default_year: int) -> dict:
+    """Parse one OCR candidate text into raw (non-serialized) activity fields."""
     raw_text = normalize_ocr_text(text)
     lines = split_text_lines(raw_text)
-    default_year = default_year or datetime.now().year
-
-    title = extract_title(lines)
-    location = extract_location(lines)
     start_time, end_time = extract_time_range(raw_text, default_year)
-    speaker = extract_labeled_value(lines, ("主讲人", "报告人", "嘉宾", "讲者", "主讲"))
-    organizer = extract_labeled_value(lines, ("主办方", "主办单位", "主办", "承办单位", "承办", "组织单位", "组织方"))
-    campus = infer_campus(location or raw_text)
-    category = infer_category(f"{title or ''}\n{raw_text}")
-    description = build_description(lines, title)
+    return {
+        "text": raw_text,
+        "lines": lines,
+        "title": extract_title(lines),
+        "location": extract_location(lines),
+        "start_time": start_time,
+        "end_time": end_time,
+        "speaker": extract_labeled_value(lines, SPEAKER_LABELS),
+        "organizer": extract_labeled_value(lines, ORGANIZER_LABELS),
+    }
+
+
+def parse_activity_from_candidates(candidates: list[str], default_year: int | None = None) -> dict:
+    """Parse every OCR candidate independently, then pick the best value per field.
+
+    This avoids the old "concatenate two texts and take the first match" approach,
+    where a worse candidate placed first would win every field. Now each field is
+    chosen on its own merit across all candidates, so a correct location coming from
+    a different candidate than the title is still picked up.
+    """
+    default_year = default_year or datetime.now().year
+    parsed = [parse_single_candidate(text, default_year) for text in candidates if text]
+
+    title = pick_best((item["title"] for item in parsed), title_score)
+    location = pick_best((item["location"] for item in parsed), location_score)
+    start_time, end_time = pick_best_time(parsed)
+    speaker = pick_first_value(item["speaker"] for item in parsed)
+    organizer = pick_first_value(item["organizer"] for item in parsed)
+
+    detail_text = max((item["text"] for item in parsed), key=ocr_detail_score, default="")
+    full_text = normalize_ocr_text("\n".join(item["text"] for item in parsed))
+    campus = infer_campus(location or full_text)
+    category = infer_category(f"{title or ''}\n{full_text}")
+    description = build_description(split_text_lines(detail_text), title)
 
     return {
         "title": title or "",
@@ -480,6 +515,58 @@ def parse_activity_text(text: str, default_year: int | None = None) -> dict:
         "end_time": end_time.isoformat() if end_time else None,
         "source_url": None,
     }
+
+
+def parse_activity_text(text: str, default_year: int | None = None) -> dict:
+    """Parse a single text blob (kept for direct/single-text callers)."""
+    return parse_activity_from_candidates([text], default_year)
+
+
+def pick_best(values, scorer) -> str | None:
+    """Return the non-empty value with the highest score, or None."""
+    candidates = [value for value in values if value]
+    if not candidates:
+        return None
+    best = max(candidates, key=scorer)
+    return best if scorer(best) > -1000 else None
+
+
+def pick_first_value(values) -> str | None:
+    for value in values:
+        if value:
+            return value
+    return None
+
+
+def pick_best_time(parsed: list[dict]) -> tuple[datetime | None, datetime | None]:
+    """Prefer a parse with both start and end time, then any with a start time."""
+    with_range = [item for item in parsed if item["start_time"] and item["end_time"]]
+    if with_range:
+        best = with_range[0]
+        return best["start_time"], best["end_time"]
+    with_start = [item for item in parsed if item["start_time"]]
+    if with_start:
+        best = with_start[0]
+        return best["start_time"], best["end_time"]
+    return None, None
+
+
+def location_score(value: str) -> float:
+    """Score a location candidate, rewarding known campus names so OCR typos lose.
+
+    e.g. "浙大紫金港校区..." beats "浙大昧金港校区..." because only the former
+    contains a real campus name.
+    """
+    if not value:
+        return -1000
+    score = min(len(value), 30)
+    if infer_campus(value):
+        score += 30
+    if looks_like_location(value):
+        score += 8
+    if chinese_char_count(value) < 2:
+        score -= 30
+    return score
 
 
 def normalize_ocr_text(text: str) -> str:
@@ -509,7 +596,7 @@ def split_text_lines(text: str) -> list[str]:
 
 
 def extract_title(lines: list[str]) -> str | None:
-    title_labels = ("活动名称", "活动标题", "讲座题目", "报告题目", "讲座主题", "报告主题", "主题", "题目", "标题")
+    title_labels = ("活动名称", "活动标题", "活动主题", "讲座题目", "报告题目", "讲座主题", "报告主题", "主题", "题目", "标题")
     for line in lines:
         value = extract_value_by_labels(line, title_labels)
         candidate = normalize_title_candidate(value or "")
@@ -517,6 +604,7 @@ def extract_title(lines: list[str]) -> str | None:
             return candidate
 
     candidates = build_vertical_title_candidates(lines)
+    candidates.extend(merge_colon_split_title_lines(lines))
     for line in lines:
         candidates.append(line)
 
@@ -528,6 +616,33 @@ def extract_title(lines: list[str]) -> str | None:
     if not ranked_candidates:
         return None
     return max(ranked_candidates, key=title_score)
+
+
+def merge_colon_split_title_lines(lines: list[str]) -> list[str]:
+    """Join a title that OCR split across two visual lines at a trailing colon.
+
+    A poster title like "法律制度中的国家与社会：/ 过去和当下的对话" is recognized
+    as two lines, the first ending in a colon. On its own each half is a weaker
+    title candidate; merged, it is the real, full title. We only merge when the
+    next line looks like a continuation (not a labeled field such as 时间/地点),
+    so "主题：" style label lines are left for the label-based path above.
+    """
+    merged = []
+    non_title_label_words = ("时间", "日期", "地点", "地址", "场地", "教室", "主讲", "报告人", "嘉宾", "主办", "承办", "组织", "报名", "联系")
+    for index, line in enumerate(lines[:-1]):
+        if not re.search(r"[:：]\s*$", line):
+            continue
+        head = line.rstrip(" \t:：").strip()
+        if not head or any(word in head for word in non_title_label_words):
+            continue
+        next_line = lines[index + 1].strip()
+        if not is_possible_title(normalize_title_candidate(next_line)):
+            continue
+        if find_time_match(next_line) or find_date_match(next_line) or looks_like_location(next_line):
+            continue
+        merged.append(f"{head}：{next_line}")
+    return merged
+
 
 
 def extract_location(lines: list[str]) -> str | None:
@@ -608,10 +723,22 @@ def find_date_match(text: str) -> re.Match[str] | None:
 def find_time_match(text: str) -> re.Match[str] | None:
     pattern = (
         r"(?P<start_hour>[01]?\d|2[0-3])\s*[:：]\s*(?P<start_minute>[0-5]\d)"
-        r"(?:\s*(?:-|--|—|–|~|～|至|到)\s*"
+        r"(?:\s*(?:-|--|—|–|~|～|至|到|一)\s*"
         r"(?P<end_hour>[01]?\d|2[0-3])\s*[:：]\s*(?P<end_minute>[0-5]\d))?"
     )
     return re.search(pattern, text)
+
+
+def choose_display_text(results: list[str]) -> str:
+    """Pick a single, most-informative candidate for the human-readable raw text.
+
+    Field values are chosen separately in parse_activity_from_candidates, so this
+    only needs to surface one clean block (no more double-pasted results).
+    """
+    candidates = dedupe_text_candidates(results)
+    if not candidates:
+        return ""
+    return max(candidates, key=lambda text: ocr_text_score(text) + ocr_detail_score(text))
 
 
 def choose_best_ocr_text(results: list[str]) -> str:
@@ -812,7 +939,7 @@ def clean_field_value(value: str) -> str:
         value,
         maxsplit=1,
     )[0]
-    return value.strip(" \t\r\n,，;；.。")
+    return value.strip(" \t\r\n,，;；.。:：")
 
 
 def infer_campus(text: str) -> str | None:
@@ -834,9 +961,13 @@ def infer_category(text: str) -> str | None:
 
 def build_description(lines: list[str], title: str | None) -> str | None:
     description_lines = []
+    seen = set()
     for line in lines:
         if title and line == title:
             continue
+        if line in seen:
+            continue
+        seen.add(line)
         description_lines.append(line)
     description = "\n".join(description_lines).strip()
     return description[:1000] if description else None

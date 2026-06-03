@@ -267,19 +267,18 @@
           <el-col :span="12">
             <el-form-item label="开始时间">
               <el-date-picker
-                v-model="screenshotForm.start_time"
+                v-model="screenshotStartTime"
                 type="datetime"
                 format="YYYY-MM-DD HH:mm"
                 value-format="YYYY-MM-DDTHH:mm:ss"
                 placeholder="开始时间"
-                @change="fillScreenshotEstimatedEndTime(false)"
               />
             </el-form-item>
           </el-col>
           <el-col :span="12">
             <el-form-item label="结束时间">
               <el-date-picker
-                v-model="screenshotForm.end_time"
+                v-model="screenshotEndTime"
                 type="datetime"
                 format="YYYY-MM-DD HH:mm"
                 value-format="YYYY-MM-DDTHH:mm:ss"
@@ -291,12 +290,10 @@
         <el-form-item label="预计时长">
           <div class="duration-input">
             <el-input-number
-              v-model="screenshotForm.estimated_duration_minutes"
-              :min="15"
-              :max="720"
+              v-model="screenshotEstimatedDurationMinutes"
+              :min="1"
               :step="15"
               controls-position="right"
-              @change="fillScreenshotEstimatedEndTime(true)"
             />
             <span>min</span>
           </div>
@@ -843,6 +840,24 @@ const shouldReplaceEstimatedEnd = (start, end) => {
   return endDate <= startDate
 }
 
+const getPositiveDurationFromRange = (start, end) => {
+  if (!start || !end) return null
+  const startDate = new Date(start)
+  const endDate = new Date(end)
+  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+    return null
+  }
+  const minutes = Math.round((endDate - startDate) / 60000)
+  return minutes > 0 ? minutes : null
+}
+
+const syncScreenshotDurationFromRange = (start = screenshotForm.start_time, end = screenshotForm.end_time) => {
+  const minutes = getPositiveDurationFromRange(start, end)
+  if (!minutes) return false
+  screenshotForm.estimated_duration_minutes = minutes
+  return true
+}
+
 const fillScreenshotEstimatedEndTime = (force = false) => {
   if (!screenshotForm.start_time) return
   if (!force && !shouldReplaceEstimatedEnd(screenshotForm.start_time, screenshotForm.end_time)) return
@@ -852,6 +867,31 @@ const fillScreenshotEstimatedEndTime = (force = false) => {
   )
   if (endTime) screenshotForm.end_time = endTime
 }
+
+const screenshotStartTime = computed({
+  get: () => screenshotForm.start_time,
+  set: (value) => {
+    screenshotForm.start_time = value
+    if (syncScreenshotDurationFromRange(value, screenshotForm.end_time)) return
+    fillScreenshotEstimatedEndTime(true)
+  }
+})
+
+const screenshotEndTime = computed({
+  get: () => screenshotForm.end_time,
+  set: (value) => {
+    screenshotForm.end_time = value
+    syncScreenshotDurationFromRange(screenshotForm.start_time, value)
+  }
+})
+
+const screenshotEstimatedDurationMinutes = computed({
+  get: () => screenshotForm.estimated_duration_minutes,
+  set: (value) => {
+    screenshotForm.estimated_duration_minutes = normalizeDurationMinutes(value)
+    fillScreenshotEstimatedEndTime(true)
+  }
+})
 
 const typeLabel = (event) => {
   const map = { course: '课程', activity: '活动', exam: '考试' }
@@ -1126,7 +1166,9 @@ const recognizeScreenshot = async () => {
       color_type: event.color_type || 'green',
       marker_label: event.marker_label || '活'
     })
-    fillScreenshotEstimatedEndTime(false)
+    if (!syncScreenshotDurationFromRange()) {
+      fillScreenshotEstimatedEndTime(false)
+    }
     screenshotRawText.value = data.raw_text || ''
     screenshotWarnings.value = data.warnings || []
     screenshotConflicts.value = data.conflicts || []

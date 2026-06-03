@@ -43,6 +43,21 @@ def test_parse_activity_text_with_split_date_and_time():
     assert activity["end_time"] == "2026-05-11T11:00:00"
 
 
+def test_parse_activity_text_with_activity_theme_time_and_location_labels():
+    text = """
+    活动主题：求是创新--浙大医学在义乌的发展实践
+    活动时间：6月2日（周二）11:40-13:30
+    活动地点：东一A102会议室
+    """
+
+    activity = parse_activity_text(text, default_year=2026)
+
+    assert activity["title"] == "求是创新--浙大医学在义乌的发展实践"
+    assert activity["location"] == "东一A102会议室"
+    assert activity["start_time"] == "2026-06-02T11:40:00"
+    assert activity["end_time"] == "2026-06-02T13:30:00"
+
+
 def test_parse_activity_text_extracts_location_from_compact_line():
     text = """
     机器学习课程
@@ -72,6 +87,21 @@ def test_parse_activity_text_keeps_missing_end_time_empty():
     assert activity["start_time"] == "2026-05-25T19:00:00"
     assert activity["end_time"] is None
     assert "未识别到结束时间，请填写预计时长" in activity_ocr_service.build_parse_warnings(activity)
+
+
+def test_parse_activity_text_merges_colon_split_title_across_two_lines():
+    text = """
+    法律制度中的国家与社会：
+    过去和当下的对话
+    时间：2026年6月7日（周日）13:30
+    地点：浙江大学紫金港校区成均苑8幢1127
+    """
+
+    activity = parse_activity_text(text)
+
+    assert activity["title"] == "法律制度中的国家与社会：过去和当下的对话"
+    assert activity["campus"] == "紫金港"
+    assert activity["start_time"] == "2026-06-07T13:30:00"
 
 
 def test_parse_activity_text_skips_poster_decorative_title():

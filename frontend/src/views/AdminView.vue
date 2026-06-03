@@ -82,12 +82,11 @@
         <el-col :span="12">
           <el-form-item label="开始时间">
             <el-date-picker
-              v-model="activityForm.start_time"
+              v-model="activityStartTime"
               type="datetime"
               format="YYYY-MM-DD HH:mm"
               value-format="YYYY-MM-DDTHH:mm:ss"
               placeholder="选择开始时间"
-              @change="fillActivityEstimatedEndTime(false)"
             />
           </el-form-item>
         </el-col>
@@ -95,12 +94,10 @@
           <el-form-item label="预计时长">
             <div class="duration-input">
               <el-input-number
-                v-model="activityForm.estimated_duration_minutes"
-                :min="15"
-                :max="720"
+                v-model="activityEstimatedDurationMinutes"
+                :min="1"
                 :step="15"
                 controls-position="right"
-                @change="fillActivityEstimatedEndTime(true)"
               />
               <span>min</span>
             </div>
@@ -109,7 +106,7 @@
       </el-row>
       <el-form-item label="结束时间">
         <el-date-picker
-          v-model="activityForm.end_time"
+          v-model="activityEndTime"
           type="datetime"
           format="YYYY-MM-DD HH:mm"
           value-format="YYYY-MM-DDTHH:mm:ss"
@@ -287,15 +284,26 @@ const shouldReplaceEstimatedEnd = (start, end) => {
   return endDate <= startDate
 }
 
-const getDurationFromRange = (start, end) => {
-  if (!start || !end) return DEFAULT_ESTIMATED_DURATION_MINUTES
+const getPositiveDurationFromRange = (start, end) => {
+  if (!start || !end) return null
   const startDate = new Date(start)
   const endDate = new Date(end)
   if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
-    return DEFAULT_ESTIMATED_DURATION_MINUTES
+    return null
   }
   const minutes = Math.round((endDate - startDate) / 60000)
-  return minutes > 0 ? minutes : DEFAULT_ESTIMATED_DURATION_MINUTES
+  return minutes > 0 ? minutes : null
+}
+
+const getDurationFromRange = (start, end) => {
+  return getPositiveDurationFromRange(start, end) || DEFAULT_ESTIMATED_DURATION_MINUTES
+}
+
+const syncEstimatedDurationFromRange = (start = activityForm.start_time, end = activityForm.end_time) => {
+  const minutes = getPositiveDurationFromRange(start, end)
+  if (!minutes) return false
+  activityForm.estimated_duration_minutes = minutes
+  return true
 }
 
 const fillActivityEstimatedEndTime = (force = false) => {
@@ -307,6 +315,31 @@ const fillActivityEstimatedEndTime = (force = false) => {
   )
   if (endTime) activityForm.end_time = endTime
 }
+
+const activityStartTime = computed({
+  get: () => activityForm.start_time,
+  set: (value) => {
+    activityForm.start_time = value
+    if (syncEstimatedDurationFromRange(value, activityForm.end_time)) return
+    fillActivityEstimatedEndTime(true)
+  }
+})
+
+const activityEndTime = computed({
+  get: () => activityForm.end_time,
+  set: (value) => {
+    activityForm.end_time = value
+    syncEstimatedDurationFromRange(activityForm.start_time, value)
+  }
+})
+
+const activityEstimatedDurationMinutes = computed({
+  get: () => activityForm.estimated_duration_minutes,
+  set: (value) => {
+    activityForm.estimated_duration_minutes = normalizeDurationMinutes(value)
+    fillActivityEstimatedEndTime(true)
+  }
+})
 
 const displayedRows = computed(() => {
   if (!searchTitle.value) return activities.value
@@ -440,7 +473,9 @@ const submitOcrFile = async () => {
       end_time: recognized.end_time || null,
       description: recognized.description || ''
     })
-    fillActivityEstimatedEndTime(false)
+    if (!syncEstimatedDurationFromRange()) {
+      fillActivityEstimatedEndTime(false)
+    }
     ocrDialogVisible.value = false
     activityDialogVisible.value = true
 
