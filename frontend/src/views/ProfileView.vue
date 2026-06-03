@@ -56,7 +56,7 @@
         <div class="appearance-head">
           <div>
             <h3 class="section-title">外观设置</h3>
-            <p class="muted">支持整个网页和个人日历的背景、卡片颜色、透明度与文字颜色自定义，修改会实时预览，保存后刷新仍保留。</p>
+            <p class="muted">支持统一调整网页背景、卡片颜色、透明度、文字颜色和本地图片纹理，个人日历会跟随当前外观一起变化，修改会实时预览，保存后刷新仍保留。</p>
           </div>
           <div class="appearance-actions">
             <el-button
@@ -80,18 +80,12 @@
         <div class="appearance-layout">
           <div class="appearance-form">
             <el-form label-position="top">
-              <el-form-item label="作用范围">
-                <el-radio-group v-model="selectedBackgroundScope" size="small">
-                  <el-radio-button label="app">整个网页</el-radio-button>
-                  <el-radio-button label="calendar">个人日历</el-radio-button>
-                </el-radio-group>
-              </el-form-item>
-
               <el-form-item label="背景模式">
                 <el-radio-group v-model="currentBackgroundSettings.mode" size="small">
                   <el-radio-button label="default">默认</el-radio-button>
                   <el-radio-button label="solid">纯色</el-radio-button>
                   <el-radio-button label="gradient">渐变</el-radio-button>
+                  <el-radio-button label="image">图片</el-radio-button>
                 </el-radio-group>
               </el-form-item>
 
@@ -122,6 +116,34 @@
                 </el-form-item>
               </template>
 
+              <el-form-item v-if="currentBackgroundSettings.mode === 'image'" label="背景图片">
+                <div class="appearance-upload-stack">
+                  <el-upload
+                    ref="backgroundImageUploadRef"
+                    action="#"
+                    :auto-upload="false"
+                    :show-file-list="false"
+                    :limit="1"
+                    :accept="APPEARANCE_IMAGE_ACCEPT"
+                    :on-change="handleBackgroundImageChange"
+                    :on-exceed="handleBackgroundImageExceed"
+                  >
+                    <el-button plain>上传背景图片</el-button>
+                  </el-upload>
+                  <div class="appearance-upload-meta">
+                    <span class="faint">{{ currentBackgroundSettings.backgroundImageName || '未选择图片' }}</span>
+                    <el-button
+                      v-if="currentBackgroundSettings.backgroundImage"
+                      text
+                      @click="clearBackgroundImage"
+                    >
+                      移除图片
+                    </el-button>
+                  </div>
+                  <p class="faint appearance-hint">支持 PNG / JPG / WEBP；图片会在浏览器本地压缩保存，不上传到服务器。</p>
+                </div>
+              </el-form-item>
+
               <el-form-item v-if="currentBackgroundSettings.mode !== 'default'" label="遮罩强度">
                 <el-slider v-model="currentBackgroundSettings.overlay" :min="0" :max="40" :step="1" show-input />
                 <p class="faint appearance-hint">数值越高，文字越清楚；{{ overlayTip }}</p>
@@ -129,7 +151,7 @@
 
               <div class="appearance-subsection">
                 <span class="appearance-subtitle">卡片样式</span>
-                <p class="faint appearance-hint">会影响当前范围内的主要内容卡片与面板，不改动按钮和课程事件块的语义配色。</p>
+                <p class="faint appearance-hint">会影响页面内主要内容卡片与面板，包括个人日历，不改动按钮和课程事件块的语义配色。</p>
               </div>
 
               <el-form-item label="卡片模式">
@@ -150,6 +172,34 @@
                 <el-form-item label="卡片透明度">
                   <el-slider v-model="currentBackgroundSettings.cardOpacity" :min="35" :max="100" :step="1" show-input />
                   <p class="faint appearance-hint">数值越低越通透，建议保持在 68 - 94 之间。</p>
+                </el-form-item>
+
+                <el-form-item label="卡片图片">
+                  <div class="appearance-upload-stack">
+                    <el-upload
+                      ref="cardImageUploadRef"
+                      action="#"
+                      :auto-upload="false"
+                      :show-file-list="false"
+                      :limit="1"
+                      :accept="APPEARANCE_IMAGE_ACCEPT"
+                      :on-change="handleCardImageChange"
+                      :on-exceed="handleCardImageExceed"
+                    >
+                      <el-button plain>上传卡片图片</el-button>
+                    </el-upload>
+                    <div class="appearance-upload-meta">
+                      <span class="faint">{{ currentBackgroundSettings.cardImageName || '未选择图片，可只保留纯色卡片' }}</span>
+                      <el-button
+                        v-if="currentBackgroundSettings.cardImage"
+                        text
+                        @click="clearCardImage"
+                      >
+                        移除图片
+                      </el-button>
+                    </div>
+                    <p class="faint appearance-hint">会同步作用到主要内容卡片、侧栏和顶栏，建议搭配较高透明度使用。</p>
+                  </div>
                 </el-form-item>
 
                 <el-form-item label="主文字颜色">
@@ -173,7 +223,7 @@
             <span class="faint">实时预览</span>
             <div class="appearance-preview" :style="previewStyle">
               <div class="appearance-preview-card" :style="previewCardStyle">
-                <strong>{{ currentScopeLabel }}外观</strong>
+                <strong>页面外观</strong>
                 <p>{{ previewMessage }}</p>
                 <span class="appearance-preview-meta">{{ previewCardMessage }}</span>
               </div>
@@ -211,8 +261,17 @@ const {
   applyThemePresetBackgroundSettings
 } = useBackgroundTheme()
 
+const APPEARANCE_IMAGE_ACCEPT = 'image/png,image/jpeg,image/webp'
+const APPEARANCE_IMAGE_MAX_BYTES = 6 * 1024 * 1024
+const APPEARANCE_IMAGE_MAX_DATA_URL_LENGTH = 2_000_000
+const BACKGROUND_IMAGE_MAX_DIMENSION = 1800
+const CARD_IMAGE_MAX_DIMENSION = 1200
+const APPEARANCE_IMAGE_QUALITY = 0.82
+
 const loading = ref(false)
 const error = ref('')
+const backgroundImageUploadRef = ref(null)
+const cardImageUploadRef = ref(null)
 
 const user = computed(() => auth.user)
 
@@ -227,61 +286,31 @@ const userTags = computed(() => {
 })
 
 const timeline = ref([])
-const selectedBackgroundScope = ref('app')
-
-const scopeLabels = {
-  app: '整个网页',
-  calendar: '个人日历'
-}
 
 const currentBackgroundSettings = computed(() => {
-  return backgroundSettings[selectedBackgroundScope.value]
+  return backgroundSettings.app
 })
 
-const currentScopeLabel = computed(() => scopeLabels[selectedBackgroundScope.value])
-
 const overlayTip = computed(() => {
-  return selectedBackgroundScope.value === 'app'
-    ? '建议保持在 12 - 24 之间'
-    : '建议保持在 8 - 18 之间'
+  return '建议保持在 12 - 24 之间'
 })
 
 const DEFAULT_CARD_PREVIEW = {
   light: {
-    app: {
-      bg: 'rgba(255, 255, 255, 0.94)',
-      chipBg: 'rgba(255, 255, 255, 0.9)',
-      chipSubtleBg: 'rgba(255, 255, 255, 0.68)',
-      text: '#1e1b18',
-      muted: '#5c564d',
-      border: 'rgba(232, 226, 214, 0.92)'
-    },
-    calendar: {
-      bg: 'rgba(246, 251, 255, 0.92)',
-      chipBg: 'rgba(246, 251, 255, 0.96)',
-      chipSubtleBg: 'rgba(246, 251, 255, 0.72)',
-      text: '#1a2430',
-      muted: '#536273',
-      border: 'rgba(190, 204, 218, 0.9)'
-    }
+    bg: 'rgba(255, 255, 255, 0.94)',
+    chipBg: 'rgba(255, 255, 255, 0.9)',
+    chipSubtleBg: 'rgba(255, 255, 255, 0.68)',
+    text: '#1e1b18',
+    muted: '#5c564d',
+    border: 'rgba(232, 226, 214, 0.92)'
   },
   dark: {
-    app: {
-      bg: 'rgba(33, 37, 41, 0.94)',
-      chipBg: 'rgba(41, 46, 51, 0.94)',
-      chipSubtleBg: 'rgba(41, 46, 51, 0.74)',
-      text: '#e8e6e3',
-      muted: '#b0aca5',
-      border: 'rgba(78, 86, 95, 0.9)'
-    },
-    calendar: {
-      bg: 'rgba(37, 37, 38, 0.94)',
-      chipBg: 'rgba(45, 45, 48, 0.96)',
-      chipSubtleBg: 'rgba(45, 45, 48, 0.74)',
-      text: '#f4f6fb',
-      muted: '#aab6c3',
-      border: 'rgba(89, 99, 112, 0.9)'
-    }
+    bg: 'rgba(33, 37, 41, 0.94)',
+    chipBg: 'rgba(41, 46, 51, 0.94)',
+    chipSubtleBg: 'rgba(41, 46, 51, 0.74)',
+    text: '#e8e6e3',
+    muted: '#b0aca5',
+    border: 'rgba(78, 86, 95, 0.9)'
   }
 }
 
@@ -309,6 +338,16 @@ const rgbaFromHex = (value, alpha) => {
   return `rgba(${r}, ${g}, ${b}, ${clampAlpha(alpha).toFixed(2)})`
 }
 
+const buildImageLayer = (value) => {
+  return value ? `url("${value}")` : ''
+}
+
+const buildTintedImageBackground = (baseColor, image) => {
+  if (!image) return baseColor
+  const imageLayer = buildImageLayer(image)
+  return `linear-gradient(${baseColor}, ${baseColor}), ${imageLayer}`
+}
+
 const buildPreviewLayer = (settings) => {
   if (settings.mode === 'solid') {
     return settings.color
@@ -316,14 +355,17 @@ const buildPreviewLayer = (settings) => {
   if (settings.mode === 'gradient') {
     return `linear-gradient(${settings.angle}deg, ${settings.gradientFrom} 0%, ${settings.gradientTo} 100%)`
   }
-  if (isDark.value) {
-    return selectedBackgroundScope.value === 'app'
-      ? 'linear-gradient(135deg, #2a3038 0%, #1e252d 100%)'
-      : 'linear-gradient(145deg, #272d35 0%, #1c222c 100%)'
+  if (settings.mode === 'image') {
+    return settings.backgroundImage
+      ? buildImageLayer(settings.backgroundImage)
+      : (isDark.value
+        ? 'linear-gradient(135deg, #2a3038 0%, #1e252d 100%)'
+        : 'linear-gradient(135deg, #f7f1e6 0%, #e9eff8 100%)')
   }
-  return selectedBackgroundScope.value === 'app'
-    ? 'linear-gradient(135deg, #f7f1e6 0%, #e9eff8 100%)'
-    : 'linear-gradient(145deg, #eef5fb 0%, #e5edf8 100%)'
+  if (isDark.value) {
+    return 'linear-gradient(135deg, #2a3038 0%, #1e252d 100%)'
+  }
+  return 'linear-gradient(135deg, #f7f1e6 0%, #e9eff8 100%)'
 }
 
 const previewStyle = computed(() => {
@@ -343,7 +385,7 @@ const previewCardPalette = computed(() => {
   const themeKey = isDark.value ? 'dark' : 'light'
 
   if (settings.cardMode !== 'custom') {
-    return DEFAULT_CARD_PREVIEW[themeKey][selectedBackgroundScope.value]
+    return DEFAULT_CARD_PREVIEW[themeKey]
   }
 
   const baseAlpha = settings.cardOpacity / 100
@@ -359,10 +401,13 @@ const previewCardPalette = computed(() => {
 
 const previewCardStyle = computed(() => {
   return {
-    background: previewCardPalette.value.bg,
+    background: buildTintedImageBackground(previewCardPalette.value.bg, currentBackgroundSettings.value.cardImage),
     borderColor: previewCardPalette.value.border,
     color: previewCardPalette.value.text,
-    '--preview-card-muted': previewCardPalette.value.muted
+    '--preview-card-muted': previewCardPalette.value.muted,
+    backgroundPosition: 'center',
+    backgroundSize: 'cover',
+    backgroundRepeat: 'no-repeat'
   }
 })
 
@@ -383,6 +428,9 @@ const previewSubtleChipStyle = computed(() => {
 })
 
 const previewMessage = computed(() => {
+  if (currentBackgroundSettings.value.mode === 'image' && !currentBackgroundSettings.value.backgroundImage) {
+    return '当前处于图片背景模式，请先上传一张图片开始预览。'
+  }
   if (currentBackgroundSettings.value.mode === 'default') {
     return '当前使用系统默认背景。切换到纯色或渐变后会立即预览。'
   }
@@ -393,8 +441,132 @@ const previewCardMessage = computed(() => {
   if (currentBackgroundSettings.value.cardMode !== 'custom') {
     return '卡片保持当前主题默认样式。'
   }
+  if (currentBackgroundSettings.value.cardImage) {
+    return `卡片图片已叠加当前色调，透明度 ${currentBackgroundSettings.value.cardOpacity}% · 主副文字颜色已同步更新。`
+  }
   return `卡片透明度 ${currentBackgroundSettings.value.cardOpacity}% · 主副文字颜色已同步更新。`
 })
+
+const isAllowedAppearanceImage = (file) => {
+  return ['image/png', 'image/jpeg', 'image/webp'].includes(file?.type)
+}
+
+const readFileAsDataUrl = (file) => new Promise((resolve, reject) => {
+  const reader = new FileReader()
+  reader.onload = () => resolve(reader.result)
+  reader.onerror = () => reject(new Error('读取图片失败，请重试。'))
+  reader.readAsDataURL(file)
+})
+
+const loadImageElement = (src) => new Promise((resolve, reject) => {
+  const image = new Image()
+  image.onload = () => resolve(image)
+  image.onerror = () => reject(new Error('图片解析失败，请换一张图片试试。'))
+  image.src = src
+})
+
+const compressAppearanceImage = async (file, maxDimension) => {
+  if (!file) {
+    throw new Error('未读取到图片文件。')
+  }
+  if (!isAllowedAppearanceImage(file)) {
+    throw new Error('仅支持 PNG / JPG / WEBP 图片。')
+  }
+  if (file.size > APPEARANCE_IMAGE_MAX_BYTES) {
+    throw new Error('图片过大，请选择 6MB 以内的图片。')
+  }
+
+  const originalDataUrl = await readFileAsDataUrl(file)
+  const image = await loadImageElement(originalDataUrl)
+  const width = image.naturalWidth || image.width
+  const height = image.naturalHeight || image.height
+  const scale = Math.min(1, maxDimension / Math.max(width, height))
+  const targetWidth = Math.max(1, Math.round(width * scale))
+  const targetHeight = Math.max(1, Math.round(height * scale))
+  const canvas = document.createElement('canvas')
+  canvas.width = targetWidth
+  canvas.height = targetHeight
+
+  const ctx = canvas.getContext('2d')
+  if (!ctx) {
+    throw new Error('浏览器暂不支持图片压缩。')
+  }
+
+  ctx.drawImage(image, 0, 0, targetWidth, targetHeight)
+  const compressedDataUrl = canvas.toDataURL('image/webp', APPEARANCE_IMAGE_QUALITY)
+  const finalDataUrl = compressedDataUrl.length < originalDataUrl.length ? compressedDataUrl : originalDataUrl
+
+  if (finalDataUrl.length > APPEARANCE_IMAGE_MAX_DATA_URL_LENGTH) {
+    throw new Error('图片压缩后仍然较大，建议换一张更小或更简单的图片。')
+  }
+
+  return finalDataUrl
+}
+
+const setBackgroundImage = (dataUrl, name = '') => {
+  currentBackgroundSettings.value.backgroundImage = dataUrl
+  currentBackgroundSettings.value.backgroundImageName = name
+}
+
+const setCardImage = (dataUrl, name = '') => {
+  currentBackgroundSettings.value.cardImage = dataUrl
+  currentBackgroundSettings.value.cardImageName = name
+}
+
+const applyAppearanceImage = async ({ file, maxDimension, setter, uploadRef, label }) => {
+  const rawFile = file?.raw
+  if (!rawFile) return
+
+  try {
+    const dataUrl = await compressAppearanceImage(rawFile, maxDimension)
+    setter(dataUrl, rawFile.name || '')
+    ElMessage.success(`${label}已更新，记得点击“保存设置”。`)
+  } catch (uploadError) {
+    ElMessage.error(uploadError?.message || `${label}上传失败。`)
+  } finally {
+    uploadRef.value?.clearFiles()
+  }
+}
+
+const handleBackgroundImageChange = async (file) => {
+  await applyAppearanceImage({
+    file,
+    maxDimension: BACKGROUND_IMAGE_MAX_DIMENSION,
+    setter: setBackgroundImage,
+    uploadRef: backgroundImageUploadRef,
+    label: '背景图片'
+  })
+}
+
+const handleCardImageChange = async (file) => {
+  await applyAppearanceImage({
+    file,
+    maxDimension: CARD_IMAGE_MAX_DIMENSION,
+    setter: setCardImage,
+    uploadRef: cardImageUploadRef,
+    label: '卡片图片'
+  })
+}
+
+const createExceedHandler = (uploadRef, handler) => (files) => {
+  const nextFile = files?.[0]
+  uploadRef.value?.clearFiles()
+  if (nextFile) {
+    uploadRef.value?.handleStart(nextFile)
+    handler({ raw: nextFile })
+  }
+}
+
+const handleBackgroundImageExceed = createExceedHandler(backgroundImageUploadRef, handleBackgroundImageChange)
+const handleCardImageExceed = createExceedHandler(cardImageUploadRef, handleCardImageChange)
+
+const clearBackgroundImage = () => {
+  setBackgroundImage('', '')
+}
+
+const clearCardImage = () => {
+  setCardImage('', '')
+}
 
 const fmtDate = (t) => {
   if (!t) return ''
@@ -420,13 +592,21 @@ const fetchProfile = async () => {
 }
 
 const saveAppearanceSettings = () => {
-  saveBackgroundSettings()
-  ElMessage.success(`${currentScopeLabel.value}外观已保存`)
+  const saved = saveBackgroundSettings()
+  if (!saved) {
+    ElMessage.error('外观保存失败，可能是图片过大导致浏览器本地存储空间不足。')
+    return
+  }
+  ElMessage.success('外观已保存')
 }
 
 const applyThemePreset = (mode) => {
   setTheme(mode)
-  applyThemePresetBackgroundSettings(mode)
+  const saved = applyThemePresetBackgroundSettings(mode)
+  if (!saved) {
+    ElMessage.warning('预设已切换，但浏览器本地保存失败，请稍后重试。')
+    return
+  }
   ElMessage.success(mode === 'dark' ? '已切换为深色预设，外观已恢复默认' : '已切换为亮色预设，外观已恢复默认')
 }
 
@@ -586,6 +766,20 @@ onMounted(() => {
 .appearance-hint {
   margin-top: 8px;
   font-size: 12px;
+}
+
+.appearance-upload-stack {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+}
+
+.appearance-upload-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
 .appearance-subsection {

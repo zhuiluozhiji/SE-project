@@ -55,30 +55,30 @@
   --app-card-bg: rgba(255, 250, 242, 0.92);
   --app-card-bg-elevated: rgba(255, 250, 242, 0.98);
   --app-card-bg-strong: rgba(255, 250, 242, 0.98);
+  --app-card-surface: rgba(255, 250, 242, 0.92);
+  --app-card-surface-elevated: rgba(255, 250, 242, 0.98);
+  --app-card-surface-strong: rgba(255, 250, 242, 0.98);
   --app-card-text: #1e1b18;
+  --app-card-text-contrast: #fffaf2;
   --app-card-muted: #5c564d;
   --app-card-faint: rgba(92, 86, 77, 0.78);
   --app-card-border: rgba(92, 86, 77, 0.18);
-  --calendar-bg-layer: none;
-  --calendar-bg-enabled: 0;
-  --calendar-bg-overlay-alpha: 0;
-  --calendar-card-bg: rgba(246, 251, 255, 0.88);
-  --calendar-card-bg-elevated: rgba(246, 251, 255, 0.96);
-  --calendar-card-bg-strong: rgba(246, 251, 255, 0.98);
-  --calendar-card-text: #1a2430;
-  --calendar-card-muted: #536273;
-  --calendar-card-faint: rgba(83, 98, 115, 0.78);
-  --calendar-card-border: rgba(83, 98, 115, 0.18);
 }
 
 * {
   box-sizing: border-box;
 }
 
+html,
+body,
+#app {
+  height: 100%;
+}
+
 body {
   margin: 0;
   min-width: 320px;
-  min-height: 100vh;
+  min-height: 100%;
   background: var(--bg-root);
   color: var(--text-primary);
   font-family: var(--font-body);
@@ -86,6 +86,7 @@ body {
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overflow: hidden;
 }
 
 /* ── 排版工具 ── */
@@ -103,9 +104,10 @@ p { margin: 0; line-height: 1.65; }
 
 /* ── App 壳 ── */
 .app-shell {
-  min-height: 100vh;
+  height: 100vh;
   position: relative;
   isolation: isolate;
+  overflow: hidden;
 }
 
 .app-shell::before {
@@ -123,6 +125,7 @@ p { margin: 0; line-height: 1.65; }
     var(--app-bg-layer);
   background-position: center;
   background-size: cover;
+  background-repeat: no-repeat;
   transition: opacity 0.2s ease, background 0.2s ease;
 }
 
@@ -130,6 +133,12 @@ p { margin: 0; line-height: 1.65; }
 .app-shell > .el-container {
   position: relative;
   z-index: 1;
+}
+
+.app-shell > .el-container {
+  min-width: 0;
+  height: 100vh;
+  overflow: hidden;
 }
 
 /* ── 侧边栏 ── */
@@ -267,6 +276,10 @@ p { margin: 0; line-height: 1.65; }
   z-index: 1;
   max-width: none;
   margin: 0;
+  height: calc(100vh - 72px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
 }
 
 /* ── 页面通用面板 ── */
@@ -381,13 +394,12 @@ p { margin: 0; line-height: 1.65; }
   box-shadow: var(--shadow-md);
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
 }
 
-:root[data-app-card-mode="custom"] .app-sidebar,
-:root[data-app-card-mode="custom"] .app-header {
-  --bg-surface: var(--app-card-bg);
-  --bg-warm: var(--app-card-bg-strong);
-  --bg-muted: var(--app-card-bg-elevated);
+:root[data-app-card-mode="custom"] .app-sidebar {
   --text-primary: var(--app-card-text);
   --text-secondary: var(--app-card-muted);
   --text-tertiary: var(--app-card-faint);
@@ -397,15 +409,24 @@ p { margin: 0; line-height: 1.65; }
   border-color: var(--app-card-border);
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
 }
 
 :root[data-app-card-mode="custom"] .app-sidebar {
-  background: var(--app-card-bg);
+  --bg-surface: var(--app-card-surface);
+  --bg-warm: var(--app-card-surface-strong);
+  --bg-muted: var(--app-card-surface-elevated);
+  background: var(--app-card-surface);
   box-shadow: 8px 0 30px rgba(30, 27, 24, 0.08);
 }
 
 :root[data-app-card-mode="custom"] .app-header {
-  background: var(--app-card-bg-elevated);
+  --bg-surface: var(--app-card-surface);
+  --bg-warm: var(--app-card-surface-strong);
+  --bg-muted: var(--app-card-surface-elevated);
+  background: var(--app-card-surface-elevated);
   box-shadow: 0 8px 24px rgba(30, 27, 24, 0.06);
 }
 
@@ -413,32 +434,19 @@ p { margin: 0; line-height: 1.65; }
 :root[data-app-card-mode="custom"] .app-sidebar .sidebar-avatar,
 :root[data-app-card-mode="custom"] .app-sidebar .nav-menu .el-menu-item.is-active {
   background: var(--app-card-text);
-  color: var(--app-card-bg-strong);
+  color: var(--app-card-text-contrast);
 }
 
 :root[data-app-card-mode="custom"] .app-sidebar .nav-menu .el-menu-item:hover,
 :root[data-app-card-mode="custom"] .app-sidebar .sidebar-user:hover,
 :root[data-app-card-mode="custom"] .app-sidebar .user-chip {
-  background: var(--app-card-bg-elevated);
+  background: var(--app-card-surface-elevated);
   border-color: var(--app-card-border);
 }
 
 :root[data-app-card-mode="custom"] .app-header .el-input__wrapper {
-  background: var(--app-card-bg-strong);
+  background: var(--app-card-surface-strong);
   box-shadow: 0 0 0 1px var(--app-card-border) inset;
-}
-
-:root[data-app-card-mode="custom"] .app-header .el-input__inner {
-  color: var(--app-card-text);
-}
-
-:root[data-app-card-mode="custom"] .app-header .el-input__inner::placeholder {
-  color: var(--app-card-faint);
-}
-
-:root[data-app-card-mode="custom"] .app-header .el-input__prefix,
-:root[data-app-card-mode="custom"] .app-header .el-input__suffix {
-  color: var(--app-card-muted);
 }
 
 :root[data-app-card-mode="custom"] .calendar-page {
@@ -450,21 +458,9 @@ p { margin: 0; line-height: 1.65; }
   --active-calendar-card-faint: var(--app-card-faint);
 }
 
-:root[data-calendar-card-mode="custom"] .calendar-page {
-  --active-calendar-card-bg: var(--calendar-card-bg);
-  --active-calendar-card-bg-strong: var(--calendar-card-bg-strong);
-  --active-calendar-card-border: var(--calendar-card-border);
-  --active-calendar-card-text: var(--calendar-card-text);
-  --active-calendar-card-muted: var(--calendar-card-muted);
-  --active-calendar-card-faint: var(--calendar-card-faint);
-}
-
 :root[data-app-card-mode="custom"] .calendar-page .page-panel.cal-header,
 :root[data-app-card-mode="custom"] .calendar-page .timetable-card,
-:root[data-app-card-mode="custom"] .calendar-page .side-panel,
-:root[data-calendar-card-mode="custom"] .calendar-page .page-panel.cal-header,
-:root[data-calendar-card-mode="custom"] .calendar-page .timetable-card,
-:root[data-calendar-card-mode="custom"] .calendar-page .side-panel {
+:root[data-app-card-mode="custom"] .calendar-page .side-panel {
   --text-primary: var(--active-calendar-card-text);
   --text-secondary: var(--active-calendar-card-muted);
   --text-tertiary: var(--active-calendar-card-faint);
@@ -476,12 +472,13 @@ p { margin: 0; line-height: 1.65; }
   box-shadow: 0 14px 30px rgba(30, 27, 24, 0.1) !important;
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
 }
 
 :root[data-app-card-mode="custom"] .calendar-page .timeline-wrap,
-:root[data-app-card-mode="custom"] .calendar-page .timeline-body,
-:root[data-calendar-card-mode="custom"] .calendar-page .timeline-wrap,
-:root[data-calendar-card-mode="custom"] .calendar-page .timeline-body {
+:root[data-app-card-mode="custom"] .calendar-page .timeline-body {
   background: transparent !important;
 }
 
@@ -490,47 +487,34 @@ p { margin: 0; line-height: 1.65; }
 :root[data-app-card-mode="custom"] .calendar-page .side-item,
 :root[data-app-card-mode="custom"] .calendar-page .dialog-item,
 :root[data-app-card-mode="custom"] .calendar-page .screenshot-preview,
-:root[data-app-card-mode="custom"] .calendar-page .crop-canvas,
-:root[data-calendar-card-mode="custom"] .calendar-page .timeline-header,
-:root[data-calendar-card-mode="custom"] .calendar-page .time-ruler,
-:root[data-calendar-card-mode="custom"] .calendar-page .side-item,
-:root[data-calendar-card-mode="custom"] .calendar-page .dialog-item,
-:root[data-calendar-card-mode="custom"] .calendar-page .screenshot-preview,
-:root[data-calendar-card-mode="custom"] .calendar-page .crop-canvas {
+:root[data-app-card-mode="custom"] .calendar-page .crop-canvas {
   background: var(--active-calendar-card-bg-strong) !important;
   border-color: var(--active-calendar-card-border) !important;
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
 }
 
-:root[data-app-card-mode="custom"] .calendar-page .day-col,
-:root[data-calendar-card-mode="custom"] .calendar-page .day-col {
+:root[data-app-card-mode="custom"] .calendar-page .day-col {
   background: transparent !important;
   box-shadow: inset 1px 0 0 var(--active-calendar-card-border) !important;
 }
 
-:root[data-app-card-mode="custom"] .calendar-page .bg-line,
-:root[data-calendar-card-mode="custom"] .calendar-page .bg-line {
+:root[data-app-card-mode="custom"] .calendar-page .bg-line {
   border-top-color: var(--active-calendar-card-border) !important;
 }
 
 :root[data-app-card-mode="custom"] .calendar-page .day-head strong,
 :root[data-app-card-mode="custom"] .calendar-page .section-title,
 :root[data-app-card-mode="custom"] .calendar-page .side-item-left strong,
-:root[data-app-card-mode="custom"] .calendar-page .timeline-tooltip strong,
-:root[data-calendar-card-mode="custom"] .calendar-page .day-head strong,
-:root[data-calendar-card-mode="custom"] .calendar-page .section-title,
-:root[data-calendar-card-mode="custom"] .calendar-page .side-item-left strong,
-:root[data-calendar-card-mode="custom"] .calendar-page .timeline-tooltip strong {
+:root[data-app-card-mode="custom"] .calendar-page .timeline-tooltip strong {
   color: var(--active-calendar-card-text) !important;
 }
 
 :root[data-app-card-mode="custom"] .calendar-page .ruler-tick,
 :root[data-app-card-mode="custom"] .calendar-page .day-head small,
 :root[data-app-card-mode="custom"] .calendar-page .legend-item,
-:root[data-app-card-mode="custom"] .calendar-page .tooltip-meta,
-:root[data-calendar-card-mode="custom"] .calendar-page .ruler-tick,
-:root[data-calendar-card-mode="custom"] .calendar-page .day-head small,
-:root[data-calendar-card-mode="custom"] .calendar-page .legend-item,
-:root[data-calendar-card-mode="custom"] .calendar-page .tooltip-meta {
+:root[data-app-card-mode="custom"] .calendar-page .tooltip-meta {
   color: var(--active-calendar-card-muted) !important;
 }
 
