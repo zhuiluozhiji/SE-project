@@ -3,7 +3,7 @@
     <div v-if="loading" v-loading="loading" class="loading-block" />
 
     <template v-else-if="user">
-      <div class="profile-hero">
+      <div class="profile-hero page-panel">
         <div class="profile-avatar">{{ (user.username || '?').slice(0, 2).toUpperCase() }}</div>
         <div class="profile-hero-body">
           <h2 class="profile-name">{{ user.username || '未设置昵称' }}</h2>
@@ -51,6 +51,140 @@
           </div>
         </div>
       </div>
+
+      <div class="card appearance-card">
+        <div class="appearance-head">
+          <div>
+            <h3 class="section-title">外观设置</h3>
+            <p class="muted">支持整个网页和个人日历的背景、卡片颜色、透明度与文字颜色自定义，修改会实时预览，保存后刷新仍保留。</p>
+          </div>
+          <div class="appearance-actions">
+            <el-button
+              :type="!isDark ? 'primary' : 'default'"
+              plain
+              @click="applyThemePreset('light')"
+            >
+              亮色预设
+            </el-button>
+            <el-button
+              :type="isDark ? 'primary' : 'default'"
+              plain
+              @click="applyThemePreset('dark')"
+            >
+              深色预设
+            </el-button>
+            <el-button type="primary" @click="saveAppearanceSettings">保存设置</el-button>
+          </div>
+        </div>
+
+        <div class="appearance-layout">
+          <div class="appearance-form">
+            <el-form label-position="top">
+              <el-form-item label="作用范围">
+                <el-radio-group v-model="selectedBackgroundScope" size="small">
+                  <el-radio-button label="app">整个网页</el-radio-button>
+                  <el-radio-button label="calendar">个人日历</el-radio-button>
+                </el-radio-group>
+              </el-form-item>
+
+              <el-form-item label="背景模式">
+                <el-radio-group v-model="currentBackgroundSettings.mode" size="small">
+                  <el-radio-button label="default">默认</el-radio-button>
+                  <el-radio-button label="solid">纯色</el-radio-button>
+                  <el-radio-button label="gradient">渐变</el-radio-button>
+                </el-radio-group>
+              </el-form-item>
+
+              <el-form-item v-if="currentBackgroundSettings.mode === 'solid'" label="背景颜色">
+                <div class="appearance-color-row">
+                  <el-color-picker v-model="currentBackgroundSettings.color" />
+                  <code class="appearance-color-code">{{ currentBackgroundSettings.color }}</code>
+                </div>
+              </el-form-item>
+
+              <template v-if="currentBackgroundSettings.mode === 'gradient'">
+                <el-form-item label="起始颜色">
+                  <div class="appearance-color-row">
+                    <el-color-picker v-model="currentBackgroundSettings.gradientFrom" />
+                    <code class="appearance-color-code">{{ currentBackgroundSettings.gradientFrom }}</code>
+                  </div>
+                </el-form-item>
+
+                <el-form-item label="结束颜色">
+                  <div class="appearance-color-row">
+                    <el-color-picker v-model="currentBackgroundSettings.gradientTo" />
+                    <code class="appearance-color-code">{{ currentBackgroundSettings.gradientTo }}</code>
+                  </div>
+                </el-form-item>
+
+                <el-form-item label="渐变角度">
+                  <el-slider v-model="currentBackgroundSettings.angle" :min="0" :max="360" :step="5" show-input />
+                </el-form-item>
+              </template>
+
+              <el-form-item v-if="currentBackgroundSettings.mode !== 'default'" label="遮罩强度">
+                <el-slider v-model="currentBackgroundSettings.overlay" :min="0" :max="40" :step="1" show-input />
+                <p class="faint appearance-hint">数值越高，文字越清楚；{{ overlayTip }}</p>
+              </el-form-item>
+
+              <div class="appearance-subsection">
+                <span class="appearance-subtitle">卡片样式</span>
+                <p class="faint appearance-hint">会影响当前范围内的主要内容卡片与面板，不改动按钮和课程事件块的语义配色。</p>
+              </div>
+
+              <el-form-item label="卡片模式">
+                <el-radio-group v-model="currentBackgroundSettings.cardMode" size="small">
+                  <el-radio-button label="default">默认</el-radio-button>
+                  <el-radio-button label="custom">自定义</el-radio-button>
+                </el-radio-group>
+              </el-form-item>
+
+              <template v-if="currentBackgroundSettings.cardMode === 'custom'">
+                <el-form-item label="卡片颜色">
+                  <div class="appearance-color-row">
+                    <el-color-picker v-model="currentBackgroundSettings.cardColor" />
+                    <code class="appearance-color-code">{{ currentBackgroundSettings.cardColor }}</code>
+                  </div>
+                </el-form-item>
+
+                <el-form-item label="卡片透明度">
+                  <el-slider v-model="currentBackgroundSettings.cardOpacity" :min="35" :max="100" :step="1" show-input />
+                  <p class="faint appearance-hint">数值越低越通透，建议保持在 68 - 94 之间。</p>
+                </el-form-item>
+
+                <el-form-item label="主文字颜色">
+                  <div class="appearance-color-row">
+                    <el-color-picker v-model="currentBackgroundSettings.cardTextColor" />
+                    <code class="appearance-color-code">{{ currentBackgroundSettings.cardTextColor }}</code>
+                  </div>
+                </el-form-item>
+
+                <el-form-item label="辅助文字颜色">
+                  <div class="appearance-color-row">
+                    <el-color-picker v-model="currentBackgroundSettings.cardMutedColor" />
+                    <code class="appearance-color-code">{{ currentBackgroundSettings.cardMutedColor }}</code>
+                  </div>
+                </el-form-item>
+              </template>
+            </el-form>
+          </div>
+
+          <div class="appearance-preview-panel">
+            <span class="faint">实时预览</span>
+            <div class="appearance-preview" :style="previewStyle">
+              <div class="appearance-preview-card" :style="previewCardStyle">
+                <strong>{{ currentScopeLabel }}外观</strong>
+                <p>{{ previewMessage }}</p>
+                <span class="appearance-preview-meta">{{ previewCardMessage }}</span>
+              </div>
+              <div class="appearance-preview-surface">
+                <span class="appearance-preview-chip" :style="previewChipStyle">内容卡片</span>
+                <span class="appearance-preview-chip subtle" :style="previewSubtleChipStyle">背景层</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </template>
 
     <div v-else-if="error" class="empty-state">
@@ -63,9 +197,19 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
+import { ElMessage } from 'element-plus'
 import { useAuthStore } from '../store/auth'
+import { useBackgroundTheme } from '../composables/useBackgroundTheme'
+import { useDarkMode } from '../composables/useDarkMode'
 
 const auth = useAuthStore()
+const { isDark, setTheme } = useDarkMode()
+const {
+  backgroundSettings,
+  initBackgroundTheme,
+  saveBackgroundSettings,
+  applyThemePresetBackgroundSettings
+} = useBackgroundTheme()
 
 const loading = ref(false)
 const error = ref('')
@@ -83,6 +227,174 @@ const userTags = computed(() => {
 })
 
 const timeline = ref([])
+const selectedBackgroundScope = ref('app')
+
+const scopeLabels = {
+  app: '整个网页',
+  calendar: '个人日历'
+}
+
+const currentBackgroundSettings = computed(() => {
+  return backgroundSettings[selectedBackgroundScope.value]
+})
+
+const currentScopeLabel = computed(() => scopeLabels[selectedBackgroundScope.value])
+
+const overlayTip = computed(() => {
+  return selectedBackgroundScope.value === 'app'
+    ? '建议保持在 12 - 24 之间'
+    : '建议保持在 8 - 18 之间'
+})
+
+const DEFAULT_CARD_PREVIEW = {
+  light: {
+    app: {
+      bg: 'rgba(255, 255, 255, 0.94)',
+      chipBg: 'rgba(255, 255, 255, 0.9)',
+      chipSubtleBg: 'rgba(255, 255, 255, 0.68)',
+      text: '#1e1b18',
+      muted: '#5c564d',
+      border: 'rgba(232, 226, 214, 0.92)'
+    },
+    calendar: {
+      bg: 'rgba(246, 251, 255, 0.92)',
+      chipBg: 'rgba(246, 251, 255, 0.96)',
+      chipSubtleBg: 'rgba(246, 251, 255, 0.72)',
+      text: '#1a2430',
+      muted: '#536273',
+      border: 'rgba(190, 204, 218, 0.9)'
+    }
+  },
+  dark: {
+    app: {
+      bg: 'rgba(33, 37, 41, 0.94)',
+      chipBg: 'rgba(41, 46, 51, 0.94)',
+      chipSubtleBg: 'rgba(41, 46, 51, 0.74)',
+      text: '#e8e6e3',
+      muted: '#b0aca5',
+      border: 'rgba(78, 86, 95, 0.9)'
+    },
+    calendar: {
+      bg: 'rgba(37, 37, 38, 0.94)',
+      chipBg: 'rgba(45, 45, 48, 0.96)',
+      chipSubtleBg: 'rgba(45, 45, 48, 0.74)',
+      text: '#f4f6fb',
+      muted: '#aab6c3',
+      border: 'rgba(89, 99, 112, 0.9)'
+    }
+  }
+}
+
+const clampAlpha = (value) => {
+  return Math.min(0.98, Math.max(0, value))
+}
+
+const hexToRgb = (value) => {
+  const normalized = typeof value === 'string' ? value.trim().replace('#', '') : ''
+  const full = normalized.length === 3
+    ? normalized.split('').map((char) => char + char).join('')
+    : normalized
+  if (!/^[0-9a-fA-F]{6}$/.test(full)) {
+    return { r: 255, g: 255, b: 255 }
+  }
+  return {
+    r: parseInt(full.slice(0, 2), 16),
+    g: parseInt(full.slice(2, 4), 16),
+    b: parseInt(full.slice(4, 6), 16)
+  }
+}
+
+const rgbaFromHex = (value, alpha) => {
+  const { r, g, b } = hexToRgb(value)
+  return `rgba(${r}, ${g}, ${b}, ${clampAlpha(alpha).toFixed(2)})`
+}
+
+const buildPreviewLayer = (settings) => {
+  if (settings.mode === 'solid') {
+    return settings.color
+  }
+  if (settings.mode === 'gradient') {
+    return `linear-gradient(${settings.angle}deg, ${settings.gradientFrom} 0%, ${settings.gradientTo} 100%)`
+  }
+  if (isDark.value) {
+    return selectedBackgroundScope.value === 'app'
+      ? 'linear-gradient(135deg, #2a3038 0%, #1e252d 100%)'
+      : 'linear-gradient(145deg, #272d35 0%, #1c222c 100%)'
+  }
+  return selectedBackgroundScope.value === 'app'
+    ? 'linear-gradient(135deg, #f7f1e6 0%, #e9eff8 100%)'
+    : 'linear-gradient(145deg, #eef5fb 0%, #e5edf8 100%)'
+}
+
+const previewStyle = computed(() => {
+  const settings = currentBackgroundSettings.value
+  const overlayBase = isDark.value ? '17, 20, 24' : '255, 255, 255'
+  const overlayAlpha = settings.mode === 'default'
+    ? (isDark.value ? '0.08' : '0.12')
+    : (settings.overlay / 100).toFixed(2)
+
+  return {
+    background: `linear-gradient(rgba(${overlayBase}, ${overlayAlpha}), rgba(${overlayBase}, ${overlayAlpha})), ${buildPreviewLayer(settings)}`
+  }
+})
+
+const previewCardPalette = computed(() => {
+  const settings = currentBackgroundSettings.value
+  const themeKey = isDark.value ? 'dark' : 'light'
+
+  if (settings.cardMode !== 'custom') {
+    return DEFAULT_CARD_PREVIEW[themeKey][selectedBackgroundScope.value]
+  }
+
+  const baseAlpha = settings.cardOpacity / 100
+  return {
+    bg: rgbaFromHex(settings.cardColor, baseAlpha),
+    chipBg: rgbaFromHex(settings.cardColor, baseAlpha + 0.08),
+    chipSubtleBg: rgbaFromHex(settings.cardColor, baseAlpha + 0.16),
+    text: settings.cardTextColor,
+    muted: settings.cardMutedColor,
+    border: rgbaFromHex(settings.cardMutedColor, 0.18)
+  }
+})
+
+const previewCardStyle = computed(() => {
+  return {
+    background: previewCardPalette.value.bg,
+    borderColor: previewCardPalette.value.border,
+    color: previewCardPalette.value.text,
+    '--preview-card-muted': previewCardPalette.value.muted
+  }
+})
+
+const previewChipStyle = computed(() => {
+  return {
+    background: previewCardPalette.value.chipBg,
+    borderColor: previewCardPalette.value.border,
+    color: previewCardPalette.value.text
+  }
+})
+
+const previewSubtleChipStyle = computed(() => {
+  return {
+    background: previewCardPalette.value.chipSubtleBg,
+    borderColor: previewCardPalette.value.border,
+    color: previewCardPalette.value.muted
+  }
+})
+
+const previewMessage = computed(() => {
+  if (currentBackgroundSettings.value.mode === 'default') {
+    return '当前使用系统默认背景。切换到纯色或渐变后会立即预览。'
+  }
+  return '当前设置已实时预览，点击“保存设置”后刷新页面仍会保留。'
+})
+
+const previewCardMessage = computed(() => {
+  if (currentBackgroundSettings.value.cardMode !== 'custom') {
+    return '卡片保持当前主题默认样式。'
+  }
+  return `卡片透明度 ${currentBackgroundSettings.value.cardOpacity}% · 主副文字颜色已同步更新。`
+})
 
 const fmtDate = (t) => {
   if (!t) return ''
@@ -107,7 +419,21 @@ const fetchProfile = async () => {
   }
 }
 
-onMounted(fetchProfile)
+const saveAppearanceSettings = () => {
+  saveBackgroundSettings()
+  ElMessage.success(`${currentScopeLabel.value}外观已保存`)
+}
+
+const applyThemePreset = (mode) => {
+  setTheme(mode)
+  applyThemePresetBackgroundSettings(mode)
+  ElMessage.success(mode === 'dark' ? '已切换为深色预设，外观已恢复默认' : '已切换为亮色预设，外观已恢复默认')
+}
+
+onMounted(() => {
+  initBackgroundTheme()
+  fetchProfile()
+})
 </script>
 
 <style scoped>
@@ -195,7 +521,7 @@ onMounted(fetchProfile)
 /* ── Grid ── */
 .profile-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 16px;
   align-items: start;
 }
@@ -209,6 +535,142 @@ onMounted(fetchProfile)
 
 .tag-hint {
   font-size: 12px;
+}
+
+.appearance-card {
+  display: grid;
+  gap: 18px;
+}
+
+.appearance-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.appearance-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.appearance-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.appearance-form :deep(.el-form-item__label) {
+  color: var(--text-secondary);
+}
+
+.appearance-color-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.appearance-color-code {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--bg-warm);
+  border: 1px solid var(--border-light);
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.appearance-hint {
+  margin-top: 8px;
+  font-size: 12px;
+}
+
+.appearance-subsection {
+  display: grid;
+  gap: 4px;
+  margin: 4px 0 2px;
+}
+
+.appearance-subtitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.appearance-preview-panel {
+  display: grid;
+  gap: 10px;
+}
+
+.appearance-preview {
+  min-height: 260px;
+  padding: 18px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 14px;
+  background-position: center;
+  background-size: cover;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+
+.appearance-preview-card {
+  --preview-card-muted: var(--text-secondary);
+  padding: 16px 18px;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow: var(--shadow-sm);
+  display: grid;
+  gap: 6px;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.appearance-preview-card strong {
+  display: block;
+  font-size: 15px;
+  color: inherit;
+}
+
+.appearance-preview-card p {
+  color: var(--preview-card-muted);
+  font-size: 13px;
+}
+
+.appearance-preview-meta {
+  color: var(--preview-card-muted);
+  font-size: 12px;
+}
+
+.appearance-preview-surface {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.appearance-preview-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 7px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.84);
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 500;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.appearance-preview-chip.subtle {
+  background: rgba(255, 255, 255, 0.55);
+  color: var(--text-secondary);
 }
 
 /* ── Timeline ── */
@@ -251,6 +713,36 @@ onMounted(fetchProfile)
   padding: 28px 0;
 }
 
+[data-theme="dark"] .appearance-color-code {
+  background: #2b2f34;
+  border-color: #3b4148;
+  color: #d1d5db;
+}
+
+[data-theme="dark"] .appearance-preview-card {
+  background: rgba(29, 33, 38, 0.82);
+  border-color: rgba(96, 106, 118, 0.45);
+}
+
+[data-theme="dark"] .appearance-preview-card strong {
+  color: inherit;
+}
+
+[data-theme="dark"] .appearance-preview-card p {
+  color: var(--preview-card-muted, #d1d5db);
+}
+
+[data-theme="dark"] .appearance-preview-chip {
+  background: rgba(29, 33, 38, 0.78);
+  border-color: rgba(96, 106, 118, 0.45);
+  color: #f3f4f6;
+}
+
+[data-theme="dark"] .appearance-preview-chip.subtle {
+  background: rgba(29, 33, 38, 0.56);
+  color: #d1d5db;
+}
+
 @media (max-width: 960px) {
   .profile-hero {
     flex-wrap: wrap;
@@ -260,6 +752,9 @@ onMounted(fetchProfile)
   }
   .profile-num {
     flex: 1;
+  }
+  .appearance-layout {
+    grid-template-columns: 1fr;
   }
 }
 </style>

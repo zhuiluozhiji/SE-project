@@ -10,6 +10,10 @@ export function useDarkMode() {
     document.documentElement.classList.toggle('dark', dark)
   }
 
+  const persist = (dark) => {
+    localStorage.setItem(THEME_KEY, dark ? 'dark' : 'light')
+  }
+
   const init = () => {
     const stored = localStorage.getItem(THEME_KEY)
     const dark = stored !== null ? stored === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches
@@ -17,11 +21,16 @@ export function useDarkMode() {
     apply(dark)
   }
 
-  const toggle = () => {
-    isDark.value = !isDark.value
-    localStorage.setItem(THEME_KEY, isDark.value ? 'dark' : 'light')
-    apply(isDark.value)
+  const setTheme = (mode) => {
+    const dark = mode === 'dark'
+    isDark.value = dark
+    persist(dark)
+    apply(dark)
   }
 
-  return { isDark, init, toggle }
+  const toggle = () => {
+    setTheme(isDark.value ? 'light' : 'dark')
+  }
+
+  return { isDark, init, toggle, setTheme }
 }

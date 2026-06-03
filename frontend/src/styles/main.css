@@ -46,6 +46,29 @@
   --shadow-sm: 0 1px 2px rgba(30, 27, 24, 0.04);
   --shadow-md: 0 4px 16px rgba(30, 27, 24, 0.06);
   --shadow-lg: 0 12px 40px rgba(30, 27, 24, 0.08);
+
+  /* 自定义背景 */
+  --custom-bg-overlay-rgb: 255, 255, 255;
+  --app-bg-layer: none;
+  --app-bg-enabled: 0;
+  --app-bg-overlay-alpha: 0;
+  --app-card-bg: rgba(255, 250, 242, 0.92);
+  --app-card-bg-elevated: rgba(255, 250, 242, 0.98);
+  --app-card-bg-strong: rgba(255, 250, 242, 0.98);
+  --app-card-text: #1e1b18;
+  --app-card-muted: #5c564d;
+  --app-card-faint: rgba(92, 86, 77, 0.78);
+  --app-card-border: rgba(92, 86, 77, 0.18);
+  --calendar-bg-layer: none;
+  --calendar-bg-enabled: 0;
+  --calendar-bg-overlay-alpha: 0;
+  --calendar-card-bg: rgba(246, 251, 255, 0.88);
+  --calendar-card-bg-elevated: rgba(246, 251, 255, 0.96);
+  --calendar-card-bg-strong: rgba(246, 251, 255, 0.98);
+  --calendar-card-text: #1a2430;
+  --calendar-card-muted: #536273;
+  --calendar-card-faint: rgba(83, 98, 115, 0.78);
+  --calendar-card-border: rgba(83, 98, 115, 0.18);
 }
 
 * {
@@ -82,6 +105,31 @@ p { margin: 0; line-height: 1.65; }
 .app-shell {
   min-height: 100vh;
   position: relative;
+  isolation: isolate;
+}
+
+.app-shell::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: var(--app-bg-enabled);
+  background:
+    linear-gradient(
+      rgba(var(--custom-bg-overlay-rgb), var(--app-bg-overlay-alpha)),
+      rgba(var(--custom-bg-overlay-rgb), var(--app-bg-overlay-alpha))
+    ),
+    var(--app-bg-layer);
+  background-position: center;
+  background-size: cover;
+  transition: opacity 0.2s ease, background 0.2s ease;
+}
+
+.app-shell > .el-aside,
+.app-shell > .el-container {
+  position: relative;
+  z-index: 1;
 }
 
 /* ── 侧边栏 ── */
@@ -317,6 +365,175 @@ p { margin: 0; line-height: 1.65; }
   line-height: 1.6;
 }
 
+:root[data-app-card-mode="custom"] .page-panel,
+:root[data-app-card-mode="custom"] .card,
+:root[data-app-card-mode="custom"] .hero {
+  --bg-warm: var(--app-card-bg-strong);
+  --bg-muted: var(--app-card-bg-elevated);
+  --text-primary: var(--app-card-text);
+  --text-secondary: var(--app-card-muted);
+  --text-tertiary: var(--app-card-faint);
+  --border: var(--app-card-border);
+  --border-light: var(--app-card-border);
+  background: var(--app-card-bg);
+  border-color: var(--app-card-border);
+  color: var(--app-card-text);
+  box-shadow: var(--shadow-md);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+:root[data-app-card-mode="custom"] .app-sidebar,
+:root[data-app-card-mode="custom"] .app-header {
+  --bg-surface: var(--app-card-bg);
+  --bg-warm: var(--app-card-bg-strong);
+  --bg-muted: var(--app-card-bg-elevated);
+  --text-primary: var(--app-card-text);
+  --text-secondary: var(--app-card-muted);
+  --text-tertiary: var(--app-card-faint);
+  --border: var(--app-card-border);
+  --border-light: var(--app-card-border);
+  color: var(--app-card-text);
+  border-color: var(--app-card-border);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+:root[data-app-card-mode="custom"] .app-sidebar {
+  background: var(--app-card-bg);
+  box-shadow: 8px 0 30px rgba(30, 27, 24, 0.08);
+}
+
+:root[data-app-card-mode="custom"] .app-header {
+  background: var(--app-card-bg-elevated);
+  box-shadow: 0 8px 24px rgba(30, 27, 24, 0.06);
+}
+
+:root[data-app-card-mode="custom"] .app-sidebar .brand-mark,
+:root[data-app-card-mode="custom"] .app-sidebar .sidebar-avatar,
+:root[data-app-card-mode="custom"] .app-sidebar .nav-menu .el-menu-item.is-active {
+  background: var(--app-card-text);
+  color: var(--app-card-bg-strong);
+}
+
+:root[data-app-card-mode="custom"] .app-sidebar .nav-menu .el-menu-item:hover,
+:root[data-app-card-mode="custom"] .app-sidebar .sidebar-user:hover,
+:root[data-app-card-mode="custom"] .app-sidebar .user-chip {
+  background: var(--app-card-bg-elevated);
+  border-color: var(--app-card-border);
+}
+
+:root[data-app-card-mode="custom"] .app-header .el-input__wrapper {
+  background: var(--app-card-bg-strong);
+  box-shadow: 0 0 0 1px var(--app-card-border) inset;
+}
+
+:root[data-app-card-mode="custom"] .app-header .el-input__inner {
+  color: var(--app-card-text);
+}
+
+:root[data-app-card-mode="custom"] .app-header .el-input__inner::placeholder {
+  color: var(--app-card-faint);
+}
+
+:root[data-app-card-mode="custom"] .app-header .el-input__prefix,
+:root[data-app-card-mode="custom"] .app-header .el-input__suffix {
+  color: var(--app-card-muted);
+}
+
+:root[data-app-card-mode="custom"] .calendar-page {
+  --active-calendar-card-bg: var(--app-card-bg);
+  --active-calendar-card-bg-strong: var(--app-card-bg-strong);
+  --active-calendar-card-border: var(--app-card-border);
+  --active-calendar-card-text: var(--app-card-text);
+  --active-calendar-card-muted: var(--app-card-muted);
+  --active-calendar-card-faint: var(--app-card-faint);
+}
+
+:root[data-calendar-card-mode="custom"] .calendar-page {
+  --active-calendar-card-bg: var(--calendar-card-bg);
+  --active-calendar-card-bg-strong: var(--calendar-card-bg-strong);
+  --active-calendar-card-border: var(--calendar-card-border);
+  --active-calendar-card-text: var(--calendar-card-text);
+  --active-calendar-card-muted: var(--calendar-card-muted);
+  --active-calendar-card-faint: var(--calendar-card-faint);
+}
+
+:root[data-app-card-mode="custom"] .calendar-page .page-panel.cal-header,
+:root[data-app-card-mode="custom"] .calendar-page .timetable-card,
+:root[data-app-card-mode="custom"] .calendar-page .side-panel,
+:root[data-calendar-card-mode="custom"] .calendar-page .page-panel.cal-header,
+:root[data-calendar-card-mode="custom"] .calendar-page .timetable-card,
+:root[data-calendar-card-mode="custom"] .calendar-page .side-panel {
+  --text-primary: var(--active-calendar-card-text);
+  --text-secondary: var(--active-calendar-card-muted);
+  --text-tertiary: var(--active-calendar-card-faint);
+  --border: var(--active-calendar-card-border);
+  --border-light: var(--active-calendar-card-border);
+  background: var(--active-calendar-card-bg) !important;
+  border-color: var(--active-calendar-card-border) !important;
+  color: var(--active-calendar-card-text) !important;
+  box-shadow: 0 14px 30px rgba(30, 27, 24, 0.1) !important;
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+:root[data-app-card-mode="custom"] .calendar-page .timeline-wrap,
+:root[data-app-card-mode="custom"] .calendar-page .timeline-body,
+:root[data-calendar-card-mode="custom"] .calendar-page .timeline-wrap,
+:root[data-calendar-card-mode="custom"] .calendar-page .timeline-body {
+  background: transparent !important;
+}
+
+:root[data-app-card-mode="custom"] .calendar-page .timeline-header,
+:root[data-app-card-mode="custom"] .calendar-page .time-ruler,
+:root[data-app-card-mode="custom"] .calendar-page .side-item,
+:root[data-app-card-mode="custom"] .calendar-page .dialog-item,
+:root[data-app-card-mode="custom"] .calendar-page .screenshot-preview,
+:root[data-app-card-mode="custom"] .calendar-page .crop-canvas,
+:root[data-calendar-card-mode="custom"] .calendar-page .timeline-header,
+:root[data-calendar-card-mode="custom"] .calendar-page .time-ruler,
+:root[data-calendar-card-mode="custom"] .calendar-page .side-item,
+:root[data-calendar-card-mode="custom"] .calendar-page .dialog-item,
+:root[data-calendar-card-mode="custom"] .calendar-page .screenshot-preview,
+:root[data-calendar-card-mode="custom"] .calendar-page .crop-canvas {
+  background: var(--active-calendar-card-bg-strong) !important;
+  border-color: var(--active-calendar-card-border) !important;
+}
+
+:root[data-app-card-mode="custom"] .calendar-page .day-col,
+:root[data-calendar-card-mode="custom"] .calendar-page .day-col {
+  background: transparent !important;
+  box-shadow: inset 1px 0 0 var(--active-calendar-card-border) !important;
+}
+
+:root[data-app-card-mode="custom"] .calendar-page .bg-line,
+:root[data-calendar-card-mode="custom"] .calendar-page .bg-line {
+  border-top-color: var(--active-calendar-card-border) !important;
+}
+
+:root[data-app-card-mode="custom"] .calendar-page .day-head strong,
+:root[data-app-card-mode="custom"] .calendar-page .section-title,
+:root[data-app-card-mode="custom"] .calendar-page .side-item-left strong,
+:root[data-app-card-mode="custom"] .calendar-page .timeline-tooltip strong,
+:root[data-calendar-card-mode="custom"] .calendar-page .day-head strong,
+:root[data-calendar-card-mode="custom"] .calendar-page .section-title,
+:root[data-calendar-card-mode="custom"] .calendar-page .side-item-left strong,
+:root[data-calendar-card-mode="custom"] .calendar-page .timeline-tooltip strong {
+  color: var(--active-calendar-card-text) !important;
+}
+
+:root[data-app-card-mode="custom"] .calendar-page .ruler-tick,
+:root[data-app-card-mode="custom"] .calendar-page .day-head small,
+:root[data-app-card-mode="custom"] .calendar-page .legend-item,
+:root[data-app-card-mode="custom"] .calendar-page .tooltip-meta,
+:root[data-calendar-card-mode="custom"] .calendar-page .ruler-tick,
+:root[data-calendar-card-mode="custom"] .calendar-page .day-head small,
+:root[data-calendar-card-mode="custom"] .calendar-page .legend-item,
+:root[data-calendar-card-mode="custom"] .calendar-page .tooltip-meta {
+  color: var(--active-calendar-card-muted) !important;
+}
+
 /* ── 统计卡片 ── */
 .stats-grid {
   display: grid;
@@ -367,10 +584,13 @@ p { margin: 0; line-height: 1.65; }
 .el-button--primary {
   --el-button-bg-color: var(--text-primary);
   --el-button-border-color: var(--text-primary);
+  --el-button-text-color: var(--bg-surface);
   --el-button-hover-bg-color: #3d3832;
   --el-button-hover-border-color: #3d3832;
+  --el-button-hover-text-color: var(--bg-surface);
   --el-button-active-bg-color: #0f0d0b;
   --el-button-active-border-color: #0f0d0b;
+  --el-button-active-text-color: var(--bg-surface);
   border-radius: var(--radius-sm);
   font-weight: 500;
   letter-spacing: 0.02em;
@@ -419,6 +639,7 @@ p { margin: 0; line-height: 1.65; }
   --bg-surface: #212529;
   --bg-warm: #25282c;
   --bg-muted: #2a2e33;
+  --custom-bg-overlay-rgb: 17, 20, 24;
 
   --text-primary: #e8e6e3;
   --text-secondary: #b0aca5;
