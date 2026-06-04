@@ -1,7 +1,11 @@
-"""爬虫业务逻辑层 —— 调度爬虫运行并管理爬取记录。"""
+"""爬虫业务逻辑层 —— 调度爬虫运行并管理爬取记录。
+
+新增爬虫时只需在 SPIDER_REGISTRY 中注册一行，无需修改其他代码。
+"""
 
 from __future__ import annotations
 
+import importlib
 import sys
 from pathlib import Path
 
@@ -10,19 +14,62 @@ from sqlalchemy.orm import Session
 
 from app.models.crawl_record import CrawlRecord
 
+# ============================================================================
+# 爬虫注册表 —— 新增爬虫只需在这里加一行
+# ============================================================================
+# 格式：{ source 标识: "模块路径:函数名" }
+# source 标识对应 POST /api/v1/admin/crawler/run 中的 source 字段
 
-def _import_crawl_and_save():
-    """导入爬虫核心函数，自动处理路径问题。"""
+SPIDER_REGISTRY: dict[str, str] = {
+    "cs_zju": "crawler.spiders.cs_zju:crawl_and_save",
+    # 未来扩展示例：
+    # "cs_zju_seminar": "crawler.spiders.cs_zju_seminar:crawl_and_save",
+    # "math_zju":      "crawler.spiders.math_zju:crawl_and_save",
+}
+
+# ============================================================================
+# 动态导入
+# ============================================================================
+
+
+def _ensure_project_root_on_path() -> None:
+    """确保项目根目录在 sys.path 中（Docker 内 PYTHONPATH 可能不包含）。"""
+    project_root = Path(__file__).resolve().parent.parent.parent.parent.parent
+    if str(project_root) not in sys.path:
+        sys.path.insert(0, str(project_root))
+
+
+def _get_spider_func(source: str):
+    """根据 source 标识动态导入对应的爬虫入口函数。
+
+    Args:
+        source: 爬虫来源标识，如 "cs_zju"
+
+    Returns:
+        callable | None: crawl_and_save(db_session) 函数，未找到返回 None
+    """
+    if source not in SPIDER_REGISTRY:
+        return None
+
+    module_path, func_name = SPIDER_REGISTRY[source].split(":")
+
+    _ensure_project_root_on_path()
+
     try:
-        from crawler.spiders.cs_zju import crawl_and_save
-        return crawl_and_save
+        module = importlib.import_module(module_path)
+        return getattr(module, func_name)
     except ImportError:
-        # Docker 内 PYTHONPATH 可能不包含项目根目录，手动添加
-        project_root = Path(__file__).resolve().parent.parent.parent.parent.parent
-        if str(project_root) not in sys.path:
-            sys.path.insert(0, str(project_root))
-        from crawler.spiders.cs_zju import crawl_and_save
-        return crawl_and_save
+        # 可能是路径问题，再试一次
+        try:
+            module = importlib.import_module(module_path)
+            return getattr(module, func_name)
+        except (ImportError, AttributeError):
+            return None
+
+
+# ============================================================================
+# 业务接口
+# ============================================================================
 
 
 def run_crawler_and_save(db: Session, source: str = "cs_zju") -> dict:
@@ -30,12 +77,14 @@ def run_crawler_and_save(db: Session, source: str = "cs_zju") -> dict:
 
     Args:
         db: 数据库会话
-        source: 爬虫来源标识，目前仅支持 "cs_zju"
+        source: 爬虫来源标识，须在 SPIDER_REGISTRY 中注册
 
     Returns:
-        包含 status, fetched, created, skipped, error 的字典
+        包含 status, fetched, created, skipped, error 等字段的字典
     """
-    if source != "cs_zju":
+    crawl_func = _get_spider_func(source)
+
+    if crawl_func is None:
         return {
             "status": "error",
             "fetched": 0,
@@ -43,15 +92,13 @@ def run_crawler_and_save(db: Session, source: str = "cs_zju") -> dict:
             "skipped": 0,
             "filtered": 0,
             "year_filtered": 0,
-            "error": f"不支持的爬虫来源: {source}",
+            "error": f"不支持的爬虫来源: {source}（未在 SPIDER_REGISTRY 中注册）",
         }
 
     try:
-        crawl_and_save = _import_crawl_and_save()
-        result = crawl_and_save(db)
+        result = crawl_func(db)
         return result
     except ImportError as exc:
-        # 记录失败日志
         record = CrawlRecord(
             source=source,
             status="error",
@@ -111,3 +158,8 @@ def get_crawler_records(db: Session, limit: int = 20) -> list[dict]:
         }
         for r in records
     ]
+
+
+def list_available_sources() -> list[str]:
+    """返回所有已注册的爬虫 source 标识。"""
+    return list(SPIDER_REGISTRY.keys())

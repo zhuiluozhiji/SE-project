@@ -4,9 +4,20 @@ from sqlalchemy.orm import Session
 from app.core.response import fail, success
 from app.db.session import get_db
 from app.schemas.crawler import CrawlerRunRequest
-from app.services.crawler_service import get_crawler_records, run_crawler_and_save
+from app.services.crawler_service import (
+    get_crawler_records,
+    list_available_sources,
+    run_crawler_and_save,
+)
 
 router = APIRouter(prefix="/admin/crawler", tags=["crawler"])
+
+
+@router.get("/sources")
+def get_crawler_sources():
+    """获取所有可用的爬虫来源列表。"""
+    sources = list_available_sources()
+    return success({"sources": sources})
 
 
 @router.post("/run")
