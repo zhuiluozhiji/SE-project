@@ -129,7 +129,7 @@ class BaseSpider(ABC):
     max_pages: int = 15
 
     # ---- 子类可选覆盖（过滤配置） ----
-    min_year: int | None = 2026   # 仅保留 >= 此年份的活动，None 不过滤
+    min_year: int | None = 2026   # 默认仅保留 >= 此年份的活动（since 未传时生效），None 不过滤
 
     # ---- 子类可选覆盖（HTTP 配置） ----
     headers: dict | None = None   # None 表示使用 DEFAULT_HEADERS
@@ -229,14 +229,19 @@ class BaseSpider(ABC):
     # 列表翻页（通用实现，适用于 /list{page}.htm 模式）
     # ==================================================================
 
-    def crawl_all_list_pages(self) -> list[dict]:
+    def crawl_all_list_pages(self, since: str | None = None) -> list[dict]:
         """翻页抓取所有列表页，返回全部活动条目（已去重，按日期倒序）。
 
         如果 self.list_pattern 为空字符串，则仅抓取 self.list_url 单页。
+
+        Args:
+            since: "YYYY-MM" 月份过滤，仅保留此月及之后的活动。
+                   传入后会在列表阶段即过滤，遇到整页无符合条件条目时提前停止翻页。
         """
         all_items: list[dict] = []
         seen_urls: set[str] = set()
         errors: list[str] = []
+        since_skipped_total = 0
 
         for page in range(1, self.max_pages + 1):
             if page == 1 or not self.list_pattern:
@@ -248,15 +253,33 @@ class BaseSpider(ABC):
             try:
                 html = self.fetch_html(url)
                 items = self.parse_activity_list(html)
+                raw_count = len(items)
+
+                # ---- 月份过滤：在列表阶段就剔除过期条目 ----
+                if since:
+                    items = [
+                        item for item in items
+                        if not self._is_before_since(item.get("published_date"), since)
+                    ]
+                    filtered_out = raw_count - len(items)
+                    since_skipped_total += filtered_out
+                    if filtered_out > 0:
+                        print(f"  -> [月份过滤] 本页剔除 {filtered_out} 条早于 {since} 的条目")
+
                 new_count = 0
                 for item in items:
                     if item["detail_url"] not in seen_urls:
                         seen_urls.add(item["detail_url"])
                         all_items.append(item)
                         new_count += 1
-                print(f"  -> 本页 {len(items)} 条，新增 {new_count} 条")
+                print(f"  -> 本页 {raw_count} 条，新增 {new_count} 条")
+
+                # 整页无符合时间范围的新条目 → 后续页更旧，停止翻页
                 if new_count == 0 and page > 1:
-                    print("  -> 无新条目，停止翻页")
+                    if since:
+                        print(f"  -> 本页无符合 {since} 及之后的条目，停止翻页")
+                    else:
+                        print("  -> 无新条目，停止翻页")
                     break
             except Exception as exc:
                 msg = f"第 {page} 页抓取失败: {exc}"
@@ -278,6 +301,9 @@ class BaseSpider(ABC):
             print(f"\n翻页过程中共 {len(errors)} 个错误:")
             for e in errors:
                 print(f"  - {e}")
+
+        if since and since_skipped_total > 0:
+            print(f"\n[月份过滤] 列表阶段共剔除 {since_skipped_total} 条早于 {since} 的条目")
 
         all_items.sort(key=lambda x: x.get("published_date") or "", reverse=True)
         return all_items
@@ -566,11 +592,29 @@ class BaseSpider(ABC):
         return skip, reason
 
     # ==================================================================
-    # 年份过滤
+    # 时间过滤（年份 / 月份）
     # ==================================================================
 
+    @staticmethod
+    def _is_before_since(published_date: str | None, since: str | None) -> bool:
+        """判断发布日期是否早于指定月份。
+
+        Args:
+            published_date: "YYYY-MM-DD" 格式的日期字符串
+            since: "YYYY-MM" 格式的月份字符串
+
+        Returns:
+            True 表示应被过滤掉（早于 since 月）
+        """
+        if since is None or not published_date:
+            return False
+        try:
+            return published_date[:7] < since
+        except (TypeError, IndexError):
+            return False
+
     def is_before_min_year(self, published_date: str | None) -> bool:
-        """判断发布日期是否早于 min_year。"""
+        """判断发布日期是否早于 min_year（since 未传时的兜底过滤）。"""
         if self.min_year is None:
             return False
         if not published_date:
@@ -581,6 +625,14 @@ class BaseSpider(ABC):
         except (ValueError, TypeError):
             return False
 
+    def _resolve_since(self, since: str | None) -> str | None:
+        """解析最终生效的 since 值：前端传入优先，否则回退到 min_year。"""
+        if since is not None:
+            return since
+        if self.min_year is not None:
+            return f"{self.min_year}-01"
+        return None
+
     # ==================================================================
     # 数据库写入
     # ==================================================================
@@ -589,10 +641,12 @@ class BaseSpider(ABC):
         self,
         activities: list[CrawledActivity],
         db_session,  # SQLAlchemy Session
+        since: str | None = None,
     ) -> dict:
         """将爬取结果写入数据库（自动跳过标记为 skip 的条目）。
 
         去重策略：按 source_url 判断是否已存在。
+        月份过滤已在列表阶段完成，此处仅做兜底校验。
         """
         from sqlalchemy import select
 
@@ -610,9 +664,12 @@ class BaseSpider(ABC):
                 print(f"  [过滤] {a.skip_reason}: {a.title[:50]}")
                 continue
 
-            if self.is_before_min_year(a.published_date):
+            # 兜底校验：如果既没有前端 since 也没有 min_year，则跳过
+            # 正常情况下此检查不会触发（列表阶段已过滤）
+            effective_since = self._resolve_since(since)
+            if effective_since and self._is_before_since(a.published_date, effective_since):
                 skipped_year += 1
-                print(f"  [年份] {a.published_date} 早于 {self.min_year}: {a.title[:50]}")
+                print(f"  [月份兜底] {a.published_date} 早于 {effective_since}: {a.title[:50]}")
                 continue
 
             existing = db_session.scalar(
@@ -649,7 +706,7 @@ class BaseSpider(ABC):
             fetched_count=len(activities),
             success_count=created,
             error_msg=(
-                f"filtered={skipped_filter}, year_skipped={skipped_year}, dup_skipped={skipped_dup}"
+                f"filtered={skipped_filter}, month_skipped={skipped_year}, dup_skipped={skipped_dup}"
                 if (skipped_filter or skipped_year or skipped_dup)
                 else None
             ),
@@ -669,10 +726,21 @@ class BaseSpider(ABC):
     # 主流程编排
     # ==================================================================
 
-    def crawl_and_save(self, db_session) -> dict:
-        """完整爬取流程：列表翻页 → 逐条详情 → 过滤 → 写入数据库。"""
+    def crawl_and_save(self, db_session, since: str | None = None) -> dict:
+        """完整爬取流程：列表翻页 → 逐条详情 → 过滤 → 写入数据库。
+
+        Args:
+            db_session: SQLAlchemy 数据库会话
+            since: "YYYY-MM" 月份过滤，仅爬取此月及之后的活动。
+                   None 时自动回退到 self.min_year。
+        """
+        # 解析最终生效的 since
+        effective_since = self._resolve_since(since)
+
         print("=" * 60)
         print(f"开始爬取 {self.college} - {self.source}")
+        if effective_since:
+            print(f"月份过滤: 仅保留 >= {effective_since} 的活动")
         print("=" * 60)
 
         # 0. 连通性检查
@@ -684,6 +752,7 @@ class BaseSpider(ABC):
                     "status": "error",
                     "fetched": 0, "created": 0, "skipped": 0,
                     "filtered": 0, "year_filtered": 0,
+                    "since_applied": effective_since,
                     "error": f"列表页返回内容过短 ({len(test_html)} 字符)，可能被拦截或重定向",
                 }
             print(f"  -> 连通性 OK，页面长度 {len(test_html)} 字符")
@@ -692,11 +761,12 @@ class BaseSpider(ABC):
                 "status": "error",
                 "fetched": 0, "created": 0, "skipped": 0,
                 "filtered": 0, "year_filtered": 0,
+                "since_applied": effective_since,
                 "error": f"无法访问列表页: {exc}",
             }
 
-        # 1. 翻页抓取列表
-        list_items = self.crawl_all_list_pages()
+        # 1. 翻页抓取列表（已在内部按 since 过滤，提前停止翻页）
+        list_items = self.crawl_all_list_pages(since=effective_since)
         print(f"\n共获取 {len(list_items)} 个活动条目\n")
 
         if not list_items:
@@ -707,7 +777,16 @@ class BaseSpider(ABC):
                 "error": "列表页解析结果为空，可能页面结构已变更",
             }
 
-        # 2. 逐条抓取详情
+        if not list_items:
+            return {
+                "status": "empty",
+                "fetched": 0, "created": 0, "skipped": 0,
+                "filtered": 0, "year_filtered": 0,
+                "since_applied": effective_since,
+                "error": "列表页解析结果为空，可能页面结构已变更",
+            }
+
+        # 2. 逐条抓取详情（过期条目已在列表阶段剔除，此处不再重复过滤）
         activities: list[CrawledActivity] = []
         for i, item in enumerate(list_items, 1):
             print(f"[详情 {i}/{len(list_items)}] {item['title'][:50]}...")
@@ -746,13 +825,14 @@ class BaseSpider(ABC):
         )
 
         # 3. 写入数据库
-        result = self.save_activities_to_db(activities, db_session)
+        result = self.save_activities_to_db(activities, db_session, since=effective_since)
+        result["since_applied"] = effective_since
         print(
             f"\n入库结果：抓取 {result['fetched']} 条，"
             f"新增 {result['created']} 条，"
             f"去重跳过 {result['skipped']} 条，"
             f"内容过滤 {result['filtered']} 条，"
-            f"年份过滤 {result.get('year_filtered', 0)} 条"
+            f"月份过滤 {result.get('year_filtered', 0)} 条"
         )
         return {"status": "success", **result}
 

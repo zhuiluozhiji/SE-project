@@ -72,12 +72,15 @@ def _get_spider_func(source: str):
 # ============================================================================
 
 
-def run_crawler_and_save(db: Session, source: str = "cs_zju") -> dict:
+def run_crawler_and_save(
+    db: Session, source: str = "cs_zju", since: str | None = None,
+) -> dict:
     """运行指定来源的爬虫并将结果写入数据库。
 
     Args:
         db: 数据库会话
         source: 爬虫来源标识，须在 SPIDER_REGISTRY 中注册
+        since: 月份过滤 "YYYY-MM"，仅爬取此月及之后的活动；None 则使用爬虫默认 min_year
 
     Returns:
         包含 status, fetched, created, skipped, error 等字段的字典
@@ -92,11 +95,12 @@ def run_crawler_and_save(db: Session, source: str = "cs_zju") -> dict:
             "skipped": 0,
             "filtered": 0,
             "year_filtered": 0,
+            "since_applied": since,
             "error": f"不支持的爬虫来源: {source}（未在 SPIDER_REGISTRY 中注册）",
         }
 
     try:
-        result = crawl_func(db)
+        result = crawl_func(db, since=since)
         return result
     except ImportError as exc:
         record = CrawlRecord(

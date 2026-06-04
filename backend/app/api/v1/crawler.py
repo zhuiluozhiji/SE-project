@@ -22,8 +22,12 @@ def get_crawler_sources():
 
 @router.post("/run")
 def run_crawler(payload: CrawlerRunRequest, db: Session = Depends(get_db)):
-    """触发爬虫任务：抓取学院官网学生活动列表并存入数据库。"""
-    result = run_crawler_and_save(db, source=payload.source)
+    """触发爬虫任务：抓取学院官网学生活动列表并存入数据库。
+
+    支持 since 月份过滤（YYYY-MM），仅爬取该月及之后的活动。
+    不传 since 则使用爬虫默认的 min_year 配置。
+    """
+    result = run_crawler_and_save(db, source=payload.source, since=payload.since)
     if result.get("status") in ("error", "empty"):
         return fail(code=5001, message=result.get("error", "爬虫运行失败，未获取到任何活动"))
     return success({
@@ -34,6 +38,7 @@ def run_crawler(payload: CrawlerRunRequest, db: Session = Depends(get_db)):
         "skipped": result.get("skipped", 0),
         "filtered": result.get("filtered", 0),
         "year_filtered": result.get("year_filtered", 0),
+        "since_applied": result.get("since_applied"),
     })
 
 

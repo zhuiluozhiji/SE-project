@@ -170,6 +170,35 @@
     </template>
   </el-dialog>
 
+  <!-- 爬虫月份选择弹窗 -->
+  <el-dialog v-model="crawlerMonthDialogVisible" title="选择爬取起始月份" width="440px" append-to-body align-center>
+    <div class="crawler-month-body">
+      <p class="muted" style="margin-bottom:16px">
+        仅爬取<strong>选定月份及之后</strong>发布的活动。不选择则使用系统默认年份（2026年起）。
+      </p>
+      <div class="crawler-month-row">
+        <el-date-picker
+          v-model="crawlerSinceMonth"
+          type="month"
+          placeholder="选择起始月份"
+          format="YYYY-MM"
+          value-format="YYYY-MM"
+          :disabled="crawlerNoMonthLimit"
+          style="width:100%"
+        />
+      </div>
+      <el-checkbox v-model="crawlerNoMonthLimit" class="crawler-month-checkbox">
+        不限制月份（爬取全部可用活动）
+      </el-checkbox>
+    </div>
+    <template #footer>
+      <el-button @click="crawlerMonthDialogVisible = false">取消</el-button>
+      <el-button type="primary" :loading="crawlerRunning" @click="confirmRunCrawler">
+        开始爬取
+      </el-button>
+    </template>
+  </el-dialog>
+
   <!-- 爬虫日志弹窗 -->
   <el-dialog v-model="showCrawlerLogs" title="爬虫运行记录" width="700px" append-to-body align-center>
     <el-table :data="crawlerRecords" v-loading="crawlerLogsLoading">
@@ -210,6 +239,9 @@ const activities = ref([])
 const searchTitle = ref('')
 const savingActivity = ref(false)
 const crawlerRunning = ref(false)
+const crawlerMonthDialogVisible = ref(false)
+const crawlerSinceMonth = ref('')
+const crawlerNoMonthLimit = ref(false)
 const showCrawlerLogs = ref(false)
 const crawlerLogsLoading = ref(false)
 const crawlerRecords = ref([])
@@ -519,15 +551,28 @@ const handleOffline = async (id) => {
   } catch { /* 拦截器已处理 */ }
 }
 
-const runCrawler = async () => {
+const runCrawler = () => {
+  // 打开月份选择弹窗，而非直接触发爬虫
+  crawlerSinceMonth.value = ''
+  crawlerNoMonthLimit.value = false
+  crawlerMonthDialogVisible.value = true
+}
+
+const confirmRunCrawler = async () => {
   crawlerRunning.value = true
+  crawlerMonthDialogVisible.value = false
   try {
-    const res = await runCrawlerApi({ source: 'cs_zju' })
+    const payload = { source: 'cs_zju' }
+    if (!crawlerNoMonthLimit.value && crawlerSinceMonth.value) {
+      payload.since = crawlerSinceMonth.value
+    }
+    const res = await runCrawlerApi(payload)
     const data = res.data || res || {}
+    const sinceInfo = data.since_applied ? `（自 ${data.since_applied} 起）` : ''
     ElMessage.success(
-      `爬取完成：抓取 ${data.fetched || 0} 条，新增 ${data.created || 0} 条，`
+      `爬取完成${sinceInfo}：抓取 ${data.fetched || 0} 条，新增 ${data.created || 0} 条，`
       + `去重跳过 ${data.skipped || 0} 条，内容过滤 ${data.filtered || 0} 条，`
-      + `年份过滤 ${data.year_filtered || 0} 条`
+      + `月份过滤 ${data.year_filtered || 0} 条`
     )
     fetchActivities()
   } catch { /* 拦截器已处理 */ } finally {
@@ -603,6 +648,21 @@ onBeforeUnmount(() => {
 .ocr-preview p {
   margin: 8px 0 0;
   white-space: pre-wrap;
+}
+
+/* 爬虫月份选择弹窗 */
+.crawler-month-body {
+  display: grid;
+  gap: 12px;
+}
+
+.crawler-month-row {
+  display: flex;
+  align-items: center;
+}
+
+.crawler-month-checkbox {
+  margin-top: 4px;
   color: var(--text-secondary);
   font-size: 13px;
   line-height: 1.6;

@@ -193,12 +193,14 @@ def _get_spider() -> CSZJUSpider:
     return _spider_instance
 
 
-def crawl_and_save(db_session) -> dict:
+def crawl_and_save(db_session, since: str | None = None) -> dict:
     """供后端 crawler_service 调用的入口函数。
 
-    保持向后兼容：crawler_service 仍然 import 此函数名。
+    Args:
+        db_session: SQLAlchemy 数据库会话
+        since: "YYYY-MM" 月份过滤，如 "2026-03"；None 则使用爬虫默认 min_year
     """
-    return _get_spider().crawl_and_save(db_session)
+    return _get_spider().crawl_and_save(db_session, since=since)
 
 
 # ============================================================================
