@@ -170,13 +170,40 @@
     </template>
   </el-dialog>
 
-  <!-- 爬虫月份选择弹窗 -->
-  <el-dialog v-model="crawlerMonthDialogVisible" title="选择爬取起始月份" width="440px" append-to-body align-center>
-    <div class="crawler-month-body">
-      <p class="muted" style="margin-bottom:16px">
-        仅爬取<strong>选定月份及之后</strong>发布的活动。不选择则使用系统默认年份（2026年起）。
-      </p>
-      <div class="crawler-month-row">
+  <!-- 爬虫触发弹窗：选择学院 + 选择月份 -->
+  <el-dialog v-model="crawlerMonthDialogVisible" title="触发爬虫" width="500px" append-to-body align-center>
+    <div class="crawler-dialog-body">
+      <!-- 学院选择 -->
+      <div class="crawler-section">
+        <p class="crawler-label">选择学院来源</p>
+        <p class="muted" style="margin-bottom:10px">
+          可多选，将<strong>依次</strong>爬取所选学院的活动。
+        </p>
+        <div v-if="crawlerSourcesLoading" class="faint">加载学院列表…</div>
+        <el-checkbox-group v-else v-model="crawlerSelectedSources" class="crawler-source-group">
+          <el-checkbox
+            v-for="src in crawlerSourceOptions"
+            :key="src.value"
+            :value="src.value"
+            :label="src.label"
+            class="crawler-source-checkbox"
+          />
+        </el-checkbox-group>
+        <p v-if="crawlerSelectedSources.length === 0" class="faint" style="margin-top:6px">
+          请至少选择一个学院来源
+        </p>
+      </div>
+
+      <!-- 分隔线 -->
+      <el-divider />
+
+      <!-- 月份选择 -->
+      <div class="crawler-section">
+        <p class="crawler-label">时间范围</p>
+        <p class="muted" style="margin-bottom:10px">
+          仅爬取<strong>选定月份及之后</strong>发布的活动（在列表阶段即过滤，不浪费请求）。
+          不选择则使用系统默认年份（2026年起）。
+        </p>
         <el-date-picker
           v-model="crawlerSinceMonth"
           type="month"
@@ -186,15 +213,20 @@
           :disabled="crawlerNoMonthLimit"
           style="width:100%"
         />
+        <el-checkbox v-model="crawlerNoMonthLimit" class="crawler-month-checkbox">
+          不限制月份（爬取全部可用活动）
+        </el-checkbox>
       </div>
-      <el-checkbox v-model="crawlerNoMonthLimit" class="crawler-month-checkbox">
-        不限制月份（爬取全部可用活动）
-      </el-checkbox>
     </div>
     <template #footer>
       <el-button @click="crawlerMonthDialogVisible = false">取消</el-button>
-      <el-button type="primary" :loading="crawlerRunning" @click="confirmRunCrawler">
-        开始爬取
+      <el-button
+        type="primary"
+        :loading="crawlerRunning"
+        :disabled="crawlerSelectedSources.length === 0"
+        @click="confirmRunCrawler"
+      >
+        开始爬取（{{ crawlerSelectedSources.length }} 个学院）
       </el-button>
     </template>
   </el-dialog>
@@ -223,7 +255,8 @@ import {
   offlineActivity,
   recognizeActivityImage,
   runCrawler as runCrawlerApi,
-  getCrawlerRecords
+  getCrawlerRecords,
+  getCrawlerSources
 } from '../api/admin'
 import StatusTag from '../components/StatusTag.vue'
 import {
@@ -242,6 +275,9 @@ const crawlerRunning = ref(false)
 const crawlerMonthDialogVisible = ref(false)
 const crawlerSinceMonth = ref('')
 const crawlerNoMonthLimit = ref(false)
+const crawlerSelectedSources = ref([])
+const crawlerSourceOptions = ref([])
+const crawlerSourcesLoading = ref(false)
 const showCrawlerLogs = ref(false)
 const crawlerLogsLoading = ref(false)
 const crawlerRecords = ref([])
@@ -551,33 +587,106 @@ const handleOffline = async (id) => {
   } catch { /* 拦截器已处理 */ }
 }
 
-const runCrawler = () => {
-  // 打开月份选择弹窗，而非直接触发爬虫
+const runCrawler = async () => {
+  // 打开爬虫弹窗：先获取可用学院列表，再让用户选择
   crawlerSinceMonth.value = ''
   crawlerNoMonthLimit.value = false
+  crawlerSelectedSources.value = []
+  crawlerSourcesLoading.value = true
   crawlerMonthDialogVisible.value = true
+
+  try {
+    const res = await getCrawlerSources()
+    const sources = res.data?.sources || []
+    crawlerSourceOptions.value = sources.map((s) => ({
+      value: s,
+      label: SOURCE_LABEL_MAP[s] || s,
+    }))
+  } catch {
+    // 如果获取失败，回退到硬编码列表
+    crawlerSourceOptions.value = Object.entries(SOURCE_LABEL_MAP).map(([value, label]) => ({
+      value,
+      label,
+    }))
+  } finally {
+    crawlerSourcesLoading.value = false
+  }
+}
+
+// 学院 source → 可读名称映射（前后端都需要保持一致）
+const SOURCE_LABEL_MAP = {
+  cs_zju: '计算机科学与技术学院',
+  cse_zju: '控制科学与工程学院',
 }
 
 const confirmRunCrawler = async () => {
+  if (crawlerSelectedSources.value.length === 0) {
+    ElMessage.warning('请至少选择一个学院来源')
+    return
+  }
+
   crawlerRunning.value = true
   crawlerMonthDialogVisible.value = false
-  try {
-    const payload = { source: 'cs_zju' }
-    if (!crawlerNoMonthLimit.value && crawlerSinceMonth.value) {
-      payload.since = crawlerSinceMonth.value
+
+  const sources = crawlerSelectedSources.value
+  const sincePayload = (!crawlerNoMonthLimit.value && crawlerSinceMonth.value)
+    ? crawlerSinceMonth.value
+    : undefined
+
+  let totalFetched = 0
+  let totalCreated = 0
+  let totalSkipped = 0
+  let totalFiltered = 0
+  let totalYearFiltered = 0
+  const errors = []
+
+  for (let i = 0; i < sources.length; i++) {
+    const source = sources[i]
+    const label = SOURCE_LABEL_MAP[source] || source
+    try {
+      ElMessage.info(`[${i + 1}/${sources.length}] 正在爬取 ${label}…`)
+      const payload = { source }
+      if (sincePayload) {
+        payload.since = sincePayload
+      }
+      const res = await runCrawlerApi(payload)
+      const data = res.data || res || {}
+      totalFetched += data.fetched || 0
+      totalCreated += data.created || 0
+      totalSkipped += data.skipped || 0
+      totalFiltered += data.filtered || 0
+      totalYearFiltered += data.year_filtered || 0
+
+      const sinceInfo = data.since_applied ? `（自 ${data.since_applied} 起）` : ''
+      ElMessage.success(
+        `[${label}] 爬取完成${sinceInfo}：抓取 ${data.fetched || 0} 条，`
+        + `新增 ${data.created || 0} 条，去重跳过 ${data.skipped || 0} 条`
+      )
+    } catch (err) {
+      const msg = err?.response?.data?.message || err?.message || '未知错误'
+      errors.push(`${label}: ${msg}`)
+      ElMessage.error(`[${label}] 爬取失败: ${msg}`)
     }
-    const res = await runCrawlerApi(payload)
-    const data = res.data || res || {}
-    const sinceInfo = data.since_applied ? `（自 ${data.since_applied} 起）` : ''
-    ElMessage.success(
-      `爬取完成${sinceInfo}：抓取 ${data.fetched || 0} 条，新增 ${data.created || 0} 条，`
-      + `去重跳过 ${data.skipped || 0} 条，内容过滤 ${data.filtered || 0} 条，`
-      + `月份过滤 ${data.year_filtered || 0} 条`
-    )
-    fetchActivities()
-  } catch { /* 拦截器已处理 */ } finally {
-    crawlerRunning.value = false
   }
+
+  // 汇总
+  const sinceInfo = sincePayload ? `（自 ${sincePayload} 起）` : ''
+  if (errors.length === 0) {
+    ElMessage.success(
+      `全部爬取完成${sinceInfo}：共 ${sources.length} 个学院，`
+      + `抓取 ${totalFetched} 条，新增 ${totalCreated} 条，`
+      + `去重跳过 ${totalSkipped} 条，内容过滤 ${totalFiltered} 条，`
+      + `月份过滤 ${totalYearFiltered} 条`
+    )
+  } else if (errors.length < sources.length) {
+    ElMessage.warning(
+      `部分完成${sinceInfo}：${sources.length - errors.length}/${sources.length} 个学院成功，`
+      + `新增 ${totalCreated} 条。失败: ${errors.join('；')}`
+    )
+  }
+
+  fetchActivities()
+  crawlerRunning.value = false
 }
 
 const fetchCrawlerRecords = async () => {
@@ -650,19 +759,36 @@ onBeforeUnmount(() => {
   white-space: pre-wrap;
 }
 
-/* 爬虫月份选择弹窗 */
-.crawler-month-body {
+/* 爬虫触发弹窗 */
+.crawler-dialog-body {
   display: grid;
-  gap: 12px;
+  gap: 4px;
 }
 
-.crawler-month-row {
+.crawler-section {
+  display: grid;
+  gap: 4px;
+}
+
+.crawler-label {
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.crawler-source-group {
   display: flex;
-  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+
+.crawler-source-checkbox {
+  margin-right: 0;
 }
 
 .crawler-month-checkbox {
-  margin-top: 4px;
+  margin-top: 8px;
   color: var(--text-secondary);
   font-size: 13px;
   line-height: 1.6;
