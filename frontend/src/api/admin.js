@@ -23,3 +23,7 @@ export function runCrawler(data) {
 export function getCrawlerRecords() {
   return http.get('/admin/crawler/records')
 }
+
+export function getCrawlerSources() {
+  return http.get('/admin/crawler/sources')
+}
