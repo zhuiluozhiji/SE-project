@@ -37,7 +37,12 @@
         <div class="detail-main">
           <div class="card info-card">
             <h3 class="section-title">活动详情</h3>
-            <p class="detail-desc">{{ activity.description || '暂无详细介绍' }}</p>
+            <div v-if="descriptionParagraphs.length" class="detail-desc">
+              <p v-for="(paragraph, index) in descriptionParagraphs" :key="`${index}-${paragraph.slice(0, 12)}`">
+                {{ paragraph }}
+              </p>
+            </div>
+            <p v-else class="detail-desc">暂无详细介绍</p>
 
             <div class="divider" v-if="activity.speaker"></div>
 
@@ -109,7 +114,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { getActivityDetail, recordActivityInteraction } from '../api/activities'
@@ -125,6 +130,210 @@ const conflictCount = ref(0)
 const conflictVisible = ref(false)
 const checking = ref(false)
 const adding = ref(false)
+
+const sectionHeadingPattern = /^[一二三四五六七八九十百千万]+、\S+/
+const listItemPattern = /^([0-9]+[.．、)]|[（(][0-9一二三四五六七八九十]+[）)]|-\s+|[•●▪◦])\s*/
+const listMarkerOnlyPattern = /^([一二三四五六七八九十百千万]+[、.．]|[0-9]+[.．、)]|[（(][一二三四五六七八九十]+[）)])$/
+const numericListMarkerOnlyPattern = /^[0-9]+[.．、)]$/
+const fieldLinePattern = /^[\u4e00-\u9fa5A-Za-z0-9]{2,12}[：:]\s*(?:\S.*)?$/
+const paragraphEndPattern = /[。！？!?；;：:]$/
+const continuationStartPattern = /^[，,。！？!?；;：:、）)]/
+const categoryLabelOnlyPattern = /^(?:社会实践|志愿者活动|团支部活动|讲座报告|学术科技|创新创业|文体活动)\s*[：:]$/
+const attachmentLabelPattern = /(附件\s*[0-9一二三四五六七八九十]*\s*[：:])/g
+const attachmentLabelOnlyPattern = /^附件\s*[0-9一二三四五六七八九十]*\s*[：:]$/
+const fieldLabelOnlyPattern = /^[\u4e00-\u9fa5A-Za-z0-9]{2,12}[：:]\s*$/
+const numberedFieldLabelPattern = /^([0-9]+[.．、)]|[（(][0-9一二三四五六七八九十]+[）)])\s*[\u4e00-\u9fa5A-Za-z0-9]{2,12}[：:]\s*$/
+const inlineListMarkerPattern = /([\u4e00-\u9fa5）)])([0-9]+[.．、)])(?=\s*$|\s*[\u4e00-\u9fa5A-Za-z])/g
+const inlineCategoryLabelPattern = /((?:社会实践|志愿者活动|团支部活动|讲座报告|学术科技|创新创业|文体活动)\s*[：:])/g
+const urlStartPattern = /^https?:\/\//
+const detachedMarkerNumberPattern = /^[0-9一二三四五六七八九十百千万]+$/
+const detachedMarkerPunctuationPattern = /^[.．、)]$/
+const labelWithoutColonPattern = /^[\u4e00-\u9fa5A-Za-z0-9]{2,12}$/
+const colonOnlyPattern = /^[：:]$/
+
+const normalizeYearDigits = (text) => text.replace(
+  /\b(?:\d\s*){4}(?=\s*(?:年|年度|级|届|[-—~/,，。；;:：）)]|$))/g,
+  (year) => year.replace(/\s+/g, '')
+)
+
+const normalizeLine = (line) => normalizeYearDigits(
+  line.replace(/\u00a0/g, ' ').replace(/[ \t]+/g, ' ').trim()
+)
+
+const nextContentLine = (lines, startIndex) => {
+  for (let index = startIndex; index < lines.length; index += 1) {
+    if (lines[index]) return lines[index]
+  }
+  return ''
+}
+
+const compactDescriptionLines = (text) => {
+  const lines = text.split('\n').map((line) => normalizeLine(line))
+  const compacted = []
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index]
+    const next = lines[index + 1] || ''
+    const markerWithContent = next.match(/^([.．、)])\s*(\S.*)$/)
+
+    if (line.endsWith('附件') && /^[0-9一二三四五六七八九十]+$/.test(next)) {
+      compacted.push(`${line}${next}`)
+      index += 1
+      continue
+    }
+
+    if (
+      line
+      && detachedMarkerNumberPattern.test(line)
+      && markerWithContent
+      && !/^\d/.test(markerWithContent[2])
+    ) {
+      compacted.push(`${line}${next}`)
+      index += 1
+      continue
+    }
+
+    if (
+      line
+      && detachedMarkerNumberPattern.test(line)
+      && detachedMarkerPunctuationPattern.test(next)
+    ) {
+      const afterMarker = nextContentLine(lines, index + 2)
+      if (afterMarker && !/^-?\d+$/.test(afterMarker)) {
+        compacted.push(`${line}${next}`)
+        index += 1
+        continue
+      }
+    }
+
+    if (line && labelWithoutColonPattern.test(line) && colonOnlyPattern.test(next)) {
+      compacted.push(`${line}${next}`)
+      index += 1
+      continue
+    }
+
+    compacted.push(line)
+  }
+
+  return compacted
+}
+
+const splitStructuredLine = (line) => line
+  .replace(inlineListMarkerPattern, '$1\n$2')
+  .replace(inlineCategoryLabelPattern, '\n$1')
+  .replace(attachmentLabelPattern, '\n$1')
+  .split('\n')
+  .map((part) => part.trim())
+  .filter(Boolean)
+
+const isOpenFieldLabel = (text) => (
+  attachmentLabelOnlyPattern.test(text)
+  || fieldLabelOnlyPattern.test(text)
+  || numberedFieldLabelPattern.test(text)
+)
+
+const shouldBreakBeforeField = (line) => (
+  attachmentLabelOnlyPattern.test(line) || categoryLabelOnlyPattern.test(line)
+)
+
+const needsSpaceBetween = (prev, next) => {
+  if (!prev || !next) return false
+  if (listMarkerOnlyPattern.test(prev)) return numericListMarkerOnlyPattern.test(prev)
+  const prevChar = prev.at(-1) || ''
+  const nextChar = next[0] || ''
+  if (/\d/.test(prevChar) && /\d/.test(nextChar)) return false
+  return /[A-Za-z0-9]/.test(prevChar) && /[A-Za-z0-9]/.test(nextChar)
+}
+
+const shouldStartParagraph = (current, line) => {
+  if (!current || !line) return false
+  if (listMarkerOnlyPattern.test(current)) return false
+  if (isOpenFieldLabel(current)) return false
+  if (urlStartPattern.test(line)) return false
+  if (continuationStartPattern.test(line)) return false
+  return paragraphEndPattern.test(current)
+}
+
+const formatDescription = (text) => {
+  if (!text) return []
+
+  const normalized = text.replace(/\r\n?/g, '\n').trim()
+  if (!normalized) return []
+
+  const paragraphs = []
+  let current = ''
+
+  const flush = () => {
+    if (!current) return
+    paragraphs.push(current)
+    current = ''
+  }
+
+  for (const rawLine of compactDescriptionLines(normalized)) {
+    const lines = splitStructuredLine(normalizeLine(rawLine))
+
+    if (!lines.length) {
+      if (current && (listMarkerOnlyPattern.test(current) || isOpenFieldLabel(current))) {
+        continue
+      }
+      flush()
+      continue
+    }
+
+    for (const line of lines) {
+      if (sectionHeadingPattern.test(line)) {
+        flush()
+        paragraphs.push(line)
+        continue
+      }
+
+      if (urlStartPattern.test(line)) {
+        if (!current) {
+          current = line
+          continue
+        }
+
+        current += `${needsSpaceBetween(current, line) ? ' ' : ''}${line}`
+        continue
+      }
+
+      if (fieldLinePattern.test(line)) {
+        if (current && (listMarkerOnlyPattern.test(current) || !shouldBreakBeforeField(line))) {
+          current += `${needsSpaceBetween(current, line) ? ' ' : ''}${line}`
+          continue
+        }
+
+        flush()
+        if (isOpenFieldLabel(line)) {
+          current = line
+          continue
+        }
+        paragraphs.push(line)
+        continue
+      }
+
+      if (listItemPattern.test(line) && current) {
+        flush()
+      }
+
+      if (shouldStartParagraph(current, line)) {
+        flush()
+      }
+
+      if (!current) {
+        current = line
+        continue
+      }
+
+      current += `${needsSpaceBetween(current, line) ? ' ' : ''}${line}`
+    }
+  }
+
+  flush()
+  return paragraphs
+}
+
+const descriptionParagraphs = computed(() => formatDescription(activity.value?.description))
 
 const statusMap = { open: '可加入', full: '已满', closed: '已结束', offline: '已下架', draft: '草稿' }
 const statusLabel = () => statusMap[activity.value?.status] || activity.value?.status || '未知'
@@ -305,8 +514,16 @@ onMounted(fetchDetail)
   color: var(--text-secondary);
   font-size: 14px;
   line-height: 1.75;
-  white-space: pre-wrap;
+  white-space: normal;
   word-break: break-word;
+}
+
+.detail-desc p {
+  margin: 0;
+}
+
+.detail-desc p + p {
+  margin-top: 0.8em;
 }
 
 .speaker-row {
