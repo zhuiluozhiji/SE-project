@@ -23,8 +23,7 @@ from app.models.crawl_record import CrawlRecord
 SPIDER_REGISTRY: dict[str, str] = {
     "cs_zju": "crawler.spiders.cs_zju:crawl_and_save",
     "cse_zju": "crawler.spiders.cse_zju:crawl_and_save",
-    # 未来扩展示例：
-    # "math_zju":      "crawler.spiders.math_zju:crawl_and_save",
+    "math_zju": "crawler.spiders.math_zju:crawl_and_save",
 }
 
 # ============================================================================

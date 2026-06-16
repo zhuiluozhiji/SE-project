@@ -121,6 +121,18 @@
           placeholder="活动描述"
         />
       </el-form-item>
+      <el-form-item label="原文链接" v-if="editingSourceUrl">
+        <el-link
+          type="primary"
+          :href="editingSourceUrl"
+          target="_blank"
+          :underline="false"
+        >
+          {{ editingSourceUrl }}
+          <el-icon style="margin-left:2px;vertical-align:middle"><Link /></el-icon>
+        </el-link>
+        <p class="faint" style="margin-top:2px">爬虫来源原文，点击可跳转核对</p>
+      </el-form-item>
     </el-form>
     <template #footer>
       <el-button @click="activityDialogVisible = false">取消</el-button>
@@ -247,7 +259,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue'
 import { ElMessage } from 'element-plus'
-import { UploadFilled } from '@element-plus/icons-vue'
+import { UploadFilled, Link } from '@element-plus/icons-vue'
 import { getActivities } from '../api/activities'
 import {
   createActivity,
@@ -413,6 +425,10 @@ const displayedRows = computed(() => {
   if (!searchTitle.value) return activities.value
   const kw = searchTitle.value.toLowerCase()
   return activities.value.filter((a) => (a.title || '').toLowerCase().includes(kw))
+})
+
+const editingSourceUrl = computed(() => {
+  return editingActivity.value?.source_url || ''
 })
 
 const fetchActivities = async () => {
@@ -617,6 +633,7 @@ const runCrawler = async () => {
 const SOURCE_LABEL_MAP = {
   cs_zju: '计算机科学与技术学院',
   cse_zju: '控制科学与工程学院',
+  math_zju: '数学科学学院',
 }
 
 const confirmRunCrawler = async () => {
