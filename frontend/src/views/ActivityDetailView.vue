@@ -81,6 +81,19 @@
                   <span class="chip chip-sm" v-for="tag in activity.tags" :key="tag">{{ tag }}</span>
                 </dd>
               </div>
+              <div v-if="activity.source_url">
+                <dt>来源</dt>
+                <dd>
+                  <el-link
+                    type="primary"
+                    :href="activity.source_url"
+                    target="_blank"
+                    :underline="false"
+                  >
+                    查看原文 <el-icon style="vertical-align:middle"><Link /></el-icon>
+                  </el-link>
+                </dd>
+              </div>
             </dl>
           </div>
         </div>
@@ -112,6 +125,7 @@
 import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { Link } from '@element-plus/icons-vue'
 import { getActivityDetail, recordActivityInteraction } from '../api/activities'
 import { checkConflict as checkConflictApi, addActivityToSchedule } from '../api/schedules'
 
