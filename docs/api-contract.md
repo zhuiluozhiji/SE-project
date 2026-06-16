@@ -140,7 +140,7 @@ Authorization: Bearer <token>
 | `keyword` | 按标题、简介、主讲人、组织方、地点模糊搜索 |
 | `category` | 活动类别 |
 | `campus` | 校区 |
-| `college` | 学院 |
+| `college` | 学院名称关键词，按 `activity.college` 模糊匹配 |
 | `tag` | 活动标签 |
 | `start_from` | 活动开始时间下界，ISO datetime |
 | `start_to` | 活动开始时间上界，ISO datetime |

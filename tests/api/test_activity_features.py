@@ -134,6 +134,10 @@ def test_activity_keyword_category_campus_and_tag_filters(client):
     keyword_items = keyword_response.json()["data"]["items"]
     assert [item["id"] for item in keyword_items] == [102]
 
+    college_response = client.get("/api/v1/activities", params={"college": "计算机"})
+    college_items = college_response.json()["data"]["items"]
+    assert [item["id"] for item in college_items] == [101]
+
     filtered_response = client.get(
         "/api/v1/activities",
         params={"category": "讲座", "campus": "紫金港", "tag": "人工智能"},

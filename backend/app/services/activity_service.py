@@ -64,7 +64,9 @@ def _apply_filters(
     if campus:
         conditions.append(Activity.campus == campus)
     if college:
-        conditions.append(Activity.college == college)
+        college_keyword = college.strip()
+        if college_keyword:
+            conditions.append(Activity.college.like(f"%{college_keyword}%"))
     if tag:
         stmt = stmt.join(ActivityTag, ActivityTag.activity_id == Activity.id)
         conditions.append(ActivityTag.tag_name == tag)
