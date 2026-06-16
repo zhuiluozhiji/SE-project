@@ -24,6 +24,7 @@ SPIDER_REGISTRY: dict[str, str] = {
     "cs_zju": "crawler.spiders.cs_zju:crawl_and_save",
     "cse_zju": "crawler.spiders.cse_zju:crawl_and_save",
     "math_zju": "crawler.spiders.math_zju:crawl_and_save",
+    "geo_zju": "crawler.spiders.geo_zju:crawl_and_save",
 }
 
 # ============================================================================

@@ -188,21 +188,36 @@
       <!-- 学院选择 -->
       <div class="crawler-section">
         <p class="crawler-label">选择学院来源</p>
-        <p class="muted" style="margin-bottom:10px">
+        <p class="muted" style="margin-bottom:12px">
           可多选，将<strong>依次</strong>爬取所选学院的活动。
         </p>
-        <div v-if="crawlerSourcesLoading" class="faint">加载学院列表…</div>
-        <el-checkbox-group v-else v-model="crawlerSelectedSources" class="crawler-source-group">
-          <el-checkbox
+        <div v-if="crawlerSourcesLoading" class="faint" style="padding:20px 0">加载学院列表…</div>
+        <div v-else class="crawler-source-cards">
+          <div
             v-for="src in crawlerSourceOptions"
             :key="src.value"
-            :value="src.value"
-            :label="src.label"
-            class="crawler-source-checkbox"
-          />
-        </el-checkbox-group>
-        <p v-if="crawlerSelectedSources.length === 0" class="faint" style="margin-top:6px">
+            class="source-card"
+            :class="{ 'source-card--active': crawlerSelectedSources.includes(src.value) }"
+            @click="toggleSource(src.value)"
+          >
+            <div class="source-card-badge">
+              {{ getSourceBadge(src.value) }}
+            </div>
+            <div class="source-card-body">
+              <span class="source-card-name">{{ src.label }}</span>
+            </div>
+            <div class="source-card-check" v-if="crawlerSelectedSources.includes(src.value)">
+              <el-icon><Check /></el-icon>
+            </div>
+          </div>
+        </div>
+        <p v-if="crawlerSelectedSources.length === 0" class="faint" style="margin-top:8px">
           请至少选择一个学院来源
+        </p>
+        <p v-else class="faint" style="margin-top:8px">
+          已选择 <strong>{{ crawlerSelectedSources.length }}</strong> 个学院
+          <el-button size="small" text type="primary" @click="crawlerSelectedSources = crawlerSourceOptions.map(s => s.value)">全选</el-button>
+          <el-button size="small" text type="primary" @click="crawlerSelectedSources = []">清空</el-button>
         </p>
       </div>
 
@@ -213,7 +228,7 @@
       <div class="crawler-section">
         <p class="crawler-label">时间范围</p>
         <p class="muted" style="margin-bottom:10px">
-          仅爬取<strong>选定月份及之后</strong>发布的活动（在列表阶段即过滤，不浪费请求）。
+          仅爬取<strong>选定月份及之后</strong>发布的活动。<br>
           不选择则使用系统默认年份（2026年起）。
         </p>
         <el-date-picker
@@ -259,7 +274,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue'
 import { ElMessage } from 'element-plus'
-import { UploadFilled, Link } from '@element-plus/icons-vue'
+import { UploadFilled, Link, Check } from '@element-plus/icons-vue'
 import { getActivities } from '../api/activities'
 import {
   createActivity,
@@ -634,6 +649,28 @@ const SOURCE_LABEL_MAP = {
   cs_zju: '计算机科学与技术学院',
   cse_zju: '控制科学与工程学院',
   math_zju: '数学科学学院',
+  geo_zju: '地球科学学院',
+}
+
+// 学院 source → 卡片缩写/徽章文字
+const SOURCE_BADGE_MAP = {
+  cs_zju: 'CS',
+  cse_zju: 'CSE',
+  math_zju: 'MATH',
+  geo_zju: 'GEO',
+}
+
+const getSourceBadge = (value) => {
+  return SOURCE_BADGE_MAP[value] || value.slice(0, 4).toUpperCase()
+}
+
+const toggleSource = (value) => {
+  const idx = crawlerSelectedSources.value.indexOf(value)
+  if (idx >= 0) {
+    crawlerSelectedSources.value.splice(idx, 1)
+  } else {
+    crawlerSelectedSources.value.push(value)
+  }
 }
 
 const confirmRunCrawler = async () => {
@@ -794,14 +831,101 @@ onBeforeUnmount(() => {
   margin: 0;
 }
 
-.crawler-source-group {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 16px;
+/* 学院卡片网格 */
+.crawler-source-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
 }
 
-.crawler-source-checkbox {
-  margin-right: 0;
+.source-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 2px solid #dde1e7;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: #fff;
+  position: relative;
+  user-select: none;
+}
+
+.source-card:hover {
+  border-color: #93bdf8;
+  background: #f4f8ff;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(64, 128, 255, 0.1);
+}
+
+.source-card--active {
+  border-color: #409eff;
+  background: #ecf5ff;
+  box-shadow: 0 2px 12px rgba(64, 128, 255, 0.12);
+}
+
+.source-card--active:hover {
+  border-color: #409eff;
+  background: #d9ecff;
+}
+
+.source-card-badge {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: #eef1f6;
+  color: #475569;
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.source-card--active .source-card-badge {
+  background: #409eff;
+  color: #fff;
+}
+
+.source-card-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.source-card-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1e293b;
+  line-height: 1.4;
+  display: block;
+  word-break: keep-all;
+}
+
+.source-card-check {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--accent, #409eff);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  box-shadow: 0 1px 4px rgba(64, 128, 255, 0.3);
+}
+
+/* 响应式：窄屏时单列 */
+@media (max-width: 480px) {
+  .crawler-source-cards {
+    grid-template-columns: 1fr;
+  }
 }
 
 .crawler-month-checkbox {
