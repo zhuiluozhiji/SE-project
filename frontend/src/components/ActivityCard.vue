@@ -5,6 +5,9 @@
       <span class="faint">{{ fmtDate(activity.start_time || activity.time) }}</span>
     </div>
     <h3 class="card-title">{{ activity.title }}</h3>
+    <div class="meta-row" v-if="activity.college || activity.organizer">
+      <span>{{ activity.college || activity.organizer }}</span>
+    </div>
     <p class="muted card-desc">{{ truncate(activity.description || activity.summary, 72) }}</p>
     <div class="tag-row" v-if="tags.length">
       <span class="chip" v-for="tag in tags.slice(0, 3)" :key="tag">{{ tag }}</span>
@@ -68,12 +71,22 @@ const truncate = (text, max) => {
 }
 
 .card-desc {
+  margin-top: 8px;
   font-size: 13px;
   line-height: 1.6;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+.meta-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-tertiary);
+  font-size: 12px;
+  line-height: 1.4;
 }
 
 .tag-row {

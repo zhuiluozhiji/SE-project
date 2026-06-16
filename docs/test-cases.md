@@ -22,7 +22,7 @@
 | TC-4.2-001 | 4.2 | 活动浏览 | 活动列表分页 | 存在 open 活动 | GET `/api/v1/activities` | 返回分页结构和活动条目 | `test_auth_activity.py` | 已自动化 |
 | TC-4.2-002 | 4.2 | 活动浏览 | 活动详情 | 存在活动 ID | GET `/api/v1/activities/{id}` | 返回详情字段和标签 | `test_auth_activity.py` | 已自动化 |
 | TC-4.2-003 | 4.2 | 活动筛选 | 关键词筛选 | 存在匹配活动 | GET `/api/v1/activities?keyword=...` | 只返回匹配活动 | `test_activity_features.py` | 已自动化 |
-| TC-4.2-004 | 4.2 | 活动筛选 | 分类、校区、标签组合筛选 | 存在带标签活动 | GET `/api/v1/activities?category=&campus=&tag=` | 返回符合条件的活动 | `test_activity_features.py` | 已自动化 |
+| TC-4.2-004 | 4.2 | 活动筛选 | 分类、校区、学院关键词、标签组合筛选 | 存在带标签活动 | GET `/api/v1/activities?category=&campus=&college=&tag=` | 返回符合条件的活动，学院参数支持名称关键词匹配 | `test_activity_features.py` | 已自动化 |
 | TC-4.2-005 | 4.2 | 活动筛选 | 筛选项查询 | 存在 open 活动和标签 | GET `/api/v1/activities/filter-options` | 返回 categories、campuses、colleges、tags | `test_activity_features.py` | 已自动化 |
 | TC-4.2-006 | 4.2 | 活动交互 | 匿名交互跳过 | 未登录 | POST `/activities/{id}/interactions` | 返回成功但 `recorded=false` | `test_activity_features.py` | 已自动化 |
 | TC-4.2-007 | 4.2 | 活动交互 | 登录交互写入 | 学生已登录 | POST `/activities/{id}/interactions` | 返回 `recorded=true` 和交互信息 | `test_activity_features.py` | 已自动化 |
