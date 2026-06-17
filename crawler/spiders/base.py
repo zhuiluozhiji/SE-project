@@ -51,6 +51,10 @@ class CrawledActivity:
     skip_reason: str = ""
 
 
+class AccessDeniedError(Exception):
+    """Raised when the target page returns access-denied content (e.g. IP restriction)."""
+
+
 # ============================================================================
 # 通用常量（子类可覆盖）
 # ============================================================================
@@ -201,11 +205,35 @@ class BaseSpider(ABC):
     # HTTP 工具
     # ==================================================================
 
+    # ---- 访问受限检测关键词（子类可覆盖） ----
+    access_denied_patterns: list[str] = [
+        "您的IP不在校内",
+        "您的ip不在校内",
+        "请通过WebVPN",
+        "WebVPN访问",
+        "校外访问受限",
+        "不在校园网",
+        "仅限校内访问",
+        "请使用校园网",
+    ]
+
+    def _check_access_denied(self, html: str, url: str) -> None:
+        """检查 HTML 内容是否为访问受限页面，是则抛出 AccessDeniedError。"""
+        for pattern in self.access_denied_patterns:
+            if pattern in html:
+                raise AccessDeniedError(
+                    f"页面访问受限（检测到「{pattern}」），"
+                    f"请确认爬虫运行环境已接入校园网络: {url}"
+                )
+
     def fetch_html(self, url: str, timeout: int | None = None) -> str:
         """获取网页 HTML 源码，自动处理中文编码。
 
         优先从 HTML <meta charset> 中检测编码，
         避免依赖服务器返回的 Content-Type（可能缺失 charset 导致乱码）。
+
+        Raises:
+            AccessDeniedError: 页面返回访问受限内容（IP 限制等）
         """
         if timeout is None:
             timeout = self.request_timeout
@@ -223,7 +251,12 @@ class BaseSpider(ABC):
         else:
             encoding = response.encoding or response.apparent_encoding or "utf-8"
 
-        return raw.decode(encoding, errors="replace")
+        html = raw.decode(encoding, errors="replace")
+
+        # 检测访问受限页面
+        self._check_access_denied(html, url)
+
+        return html
 
     # ==================================================================
     # 列表翻页（通用实现，适用于 /list{page}.htm 模式）
@@ -809,6 +842,10 @@ class BaseSpider(ABC):
                     if activity.category:
                         parts.append(f"类别: {activity.category}")
                     print(f"  -> ✓ | {' | '.join(parts)}")
+            except AccessDeniedError as exc:
+                print(f"  -> 🔒 访问受限: {exc}")
+                # 不存入数据库，避免产生「未命名活动」
+                continue
             except Exception as exc:
                 print(f"  -> ✗ 失败: {exc}")
                 activities.append(CrawledActivity(
