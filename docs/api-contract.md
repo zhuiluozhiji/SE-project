@@ -111,6 +111,8 @@ Authorization: Bearer <token>
   "interests": ["人工智能", "数据库"],
   "tags": ["人工智能", "数据库"],
   "tag_count": 2,
+  "explicit_interests": ["数据库"],
+  "behavior_interests": ["人工智能"],
   "joined_count": 0,
   "conflict_count": 0,
   "timeline": [
@@ -128,6 +130,8 @@ Authorization: Bearer <token>
   ]
 }
 ```
+
+其中 `interests` / `tags` 用于个人中心展示，按“用户显式兴趣 + 最近 60 天浏览、推荐点击、加入日程行为推导出的标签、学院和类别关键词”合并去重；`explicit_interests` 和 `behavior_interests` 分别保留两类来源，便于解释推荐画像。
 
 ## 活动接口
 
@@ -208,7 +212,7 @@ Authorization: Bearer <token>
 
 | 字段 | 说明 |
 | --- | --- |
-| `action_type` | `view` / `add_schedule` |
+| `action_type` | `view` / `recommend_click` / `add_schedule` |
 | `source` | 可选。行为来源，例如 `activity_detail` |
 
 成功响应 `data`：
@@ -259,7 +263,7 @@ recommend_score =
   - 时间冲突惩罚
 ```
 
-候选集只包含 `status=open` 且未结束的活动；登录用户已加入日程的活动会被排除。历史行为只统计 `view` 和 `add_schedule`，其中 `add_schedule` 权重高于普通浏览。
+候选集只包含 `status=open` 且未结束的活动；登录用户已加入日程的活动会被排除。历史行为统计 `view`、`recommend_click` 和 `add_schedule`，其中 `add_schedule` 权重最高，推荐点击高于普通浏览。行为历史分同时使用活动标签、学院和类别，避免爬虫活动尚未补齐标签时完全失去个性化信号。最近一次有效行为会额外形成“最新关注焦点”，使刚浏览过的学院或类别能更快影响排序。
 
 成功响应 `data`：
 
@@ -277,7 +281,7 @@ recommend_score =
 | `reason` | 推荐理由 |
 | `matched_tags` | 命中的用户兴趣标签 |
 | `has_conflict` | 是否与当前用户已有日程冲突 |
-| `score_breakdown` | 推荐分明细：`explicit_interest`、`behavior_history`、`hot`、`time`、`college`、`conflict_penalty`、`total` |
+| `score_breakdown` | 推荐分明细：`explicit_interest`、`behavior_history`、`hot`、`time`、`college`、`recent_focus`、`conflict_penalty`、`total` |
 
 ## 日程与课表接口
 

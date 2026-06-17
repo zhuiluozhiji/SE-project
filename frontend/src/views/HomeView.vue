@@ -45,7 +45,7 @@
           class="card rec-card"
           v-for="item in recommendations"
           :key="item.id || item.title"
-          @click="$router.push(`/activities/${item.id}`)"
+          @click="openRecommendation(item)"
         >
           <div class="rec-top">
             <span class="chip rec-label">{{ item.matched_tags?.[0] || item.tag || '推荐' }}</span>
@@ -66,10 +66,12 @@
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { getRecommendedActivities } from '../api/recommendations'
-import { getActivities } from '../api/activities'
+import { getActivities, recordActivityInteraction } from '../api/activities'
 import { defaultRecommendedActivities } from '../utils/constants'
 
+const router = useRouter()
 const loading = ref(false)
 const error = ref('')
 const recommendations = ref([])
@@ -120,6 +122,17 @@ const fetchStats = async () => {
       heroStats[2].value = Math.min(res.data.total, 12)
     }
   } catch { /* 非关键 */ }
+}
+
+const openRecommendation = async (item) => {
+  if (!item?.id) return
+  try {
+    await recordActivityInteraction(item.id, {
+      action_type: 'recommend_click',
+      source: 'home_recommendation'
+    })
+  } catch { /* 行为上报不阻塞跳转 */ }
+  router.push(`/activities/${item.id}`)
 }
 
 onMounted(() => {

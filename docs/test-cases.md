@@ -26,6 +26,7 @@
 | TC-4.2-005 | 4.2 | 活动筛选 | 筛选项查询 | 存在 open 活动和标签 | GET `/api/v1/activities/filter-options` | 返回 categories、campuses、colleges、tags | `test_activity_features.py` | 已自动化 |
 | TC-4.2-006 | 4.2 | 活动交互 | 匿名交互跳过 | 未登录 | POST `/activities/{id}/interactions` | 返回成功但 `recorded=false` | `test_activity_features.py` | 已自动化 |
 | TC-4.2-007 | 4.2 | 活动交互 | 登录交互写入 | 学生已登录 | POST `/activities/{id}/interactions` | 返回 `recorded=true` 和交互信息 | `test_activity_features.py` | 已自动化 |
+| TC-4.2-008 | 4.2 | 个人中心画像 | 浏览行为生成兴趣标签 | 学生已登录且浏览带标签活动 | GET `/users/me` | 返回 `behavior_interests`，`interests` 合并展示行为标签 | `test_auth_activity.py` | 已自动化 |
 | TC-4.3-001 | 4.3 | 个性化推荐 | 未登录通用推荐 | 存在 open 活动 | GET `/recommendations/activities` | 返回推荐项和推荐字段 | `test_recommendations.py` | 已自动化 |
 | TC-4.3-002 | 4.3 | 个性化推荐 | 登录用户兴趣推荐 | 用户有兴趣标签 | GET `/recommendations/activities` 携带 token | 命中兴趣标签，包含推荐原因 | `test_recommendations.py` | 已自动化 |
 | TC-4.3-003 | 4.3 | 个性化推荐 | 行为历史影响推荐 | 用户有浏览行为 | GET 推荐接口 | `behavior_history` 分值大于 0 | `test_recommendations.py` | 已自动化 |

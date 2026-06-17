@@ -27,5 +27,5 @@ class ActivityUpdate(ActivityBase):
 
 
 class ActivityInteractionCreate(BaseModel):
-    action_type: Literal["view", "add_schedule"]
+    action_type: Literal["view", "add_schedule", "recommend_click"]
     source: str | None = None
