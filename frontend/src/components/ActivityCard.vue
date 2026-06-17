@@ -59,6 +59,10 @@ const truncate = (text, max) => {
 <style scoped>
 .activity-card {
   cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 230px;
 }
 
 .card-title {
@@ -68,12 +72,19 @@ const truncate = (text, max) => {
   font-weight: 600;
   letter-spacing: 0.02em;
   color: var(--text-primary);
+  line-height: 1.35;
+  min-height: 46px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .card-desc {
   margin-top: 8px;
   font-size: 13px;
   line-height: 1.6;
+  min-height: 42px;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -87,6 +98,14 @@ const truncate = (text, max) => {
   color: var(--text-tertiary);
   font-size: 12px;
   line-height: 1.4;
+  min-height: 17px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.meta-row span {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .tag-row {
@@ -107,8 +126,17 @@ const truncate = (text, max) => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-top: 14px;
+  gap: 12px;
+  margin-top: auto;
+  padding-top: 14px;
   font-size: 12px;
+}
+
+.card-foot .faint {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .card-arrow {

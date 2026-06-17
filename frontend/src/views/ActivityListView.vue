@@ -84,7 +84,7 @@
         <small>试试调整筛选条件或清除关键词</small>
       </div>
 
-      <div v-else class="card-grid list-grid">
+      <div v-else ref="gridRef" class="card-grid list-grid">
         <ActivityCard
           v-for="item in activities"
           :key="item.id"
@@ -106,7 +106,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, nextTick, onBeforeUnmount, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { Search, RefreshLeft } from '@element-plus/icons-vue'
 import { getActivities, getActivityFilterOptions } from '../api/activities'
@@ -118,6 +118,7 @@ const loading = ref(false)
 const error = ref('')
 const activities = ref([])
 const total = ref(0)
+const gridRef = ref(null)
 
 const filters = reactive({
   keyword: '',
@@ -134,8 +135,11 @@ const filterOptions = reactive({
 
 const pagination = reactive({
   page: 1,
-  pageSize: 10
+  pageSize: 12
 })
+
+const rowsPerPage = 3
+let resizeTimer = null
 
 const sortLabels = {
   time: '最新发布',
@@ -153,6 +157,43 @@ const activeFilterChips = computed(() => {
   return chips
 })
 
+const getRenderedColumnCount = () => {
+  const grid = gridRef.value
+  if (!grid) return 0
+
+  const columns = window.getComputedStyle(grid).gridTemplateColumns
+  if (!columns || columns === 'none') return 0
+
+  return columns.split(' ').filter(Boolean).length
+}
+
+const syncPageSizeWithGrid = () => {
+  const columns = getRenderedColumnCount()
+  if (!columns) return false
+
+  const nextPageSize = columns * rowsPerPage
+  if (nextPageSize === pagination.pageSize) return false
+
+  const firstVisibleIndex = (pagination.page - 1) * pagination.pageSize
+  pagination.pageSize = nextPageSize
+  pagination.page = Math.floor(firstVisibleIndex / nextPageSize) + 1
+  return true
+}
+
+const refetchIfPageSizeChanged = async () => {
+  await nextTick()
+  if (syncPageSizeWithGrid()) {
+    await fetchActivities({ skipAdaptiveSync: true })
+  }
+}
+
+const handleResize = () => {
+  window.clearTimeout(resizeTimer)
+  resizeTimer = window.setTimeout(() => {
+    refetchIfPageSizeChanged()
+  }, 180)
+}
+
 const loadFilterOptions = async () => {
   try {
     const res = await getActivityFilterOptions()
@@ -167,7 +208,7 @@ const loadFilterOptions = async () => {
   }
 }
 
-const fetchActivities = async () => {
+const fetchActivities = async (options = {}) => {
   loading.value = true
   error.value = ''
   try {
@@ -185,6 +226,10 @@ const fetchActivities = async () => {
     error.value = e.message || '网络异常'
   } finally {
     loading.value = false
+  }
+
+  if (!options.skipAdaptiveSync) {
+    await refetchIfPageSizeChanged()
   }
 }
 
@@ -216,11 +261,17 @@ const removeFilter = (key) => {
 }
 
 onMounted(() => {
+  window.addEventListener('resize', handleResize)
   if (route.query.keyword) filters.keyword = route.query.keyword
   if (route.query.college) filters.college = route.query.college
   if (route.query.sort) filters.sort = route.query.sort
   loadFilterOptions()
   fetchActivities()
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', handleResize)
+  window.clearTimeout(resizeTimer)
 })
 </script>
 
@@ -358,6 +409,8 @@ onMounted(() => {
 
 .list-grid {
   grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr));
+  grid-auto-rows: 1fr;
+  align-items: stretch;
   gap: 16px;
 }
 
