@@ -106,6 +106,32 @@ def test_login_and_get_current_user(client):
     assert me_response.json()["data"]["id"] == 1
 
 
+def test_current_user_profile_includes_behavior_interest_tags(client):
+    login_response = client.post(
+        "/api/v1/auth/login",
+        json={"username": "student001", "password": "123456"},
+    )
+    token = login_response.json()["data"]["token"]
+    interaction_response = client.post(
+        "/api/v1/activities/101/interactions",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"action_type": "view", "source": "activity_detail"},
+    )
+    assert interaction_response.status_code == 200
+
+    profile_response = client.get(
+        "/api/v1/users/me",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    data = profile_response.json()["data"]
+    assert "人工智能" in data["interests"]
+    assert "计算机科学与技术学院" in data["interests"]
+    assert "人工智能" in data["behavior_interests"]
+    assert "计算机科学与技术学院" in data["behavior_interests"]
+    assert data["tag_count"] == len(data["interests"])
+
+
 def test_login_rejects_wrong_password_and_missing_token(client):
     wrong_password = client.post(
         "/api/v1/auth/login",

@@ -206,9 +206,12 @@ def test_authenticated_recommendations_include_interest_behavior_and_conflict_si
     ai_item = next(item for item in items if item["id"] == 101)
     assert "人工智能" in ai_item["matched_tags"]
     assert ai_item["score_breakdown"]["explicit_interest"] > 0
+    assert ai_item["score_breakdown"]["behavior_history"] > 0
+    assert "无日程冲突" not in ai_item["reason"]
 
     conflict_item = next(item for item in items if item["id"] == 103)
     assert conflict_item["has_conflict"] is True
+    assert "最近关注过：机器学习" in conflict_item["reason"]
     assert conflict_item["score_breakdown"]["behavior_history"] > 0
     assert conflict_item["score_breakdown"]["conflict_penalty"] == 40
 

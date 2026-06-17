@@ -127,7 +127,7 @@
 </template>
 
 <script setup>
-import { computed, ref, onMounted } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Link } from '@element-plus/icons-vue'
@@ -434,7 +434,13 @@ const addToSchedule = async (forceAdd = false) => {
   }
 }
 
-onMounted(fetchDetail)
+watch(
+  () => route.params.id,
+  () => {
+    fetchDetail()
+  },
+  { immediate: true }
+)
 </script>
 
 <style scoped>
