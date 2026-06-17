@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -48,7 +48,7 @@ def update_activity(db: Session, activity_id: int, payload: ActivityUpdate) -> d
         return None
     for field, value in payload.model_dump(exclude_none=True).items():
         setattr(activity, field, value)
-    activity.updated_at = datetime.utcnow()
+    activity.updated_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(activity)
     return activity_to_admin_dict(activity)
@@ -59,7 +59,7 @@ def offline_activity(db: Session, activity_id: int) -> dict | None:
     if activity is None:
         return None
     activity.status = "offline"
-    activity.updated_at = datetime.utcnow()
+    activity.updated_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(activity)
     return activity_to_admin_dict(activity)

@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import DateTime, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
@@ -15,4 +15,6 @@ class CrawlRecord(Base):
     fetched_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     success_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     error_msg: Mapped[str | None] = mapped_column(Text)
-    run_time: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
+    run_time: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=lambda: datetime.now(timezone.utc)
+    )
