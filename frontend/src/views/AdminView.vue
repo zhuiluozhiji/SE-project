@@ -348,8 +348,11 @@ const formatTime = (t) => {
 
 const toLocalIso = (value) => {
   if (!value) return null
-  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(value)) {
-    return value.length === 16 ? `${value}:00` : value
+  if (typeof value === 'string') {
+    const normalized = value.trim().replace(' ', 'T')
+    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(normalized)) {
+      return normalized.length === 16 ? `${normalized}:00` : normalized.slice(0, 19)
+    }
   }
   const d = new Date(value)
   if (Number.isNaN(d.getTime())) return null
@@ -436,10 +439,30 @@ const activityEstimatedDurationMinutes = computed({
   }
 })
 
+const PINNED_ADMIN_ACTIVITY_TITLES = [
+  'Uniqueness of asymptotically conical K\\\\"ahler-Ricci flow',
+  'Quantitative maximal diameter rigidity of positive Ricci curvature',
+  'Advanced Seminar on Partial Differential Equations',
+]
+
+const getAdminPinnedPriority = (activity) => {
+  const index = PINNED_ADMIN_ACTIVITY_TITLES.indexOf(activity?.title || '')
+  return index >= 0 ? index : PINNED_ADMIN_ACTIVITY_TITLES.length
+}
+
+const sortPinnedAdminRows = (rows) => {
+  return [...rows].sort((a, b) => {
+    const priorityDiff = getAdminPinnedPriority(a) - getAdminPinnedPriority(b)
+    return priorityDiff || 0
+  })
+}
+
 const displayedRows = computed(() => {
-  if (!searchTitle.value) return activities.value
+  if (!searchTitle.value) return sortPinnedAdminRows(activities.value)
   const kw = searchTitle.value.toLowerCase()
-  return activities.value.filter((a) => (a.title || '').toLowerCase().includes(kw))
+  return sortPinnedAdminRows(
+    activities.value.filter((a) => (a.title || '').toLowerCase().includes(kw))
+  )
 })
 
 const editingSourceUrl = computed(() => {
@@ -466,8 +489,8 @@ const openActivityDialog = (row = null) => {
       campus: row.campus || '',
       category: row.category || '',
       location: row.location || '',
-      start_time: row.start_time || null,
-      end_time: row.end_time || null,
+      start_time: toLocalIso(row.start_time),
+      end_time: toLocalIso(row.end_time),
       estimated_duration_minutes: getDurationFromRange(row.start_time, row.end_time),
       description: row.description || ''
     })
@@ -593,8 +616,8 @@ const submitActivity = async () => {
   savingActivity.value = true
   try {
     const { estimated_duration_minutes, ...data } = activityForm
-    if (data.start_time) data.start_time = new Date(data.start_time).toISOString()
-    if (data.end_time) data.end_time = new Date(data.end_time).toISOString()
+    if (data.start_time) data.start_time = toLocalIso(data.start_time)
+    if (data.end_time) data.end_time = toLocalIso(data.end_time)
 
     if (editingActivity.value) {
       await updateActivity(editingActivity.value.id, data)

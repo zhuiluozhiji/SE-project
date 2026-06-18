@@ -12,6 +12,25 @@ from app.models.user_interest import UserInterest
 
 BEHAVIOR_INTEREST_LOOKBACK_DAYS = 60
 BEHAVIOR_INTEREST_LIMIT = 8
+PROFILE_INTEREST_MODE = "fixed_demo_users"  # 改为 "auto" 即恢复显式标签 + 行为标签的自动合并模式
+FIXED_PROFILE_INTERESTS_BY_USERNAME = {
+    "Mike": [
+        "数据库",
+        "创新",
+        "智能控制",
+        "人工智能",
+        "计算机科学与技术学院",
+        "社会实践",
+    ],
+    "steph": [
+        "数据库",
+        "创新",
+        "智能控制",
+        "人工智能",
+        "计算机科学与技术学院",
+        "社会实践",
+    ],
+}
 PROFILE_ACTION_WEIGHTS = {
     "view": 1.0,
     "recommend_click": 2.0,
@@ -39,8 +58,12 @@ def user_to_profile(db: Session, user: User) -> dict:
         .where(UserInterest.user_id == user.id)
         .order_by(UserInterest.tag_name.asc())
     ).all()
-    behavior_interests = get_behavior_interest_tags(db, user.id)
-    interests = merge_interest_tags(list(explicit_interests), behavior_interests)
+    if PROFILE_INTEREST_MODE == "fixed_demo_users" and user.username in FIXED_PROFILE_INTERESTS_BY_USERNAME:
+        interests = FIXED_PROFILE_INTERESTS_BY_USERNAME[user.username]
+        behavior_interests = []
+    else:
+        behavior_interests = get_behavior_interest_tags(db, user.id)
+        interests = merge_interest_tags(list(explicit_interests), behavior_interests)
     joined_count = (
         db.scalar(
             select(func.count(ScheduleEvent.id)).where(
