@@ -2043,11 +2043,13 @@ onBeforeUnmount(() => {
   gap: 14px;
   position: sticky;
   top: 88px;
+  min-width: 0;
 }
 
 .side-list {
   display: grid;
   gap: 8px;
+  min-width: 0;
 }
 
 .side-item {
@@ -2055,6 +2057,9 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
   padding: 10px 12px;
   border-radius: var(--radius-sm);
   background: var(--bg-warm);
@@ -2092,18 +2097,36 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   gap: 10px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.side-item-left > div {
   min-width: 0;
 }
 
 .side-item-left strong {
   font-size: 13px;
   display: block;
-  white-space: nowrap;
+  white-space: normal;
   overflow: hidden;
   text-overflow: ellipsis;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
-.side-item-left p { margin: 2px 0 0; font-size: 11px; }
+.side-item-left p {
+  margin: 2px 0 0;
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
 
 .side-marker {
   width: 20px;
@@ -2115,11 +2138,21 @@ onBeforeUnmount(() => {
 .side-item-right {
   text-align: right;
   font-size: 11px;
-  flex-shrink: 0;
+  flex: 0 1 84px;
+  min-width: 64px;
   display: flex;
   flex-direction: column;
   align-items: flex-end;
   gap: 2px;
+}
+
+.side-item-right .faint,
+.side-item-right :deep(.el-button) {
+  max-width: 100%;
+}
+
+.side-item-right .faint {
+  overflow-wrap: anywhere;
 }
 
 .empty-hint { text-align: center; padding: 16px 0; }
