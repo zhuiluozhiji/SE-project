@@ -4,6 +4,7 @@ from pydantic import BaseModel, field_validator
 class CrawlerRunRequest(BaseModel):
     source: str = "cs_zju"
     since: str | None = None  # "YYYY-MM"，仅爬取此月及之后的活动；None 则使用爬虫默认 min_year
+    no_limit: bool = False  # True 表示不使用默认年份过滤，爬取该来源全部可用活动
 
     @field_validator("since")
     @classmethod
@@ -24,4 +25,3 @@ class CrawlerRunResponse(BaseModel):
     skipped: int = 0
     error: str | None = None
     since_applied: str | None = None  # 实际生效的月份过滤条件
-

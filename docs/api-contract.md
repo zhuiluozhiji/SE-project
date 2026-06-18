@@ -765,3 +765,21 @@ Authorization: Bearer <admin token>
 | `limit` | 返回数量，范围 1-50，默认 10 |
 
 成功响应字段同 `GET /api/v1/recommendations/activities`。
+
+### `POST /api/v1/admin/crawler/run`
+
+触发指定学院来源的爬虫任务。
+
+请求体：
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `source` | string | 爬虫来源，如 `cs_zju`、`cse_zju`、`math_zju`、`geo_zju` |
+| `since` | string | 可选，格式 `YYYY-MM`，仅爬取该月及之后发布的活动 |
+| `no_limit` | boolean | 可选，值为 `true` 时不使用默认年份过滤，爬取该来源全部可用活动 |
+
+说明：`since` 和 `no_limit` 不应同时使用；如果二者都不传，则使用爬虫默认年份过滤配置。
+
+### `GET /api/v1/admin/crawler/records`
+
+返回最近的爬虫运行记录，包括来源、状态、抓取数量、成功入库数量、错误信息和运行时间。

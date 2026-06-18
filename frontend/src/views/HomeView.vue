@@ -81,6 +81,52 @@ const loading = ref(false)
 const error = ref('')
 const recommendations = ref([])
 const RECOMMENDATION_LIMIT = 8
+// 改为 'smart' 即可恢复原先的个性化推荐接口模式。
+const HOME_RECOMMENDATION_MODE = 'fixed'
+
+const FIXED_RECOMMENDATION_RULES = [
+  {
+    title: '【通知】2026控制学院科技创新讲坛-第8期：欢迎报名参会',
+    keyword: '2026控制学院科技创新讲坛-第8期',
+    reason: '最近关注过：控制科学与工程学院；匹配兴趣标签：智能控制；近期开始',
+  },
+  {
+    title: '多学科研讨圆桌π第三期 | 共同面对AI时代的伦理挑战',
+    keyword: '多学科研讨圆桌',
+    reason: '匹配兴趣标签：人工智能；无日程冲突',
+  },
+  {
+    title: '【社会实践】关于2027年6月30日及之前毕业的学术学位博士生未完成社会实践必修环节预警及免修认定的通知',
+    keyword: '2027年6月30日',
+    reason: '最近关注过：社会实践；与你的学院相关；无日程冲突',
+  },
+  {
+    title: '【形势与政策I】关于开展2025-2026学年形策I补充申报工作的通知',
+    keyword: '形策',
+    prefer: ['补充申报'],
+    reason: '最近关注过：形势与政策；无日程冲突',
+  },
+  {
+    title: '双周学术论坛——ENSO-南极遥相关及其对南极罗斯冰架表面融化的影响',
+    keyword: 'ENSO-南极',
+    reason: '近期开始；无日程冲突',
+  },
+  {
+    title: '【竺涯共语·科研探索 | No.233预告】吴李鸣教授：求是创新-浙大医学在义乌的发展实践',
+    keyword: '吴李鸣',
+    reason: '匹配兴趣标签：创新；最近关注过：科研探索；无日程冲突',
+  },
+  {
+    title: '【通知】西塞山国际交流工作坊 第五十期：欢迎报名参会',
+    keyword: '西塞山国际交流工作坊 第五十期',
+    reason: '近期开始；无日程冲突',
+  },
+  {
+    title: '第十八期“地学先锋”启新讲坛 | 施建成研究员受邀来我院作学术报告',
+    keyword: '施建成',
+    reason: '最近关注过：地球科学学院；近期开始；无日程冲突',
+  },
+]
 
 const heroStats = reactive([
   { label: '可参与活动', value: '--' },
@@ -176,7 +222,7 @@ const buildHomeReason = (item, index) => {
 const withHomeReasons = (items) => {
   return items.map((item, index) => ({
     ...item,
-    display_reason: buildHomeReason(item, index),
+    display_reason: item.fixed_reason || buildHomeReason(item, index),
   }))
 }
 
@@ -195,10 +241,69 @@ const fillRecommendations = (items) => {
   return withHomeReasons([...normalizedItems, ...fallbackItems])
 }
 
+const pickFixedActivity = (items, rule) => {
+  const candidates = Array.isArray(items) ? items : []
+  if (!candidates.length) return null
+
+  const exactMatch = candidates.find((item) => item.title === rule.title)
+  if (exactMatch) return exactMatch
+
+  if (rule.prefer?.length) {
+    const preferred = candidates.find((item) => {
+      const title = item.title || ''
+      return rule.prefer.every((word) => title.includes(word))
+    })
+    if (preferred) return preferred
+  }
+
+  return candidates[0]
+}
+
+const makeFixedFallbackActivity = (rule, index) => ({
+  title: rule.title,
+  description: '固定展示活动，当前活动接口未返回完整详情，可在后台补充或重新爬取。',
+  category: index % 2 === 0 ? '学术讲座' : '研讨会',
+  campus: '',
+  location: '',
+  status: 'open',
+  tags: ['固定推荐'],
+  matched_tags: [],
+  is_demo: true,
+  fixed_reason: rule.reason,
+})
+
+const fetchFixedRecommendations = async () => {
+  const settled = await Promise.allSettled(
+    FIXED_RECOMMENDATION_RULES.map(async (rule, index) => {
+      const res = await getActivities({
+        keyword: rule.keyword,
+        page: 1,
+        page_size: 20,
+        sort_by: 'time',
+      })
+      const items = res.data?.items || res.data?.activities || res.data || []
+      const activity = pickFixedActivity(items, rule) || makeFixedFallbackActivity(rule, index)
+      return { ...activity, fixed_reason: rule.reason }
+    })
+  )
+
+  return settled.map((result, index) => {
+    if (result.status === 'fulfilled') return result.value
+    return makeFixedFallbackActivity(FIXED_RECOMMENDATION_RULES[index], index)
+  })
+}
+
 const fetchRecommendations = async () => {
   loading.value = true
   error.value = ''
   try {
+    if (HOME_RECOMMENDATION_MODE === 'fixed') {
+      const items = await fetchFixedRecommendations()
+      recommendations.value = withHomeReasons(items)
+      heroStats[1].value = recommendations.value.length
+      return
+    }
+
     const res = await getRecommendedActivities({ limit: RECOMMENDATION_LIMIT })
     const items = res.data?.items || res.data?.activities || res.data || []
     recommendations.value = fillRecommendations(items)

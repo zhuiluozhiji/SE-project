@@ -660,6 +660,8 @@ class BaseSpider(ABC):
 
     def _resolve_since(self, since: str | None) -> str | None:
         """解析最终生效的 since 值：前端传入优先，否则回退到 min_year。"""
+        if since == "__all__":
+            return None
         if since is not None:
             return since
         if self.min_year is not None:
@@ -803,20 +805,17 @@ class BaseSpider(ABC):
         print(f"\n共获取 {len(list_items)} 个活动条目\n")
 
         if not list_items:
-            return {
-                "status": "empty",
-                "fetched": 0, "created": 0, "skipped": 0,
-                "filtered": 0, "year_filtered": 0,
-                "error": "列表页解析结果为空，可能页面结构已变更",
-            }
-
-        if not list_items:
+            empty_error = (
+                f"未找到符合 {effective_since} 及之后的活动；如需抓取历史活动，请选择不限制月份。"
+                if effective_since
+                else "列表页解析结果为空，可能页面结构已变更"
+            )
             return {
                 "status": "empty",
                 "fetched": 0, "created": 0, "skipped": 0,
                 "filtered": 0, "year_filtered": 0,
                 "since_applied": effective_since,
-                "error": "列表页解析结果为空，可能页面结构已变更",
+                "error": empty_error,
             }
 
         # 2. 逐条抓取详情（过期条目已在列表阶段剔除，此处不再重复过滤）

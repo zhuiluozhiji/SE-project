@@ -73,7 +73,10 @@ def _get_spider_func(source: str):
 
 
 def run_crawler_and_save(
-    db: Session, source: str = "cs_zju", since: str | None = None,
+    db: Session,
+    source: str = "cs_zju",
+    since: str | None = None,
+    no_limit: bool = False,
 ) -> dict:
     """运行指定来源的爬虫并将结果写入数据库。
 
@@ -81,6 +84,7 @@ def run_crawler_and_save(
         db: 数据库会话
         source: 爬虫来源标识，须在 SPIDER_REGISTRY 中注册
         since: 月份过滤 "YYYY-MM"，仅爬取此月及之后的活动；None 则使用爬虫默认 min_year
+        no_limit: True 时不使用默认年份过滤，爬取该来源全部可用活动
 
     Returns:
         包含 status, fetched, created, skipped, error 等字段的字典
@@ -100,7 +104,8 @@ def run_crawler_and_save(
         }
 
     try:
-        result = crawl_func(db, since=since)
+        effective_since = "__all__" if no_limit else since
+        result = crawl_func(db, since=effective_since)
         return result
     except ImportError as exc:
         record = CrawlRecord(

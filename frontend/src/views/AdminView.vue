@@ -700,7 +700,9 @@ const confirmRunCrawler = async () => {
     try {
       ElMessage.info(`[${i + 1}/${sources.length}] 正在爬取 ${label}…`)
       const payload = { source }
-      if (sincePayload) {
+      if (crawlerNoMonthLimit.value) {
+        payload.no_limit = true
+      } else if (sincePayload) {
         payload.since = sincePayload
       }
       const res = await runCrawlerApi(payload)
@@ -711,7 +713,9 @@ const confirmRunCrawler = async () => {
       totalFiltered += data.filtered || 0
       totalYearFiltered += data.year_filtered || 0
 
-      const sinceInfo = data.since_applied ? `（自 ${data.since_applied} 起）` : ''
+      const sinceInfo = crawlerNoMonthLimit.value
+        ? '（不限制月份）'
+        : (data.since_applied ? `（自 ${data.since_applied} 起）` : '')
       ElMessage.success(
         `[${label}] 爬取完成${sinceInfo}：抓取 ${data.fetched || 0} 条，`
         + `新增 ${data.created || 0} 条，去重跳过 ${data.skipped || 0} 条`
@@ -724,7 +728,9 @@ const confirmRunCrawler = async () => {
   }
 
   // 汇总
-  const sinceInfo = sincePayload ? `（自 ${sincePayload} 起）` : ''
+  const sinceInfo = crawlerNoMonthLimit.value
+    ? '（不限制月份）'
+    : (sincePayload ? `（自 ${sincePayload} 起）` : '')
   if (errors.length === 0) {
     ElMessage.success(
       `全部爬取完成${sinceInfo}：共 ${sources.length} 个学院，`

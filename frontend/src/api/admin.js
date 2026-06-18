@@ -17,7 +17,7 @@ export function recognizeActivityImage(formData) {
 }
 
 export function runCrawler(data) {
-  return http.post('/admin/crawler/run', data, { timeout: 300000 })
+  return http.post('/admin/crawler/run', data, { timeout: 1800000 })
 }
 
 export function getCrawlerRecords() {
