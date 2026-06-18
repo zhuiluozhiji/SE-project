@@ -19,6 +19,14 @@ VALUES
     'admin',
     NULL,
     '信息技术中心'
+  ),
+  (
+    3,
+    'student002',
+    '$2b$12$wVQaGVST72ESc4mkGSpgFeFgDec400alA.LhqR6DC56pm4e.bFx.S',
+    'student',
+    '计算机科学与技术',
+    '计算机科学与技术学院'
   )
 ON DUPLICATE KEY UPDATE
   username = VALUES(username),
@@ -93,12 +101,14 @@ VALUES
   (102, '系统')
 ON DUPLICATE KEY UPDATE tag_name = VALUES(tag_name);
 
-DELETE FROM user_interest WHERE user_id IN (1, 2);
+DELETE FROM user_interest WHERE user_id IN (1, 2, 3);
 
 INSERT INTO user_interest (user_id, tag_name)
 VALUES
   (1, '人工智能'),
-  (1, '数据库')
+  (1, '数据库'),
+  (3, '人工智能'),
+  (3, '数据库')
 ON DUPLICATE KEY UPDATE tag_name = VALUES(tag_name);
 
 DELETE FROM course_schedule

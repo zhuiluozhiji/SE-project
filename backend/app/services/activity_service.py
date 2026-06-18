@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Select, and_, func, or_, select
+from sqlalchemy import Select, and_, case, func, or_, select
 from sqlalchemy.exc import OperationalError, ProgrammingError
 from sqlalchemy.orm import Session
 
@@ -10,6 +10,10 @@ from app.models.activity_tag import ActivityTag
 from app.schemas.activity import ActivityInteractionCreate
 
 ZJU_CAMPUSES = ["紫金港", "玉泉", "西溪", "华家池", "之江", "舟山", "海宁"]
+PINNED_ACTIVITY_TITLES = [
+    "【通知】2026控制学院科技创新讲坛-第8期：欢迎报名参会",
+    "多学科研讨圆桌π第三期 | 共同面对AI时代的伦理挑战",
+]
 
 
 def _iso(value):
@@ -103,6 +107,23 @@ def _generic_recommend_score(activity: Activity) -> int:
     return int(round(hot_score + time_score))
 
 
+def _pinned_activity_priority(activity: Activity) -> int:
+    try:
+        return PINNED_ACTIVITY_TITLES.index(activity.title)
+    except ValueError:
+        return len(PINNED_ACTIVITY_TITLES)
+
+
+def _pinned_activity_order():
+    return case(
+        *[
+            (Activity.title == title, index)
+            for index, title in enumerate(PINNED_ACTIVITY_TITLES)
+        ],
+        else_=len(PINNED_ACTIVITY_TITLES),
+    )
+
+
 def list_activities(
     db: Session,
     keyword: str | None = None,
@@ -132,6 +153,7 @@ def list_activities(
         activities_all = db.scalars(base_stmt).all()
         activities_all.sort(
             key=lambda activity: (
+                _pinned_activity_priority(activity),
                 -_generic_recommend_score(activity),
                 activity.start_time or datetime.max,
                 activity.id,
@@ -139,10 +161,18 @@ def list_activities(
         )
         activities = activities_all[(page - 1) * page_size : page * page_size]
     elif sort_by == "hot":
-        base_stmt = base_stmt.order_by(Activity.hot_score.desc(), Activity.start_time.asc())
+        base_stmt = base_stmt.order_by(
+            _pinned_activity_order(),
+            Activity.hot_score.desc(),
+            Activity.start_time.asc(),
+        )
         activities = db.scalars(base_stmt.offset((page - 1) * page_size).limit(page_size)).all()
     else:
-        base_stmt = base_stmt.order_by(Activity.start_time.asc(), Activity.id.asc())
+        base_stmt = base_stmt.order_by(
+            _pinned_activity_order(),
+            Activity.start_time.asc(),
+            Activity.id.asc(),
+        )
         activities = db.scalars(base_stmt.offset((page - 1) * page_size).limit(page_size)).all()
 
     tags_by_activity = _load_tags(db, [activity.id for activity in activities])

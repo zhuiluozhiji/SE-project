@@ -47,6 +47,20 @@
               :prefix-icon="Lock"
             />
           </el-form-item>
+          <el-form-item prop="college" v-if="isRegister">
+            <el-input
+              v-model.trim="form.college"
+              placeholder="学院，如：计算机科学与技术学院"
+              size="large"
+            />
+          </el-form-item>
+          <el-form-item prop="major" v-if="isRegister">
+            <el-input
+              v-model.trim="form.major"
+              placeholder="专业，如：计算机科学与技术"
+              size="large"
+            />
+          </el-form-item>
           <el-form-item>
             <el-button
               type="primary"
@@ -88,11 +102,16 @@ const formRef = ref(null)
 const form = reactive({
   username: '',
   password: '',
-  confirmPassword: ''
+  confirmPassword: '',
+  college: '',
+  major: ''
 })
 
 const rules = {
-  username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
+  username: [
+    { required: true, message: '请输入用户名', trigger: 'blur' },
+    { min: 3, max: 64, message: '用户名长度需为3-64位', trigger: 'blur' }
+  ],
   password: [
     { required: true, message: '请输入密码', trigger: 'blur' },
     { min: 6, message: '密码长度不能少于6位', trigger: 'blur' }
@@ -106,13 +125,17 @@ const rules = {
       },
       trigger: 'blur'
     }
-  ]
+  ],
+  college: [{ max: 128, message: '学院名称不能超过128个字符', trigger: 'blur' }],
+  major: [{ max: 128, message: '专业名称不能超过128个字符', trigger: 'blur' }]
 }
 
 const resetForm = () => {
   form.username = ''
   form.password = ''
   form.confirmPassword = ''
+  form.college = ''
+  form.major = ''
   formRef.value?.clearValidate()
 }
 
@@ -123,12 +146,17 @@ const handleSubmit = async () => {
     loading.value = true
     try {
       if (isRegister.value) {
-        ElMessage.info('注册功能将在后续版本开放，请使用测试账号登录')
-        loading.value = false
-        return
+        await auth.register({
+          username: form.username,
+          password: form.password,
+          college: form.college || undefined,
+          major: form.major || undefined
+        })
+        ElMessage.success('注册成功，已自动登录')
+      } else {
+        await auth.login({ username: form.username, password: form.password })
+        ElMessage.success('登录成功')
       }
-      await auth.login({ username: form.username, password: form.password })
-      ElMessage.success('登录成功')
       router.push('/')
     } catch {
       // 错误已在 http 拦截器中处理
