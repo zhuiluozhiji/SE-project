@@ -78,7 +78,7 @@
     \includegraphics[width=1.06\linewidth,height=0.84\textheight,keepaspectratio]{总图.png}
 \end{frame}
 
-\begin{frame}{结项版本功能：核心链路已经形成可运行闭环}
+\begin{frame}{功能实现：核心链路已经形成可运行闭环}
     \small
     \begin{tabular}{p{0.18\linewidth}p{0.56\linewidth}p{0.16\linewidth}}
         \toprule
@@ -101,21 +101,8 @@
 \section{总体设计}
 
 \begin{frame}{总体架构：B/S、前后端分离与后端分层}
-    \begin{columns}[T,onlytextwidth]
-        \begin{column}{0.58\textwidth}
-            \centering
-            \includegraphics[width=\linewidth,height=0.72\textheight,keepaspectratio]{1.3-系统层级结构.png}
-        \end{column}
-        \begin{column}{0.38\textwidth}
-            \begin{itemize}
-                \item \keyword{客户端表现层}：Vue 3、Element Plus、Pinia、Vue Router，负责页面与交互。
-                \item \keyword{服务端接口层}：FastAPI 接收请求，完成参数校验、权限判断和统一响应。
-                \item \keyword{业务逻辑层}：集中处理活动查询、推荐计算、课程导入和冲突检测。
-                \item \keyword{数据访问层}：SQLAlchemy ORM 访问 MySQL，模型与 \texttt{schema.sql} 对齐。
-                \item \keyword{外部数据源}：学院网站、课程表文件和活动截图。
-            \end{itemize}
-        \end{column}
-    \end{columns}
+    \centering
+    \includegraphics[width=1.04\linewidth,height=0.82\textheight,keepaspectratio]{技术框架.png}
 \end{frame}
 
 \section{测试与总结}
@@ -123,14 +110,6 @@
 \begin{frame}{测试结果：核心功能通过自动化与页面验证}
     \begin{columns}[T,onlytextwidth]
         \begin{column}{0.36\textwidth}
-            \begin{block}{自动化测试结果}
-                \centering
-                \LARGE \good{69 passed}
-
-                \vspace{0.3em}
-                \small
-                318 warnings in 13.47s
-            \end{block}
             \begin{itemize}
                 \item 覆盖登录注册、活动浏览、推荐、课程导入、日程与后台管理等模块。
                 \item 接口统一返回 \texttt{\{code, message, data\}}，便于前端处理和自动化断言。
